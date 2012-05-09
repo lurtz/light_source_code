@@ -1,9 +1,8 @@
-##Linking with libcutil (expected to be in ${CUDA_SDK_ROOT_DIR}/C/lib)
-##LINK_LIBRARIES("-L/${CUDA_SDK_ROOT_DIR}/C/lib -lcutil")
+SET(Exercise10_SRC
+  MeshObj.cpp
+  ObjLoader.cpp
+)
 
-##Include the FindCUDA script
-#INCLUDE(FindCUDA)
-
-##The rule to build the executable program 
-#CUDA_ADD_EXECUTABLE(pba pba/pba3DHost.cu main.cpp)
-#TARGET_LINK_LIBRARIES(pba ${OpenCV_LIBS})
+#The rule to build the executable program 
+ADD_EXECUTABLE(light_sources main.cpp ${Exervise10_SRC})
+TARGET_LINK_LIBRARIES(light_sources ${OpenCV_LIBS})
