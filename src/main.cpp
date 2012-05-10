@@ -3,17 +3,22 @@
 #include <string>
 #include <iostream>
 #include <stdlib.h>
+#include <cv.hpp>
+#include <highgui.h>
 
 typedef struct {
   std::string mesh_filename;
   std::string image_filename;
 } arguments;
 
-const char * opt_string = "m:i:h";
+const char * opt_string = "m:i:s:r:t:h";
 
 const struct option long_opts[] = {
   { "mesh-name", required_argument, NULL, 'm'},
   { "image-name", required_argument, NULL, 'i'},
+  { "scale", required_argument, NULL, 's'},
+  { "rotation", required_argument, NULL, 'r'},
+  { "translation", required_argument, NULL, 't'},
   { "help", no_argument, NULL, 'h'},
   { NULL, no_argument, NULL, 0}
 };
@@ -26,8 +31,11 @@ void print_arguments(const arguments& args) {
 
 void print_help() {
   std::cout << "-m|--mesh-name as filename of the 3d mesh inside the image\n"
-    << "-i|--image-name as filename of the image for which lighting shall be estimated"
-    << "-h|--help print this message and exit"
+    << "-i|--image-name as filename of the image for which lighting shall be estimated\n"
+    << "-h|--help print this message and exit\n"
+    << "-s|--scale scale factor to be applied to the mesh\n"
+    << "-r|--rotation rotation to be applied to the mesh\n"
+    << "-t|--translation position of the mesh in the image\n"
     << std::endl;
 }
 
@@ -56,5 +64,16 @@ arguments parse_options(const int& argc, char * const argv[]) {
 
 int main(int argc, char * argv[]) {
   arguments args = parse_options(argc, argv);
+  cv::Mat image;
+  if (args.image_filename != "") {
+    image = cv::imread(args.image_filename);
+    cv::imshow("test", image);
+    cv::waitKey(0);
+  }
+  if (args.mesh_filename != "") {
+    ObjLoader objl;
+    MeshObj * mesh = objl.loadObjFile(args.mesh_filename, args.mesh_filename);
+  }
+  std::cout << "OK" << std::endl;
   return 0;
 }

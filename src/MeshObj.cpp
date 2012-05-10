@@ -4,9 +4,6 @@
 #include <cmath>
 
 MeshObj::MeshObj() {
-  mVBO = 0;
-  mIBO = 0;
-  mIndexCount = 0;
   for (int i = 0; i < 3; ++i) {
     mMinBounds[i] = std::numeric_limits<float>::max();
     mMaxBounds[i] = std::numeric_limits<float>::min();
