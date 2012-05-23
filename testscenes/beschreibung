@@ -1,0 +1,15 @@
+Es ist immer die gleiche Szene mit einer Kugel im Koordinatenursprung 
+und je nach Szene verschiedene Lichtquellen.
+Die Kugel hat einen Radius von 1 und liegt wie gesagt mit dem Zentrum 
+genau im Koordinatenursprung.
+Die Kamera hat ne Brennweite von 35mm, ne Sensorgröße von 32x32mm und 
+liegt an der Position (5, 0, 0) wobei die Kamera in Richtung (-1, 0, 0) 
+schaut.
+Die Lichtquellen sind komplett weiß und das Material der Kugel auch.
+Ein ambientes Licht der Farbe (0.1, 0.1, 0.1) gibts auch noch.
+Je nach Szene sind 1, 2 oder 3 Lichtquellen definiert. Es kommt immer 
+eine neue hinzu und die alten Positionen bleiben bestehen.
+Also:
+Szene 1: L1 (4, 4, 4)
+Szene 2: L1 (4, 4, 4), L2 (3, -3, 4)
+Szene 3: L1 (4, 4, 4), L2 (3, -3, 4), L3 (0, 0, 5)
