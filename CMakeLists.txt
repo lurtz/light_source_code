@@ -15,7 +15,7 @@ INCLUDE_DIRECTORIES(SYSTEM ${OpenCV_INCLUDE_DIRS})
 # Compiler setup
 set(CMAKE_BUILD_TYPE debug)
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x ${VALID_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall")
 
 # Adding src directory to the project
 ADD_SUBDIRECTORY(src)
