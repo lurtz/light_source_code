@@ -29,7 +29,7 @@ struct Vertex {
 
 class MeshObj {
   public:
-    MeshObj();
+    MeshObj(float const * const rotation = 0, float const * const translation = 0, const float scale = 1);
     ~MeshObj();
     
     void setData(const std::vector<Vertex> &vertexData, const std::vector<unsigned int> &indexData);
@@ -37,12 +37,20 @@ class MeshObj {
     float getWidth(void);
     float getHeight(void);
     float getDepth(void);
+
+    void rotate(float rotation[3]);
+    void translate(float translation[3]);
+    void scale(float scale);
   private:
     std::vector<Vertex> mVertexData;
     std::vector<unsigned int> mIndexData;
     
     float mMinBounds[3];
     float mMaxBounds[3];
+
+    float _rotation[3];
+    float _translation[3];
+    float _scale;
 };
 
 #endif

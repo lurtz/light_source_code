@@ -9,6 +9,12 @@
 #include <fstream>
 #include <vector>
 
+// This is my plan:
+// I have to synthesize a new image using the mesh obj and the light source
+// for better error accumulation I could crop everything except the mesh from the original image data
+// for image synthesis I could use a ray tracer
+// then for image synthesation it is better to build a kd-Tree around the mesh obj, which demands, that rotation, translation and scalation is done before kd-Tree construction
+
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
   std::stringstream ss(s);
   std::string item;
@@ -165,6 +171,7 @@ int main(int argc, char * argv[]) {
     ObjLoader objl;
     MeshObj * mesh = objl.loadObjFile(args.mesh_filename, args.mesh_filename);
   }
+
   std::cout << "OK" << std::endl;
   return 0;
 }

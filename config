@@ -1,0 +1,3 @@
+mesh-name testscenes/unitsphere.obj
+image-name testscenes/unitsphere_1_color.png
+translation 5/0/0

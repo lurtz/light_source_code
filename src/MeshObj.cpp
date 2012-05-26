@@ -3,10 +3,13 @@
 #include <limits>
 #include <cmath>
 
-MeshObj::MeshObj() {
+MeshObj::MeshObj(float const * const rotation, float const * const translation, const float scale)
+  : _scale(scale) {
   for (int i = 0; i < 3; ++i) {
     mMinBounds[i] = std::numeric_limits<float>::max();
     mMaxBounds[i] = std::numeric_limits<float>::min();
+    _rotation[i] = rotation[i];
+    _translation[i] = translation[i];
   }
 }
 
@@ -41,4 +44,18 @@ float MeshObj::getHeight(void) {
 
 float MeshObj::getDepth(void) {
   return mMaxBounds[2] - mMinBounds[2]; 
+}
+
+void MeshObj::rotate(float rotation[3]) {
+  for (unsigned int i = 0; i < 3; i++)
+    _rotation[i] = rotation[i];
+}
+
+void MeshObj::translate(float translation[3]) {
+  for (unsigned int i = 0; i < 3; i++)
+    _translation[i] = translation[i];
+}
+
+void MeshObj::scale(float scale) {
+  _scale = scale;
 }
