@@ -8,6 +8,7 @@
 #include <sstream>
 #include <fstream>
 #include <vector>
+#include "opengl.h"
 
 // This is my plan:
 // I have to synthesize a new image using the mesh obj and the light source
@@ -162,7 +163,7 @@ arguments parse_options(const int& argc, char * const argv[]) {
 int main(int argc, char * argv[]) {
   arguments args = parse_options(argc, argv);
   cv::Mat image;
-  if (args.image_filename != "") {
+  if (args.image_filename != "" && false) {
     image = cv::imread(args.image_filename);
     cv::imshow("test", image);
     cv::waitKey(0);
@@ -170,6 +171,8 @@ int main(int argc, char * argv[]) {
   if (args.mesh_filename != "") {
     ObjLoader objl;
     MeshObj * mesh = objl.loadObjFile(args.mesh_filename, args.mesh_filename);
+    setupOpenGL(&argc, argv, mesh);
+    run();
   }
 
   std::cout << "OK" << std::endl;

@@ -8,8 +8,14 @@ MeshObj::MeshObj(float const * const rotation, float const * const translation, 
   for (int i = 0; i < 3; ++i) {
     mMinBounds[i] = std::numeric_limits<float>::max();
     mMaxBounds[i] = std::numeric_limits<float>::min();
-    _rotation[i] = rotation[i];
-    _translation[i] = translation[i];
+    if (rotation != 0)
+      _rotation[i] = rotation[i];
+    else
+      _rotation[i] = 0;
+    if (translation != 0)
+      _translation[i] = translation[i];
+    else
+      _translation[i] = 0;
   }
 }
 
