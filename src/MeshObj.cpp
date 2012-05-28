@@ -3,8 +3,10 @@
 #include <limits>
 #include <cmath>
 
+#define OFFSET(i) ((char*)NULL + (i))
+
 MeshObj::MeshObj(float const * const rotation, float const * const translation, const float scale)
-  : _scale(scale) {
+  : mMaterial(0), mVBO(0), mIBO(0), mIndexCount(0), mShadowVBO(0), mShadowIBO(0), mShadowIndexCount(0), _scale(scale) {
   for (int i = 0; i < 3; ++i) {
     mMinBounds[i] = std::numeric_limits<float>::max();
     mMaxBounds[i] = std::numeric_limits<float>::min();
@@ -38,6 +40,51 @@ void MeshObj::setData(const std::vector<Vertex> &vertexData, const std::vector<u
   // save local copy of vertex data (needed for shadow volume computation) //
   mVertexData.assign(vertexData.begin(), vertexData.end());
   mIndexData.assign(indexData.begin(), indexData.end());
+}
+
+void MeshObj::setMaterial(Material *material) {
+  mMaterial = material;
+}
+
+void MeshObj::render(void) {
+  if (mMaterial != NULL) {
+    mMaterial->enable();
+  }
+  if (mVBO != 0) {
+    // init vertex attribute arrays //
+    glBindBuffer(GL_ARRAY_BUFFER, mVBO);
+
+    GLint vertexLoc = glGetAttribLocation(mMaterial->getShaderProgram()->getProgramID(), "vertex_OS");
+    GLint texCoordLoc = glGetAttribLocation(mMaterial->getShaderProgram()->getProgramID(), "texCoord_OS");
+    GLint normalLoc = glGetAttribLocation(mMaterial->getShaderProgram()->getProgramID(), "normal_OS");
+    GLint tangentLoc = glGetAttribLocation(mMaterial->getShaderProgram()->getProgramID(), "tangent_OS");
+    GLint bitangentLoc = glGetAttribLocation(mMaterial->getShaderProgram()->getProgramID(), "bitangent_OS");
+
+    glEnableVertexAttribArray(vertexLoc);
+    glVertexAttribPointer(vertexLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(0));
+    glEnableVertexAttribArray(normalLoc);
+    glVertexAttribPointer(normalLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(3 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(texCoordLoc);
+    glVertexAttribPointer(texCoordLoc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(6 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(tangentLoc);
+    glVertexAttribPointer(tangentLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(8 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(bitangentLoc);
+    glVertexAttribPointer(bitangentLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(11 * sizeof(GLfloat)));
+
+    // bind the index buffer object mIBO here //
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO);
+
+    // render VBO as triangles //
+    glDrawElements(GL_TRIANGLES, mIndexCount, GL_UNSIGNED_INT, (void*)0);
+
+    // unbind the element render buffer //
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    // unbind the vertex array buffer //
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+  }
+  if (mMaterial != NULL) {
+    mMaterial->disable();
+  }
 }
 
 float MeshObj::getWidth(void) {

@@ -12,6 +12,9 @@
 MeshObj const * _meshobj;
 Trackball _ball;
 
+GLfloat _zNear, _zFar;
+GLfloat _fov;
+
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
 // Define some globals
@@ -38,12 +41,12 @@ void mouseEvent(int button, int state, int x, int y) {
   } else {
     mouseState = Trackball::NO_BTN;
   }
-  ball.updateMouseBtn(mouseState, x, y);
+  _ball.updateMouseBtn(mouseState, x, y);
 
 }
 
 void mouseMoveEvent(int x, int y) {
-  ball.updateMousePos(x, y);
+  _ball.updateMousePos(x, y);
 }
 
 void idle() {
@@ -56,30 +59,33 @@ void reshape(int width, int height) {
     glutPostRedisplay();
 }
 
+void renderScene() {
+    glTranslatef(-1, -1, -1);
+    glutSolidSphere(1.0, 10, 10);
+}
+
 void updateGL() {
-  GLfloat aspectRatio = (GLfloat)windowWidth / windowHeight;
+  GLfloat aspectRatio = static_cast<GLfloat>(windowWidth) / windowHeight;
   
+  // clear renderbuffer //
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
   glViewport(0, 0, windowWidth, windowHeight);
   
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  gluPerspective(fov, aspectRatio, zNear, zFar);
+  gluPerspective(_fov, aspectRatio, _zNear, _zFar);
   
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
   
-  ball.rotateView();
+  _ball.rotateView();
   
   // render //
   renderScene();
   
   // swap render and screen buffer //
   glutSwapBuffers();
-}
-
-void renderScene() {
-    glTranslatef(-1, -1, -1);
-    glutSolidSphere(1.0, 10, 10);
 }
 
 void run() {
@@ -95,22 +101,22 @@ void keyboardEvent(unsigned char key, int x, int y) {
     }
     case 'w': {
       // move forward //
-      ball.updateOffset(Trackball::MOVE_FORWARD);
+      _ball.updateOffset(Trackball::MOVE_FORWARD);
       break;
     }
     case 's': {
       // move backward //
-      ball.updateOffset(Trackball::MOVE_BACKWARD);
+      _ball.updateOffset(Trackball::MOVE_BACKWARD);
       break;
     }
     case 'a': {
       // move left //
-      ball.updateOffset(Trackball::MOVE_LEFT);
+      _ball.updateOffset(Trackball::MOVE_LEFT);
       break;
     }
     case 'd': {
       // move right //
-      ball.updateOffset(Trackball::MOVE_RIGHT);
+      _ball.updateOffset(Trackball::MOVE_RIGHT);
       break;
     }
     default : {
@@ -118,6 +124,17 @@ void keyboardEvent(unsigned char key, int x, int y) {
     }
   }
   glutPostRedisplay();
+}
+
+void initGL() {
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glEnable(GL_DEPTH_TEST);
+
+  // set projectionmatrix
+  glMatrixMode(GL_PROJECTION);
+  gluPerspective(_fov, static_cast<GLdouble>(windowWidth)/windowHeight, _zNear, _zFar);
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
 }
 
 void setupOpenGL(int * argc, char ** argv, MeshObj const * const meshobj) {
@@ -128,17 +145,26 @@ void setupOpenGL(int * argc, char ** argv, MeshObj const * const meshobj) {
     glutInitWindowSize(windowWidth = 800, windowHeight = 600);
     glutCreateWindow("light sources");
 //    glutFullScreen();
-    glutDisplayFunc(renderScene);
+    glutDisplayFunc(updateGL);
     glutIdleFunc(idle);
     glutReshapeFunc(reshape);
     glutKeyboardFunc(keyboardEvent);
     glutMouseFunc(mouseEvent);
     glutMotionFunc(mouseMoveEvent);
 
-    glewInit();
+    GLenum err = glewInit();
+    if (GLEW_OK != err) {
+      std::cerr << "Error: " << glewGetErrorString(err) << std::endl;
+    }
+    std::cout << "Status: Using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
     glEnable(GL_NORMALIZE);
     glEnable(GL_DEPTH_TEST);
     glShadeModel(GL_SMOOTH);
 
     _meshobj = meshobj;
+    _zNear = 0.1f;
+    _zFar= 1000.0f;
+    _fov = 45.0f;
+
+    initGL();
 }

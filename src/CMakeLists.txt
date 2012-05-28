@@ -1,6 +1,9 @@
 SET(Exercise10_SRC
   MeshObj.cpp
   ObjLoader.cpp
+  Shader.cpp
+  Material.cpp
+  Trackball.cpp
 )
 
 #The rule to build the executable program 

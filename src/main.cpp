@@ -172,6 +172,9 @@ int main(int argc, char * argv[]) {
     ObjLoader objl;
     MeshObj * mesh = objl.loadObjFile(args.mesh_filename, args.mesh_filename);
     setupOpenGL(&argc, argv, mesh);
+    Material * mat = new Material();
+    mesh->setMaterial(mat);
+    mat->setShaderProgram(new Shader("shader/vertex.s", "shader/fragment.s"));
     run();
   }
 
