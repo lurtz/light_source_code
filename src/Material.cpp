@@ -103,6 +103,8 @@ void Material::setShaderProgram(Shader *shaderProgram) {
   mShaderProgram = shaderProgram;
   std::cerr << "(Material::setShaderProgram) - Set new shaderprogram (ID: " << mShaderProgram->getProgramID() << ")" << std::endl;
   
+  /*
+   * TODO maybe needed
   // init default uniform locations //
   setMaterialComponentUniformNames(AMBIENT_COMP, "ambientColor");
   setMaterialComponentUniformNames(DIFFUSE_COMP, "diffuseColor");
@@ -112,6 +114,7 @@ void Material::setShaderProgram(Shader *shaderProgram) {
   setMaterialTextureUniformNames(SPECULAR_TEX, "specularTex");
   setMaterialTextureUniformNames(EMISSIVE_TEX, "emissiveTex");
   setMaterialTextureUniformNames(NORMAL_TEX, "normalTex");
+  */
 }
 
 Shader *Material::getShaderProgram() {

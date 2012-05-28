@@ -101,9 +101,9 @@ class Material {
     enum MaterialComponents {AMBIENT_COMP = 0, DIFFUSE_COMP, SPECULAR_COMP, EMISSIVE_COMP, MATERIAL_COMPONENT_COUNT};
     bool mMaterialComponentEnabled[MATERIAL_COMPONENT_COUNT];
     MaterialComponent mMaterialComponent[MATERIAL_COMPONENT_COUNT];
-    
+
     enum TextureLayer {DIFFUSE_TEX = 0, SPECULAR_TEX, EMISSIVE_TEX, NORMAL_TEX, TEX_LAYER_COUNT};
-    Texture mTexture[4];
+    Texture mTexture[TEX_LAYER_COUNT];
     
     Shader *mShaderProgram;
 };

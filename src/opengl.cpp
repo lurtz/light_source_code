@@ -9,7 +9,7 @@
 #include "opengl.h"
 #include "Trackball.h"
 
-MeshObj const * _meshobj;
+MeshObj * _meshobj;
 Trackball _ball;
 
 GLfloat _zNear, _zFar;
@@ -60,8 +60,16 @@ void reshape(int width, int height) {
 }
 
 void renderScene() {
-    glTranslatef(-1, -1, -1);
-    glutSolidSphere(1.0, 10, 10);
+    _meshobj->render();
+
+    for (int x = -1; x < 2; x+=2)
+        for (int y = -1; y < 2; y+=2)
+            for (int z = -1; z < 2; z+=2) {
+              glPushMatrix();
+              glTranslatef(x, y, z);
+              glutSolidSphere(.10, 4, 4);
+              glPopMatrix();
+            }
 }
 
 void updateGL() {
@@ -137,7 +145,7 @@ void initGL() {
   glLoadIdentity();
 }
 
-void setupOpenGL(int * argc, char ** argv, MeshObj const * const meshobj) {
+void setupOpenGL(int * argc, char ** argv) {
     /* Initialize GLUT */
     glutInit(argc, argv);
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGB);
@@ -161,10 +169,13 @@ void setupOpenGL(int * argc, char ** argv, MeshObj const * const meshobj) {
     glEnable(GL_DEPTH_TEST);
     glShadeModel(GL_SMOOTH);
 
-    _meshobj = meshobj;
     _zNear = 0.1f;
     _zFar= 1000.0f;
     _fov = 45.0f;
 
     initGL();
+}
+
+void setMesh(MeshObj * const meshobj) {
+    _meshobj = meshobj;
 }

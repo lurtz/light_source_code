@@ -29,6 +29,6 @@ void main () {
     float NdotL = min(max(0.0, dot(-N, L)), 1.0);
     gl_FragColor *= NdotL;
 
-    gl_FragColor += vec4(0.1, 0.1, 0.1, 0.0);
-
+    float amb_val = 0.3;
+    gl_FragColor += vec4(amb_val, amb_val, amb_val, 0.0);
 }

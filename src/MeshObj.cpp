@@ -40,6 +40,27 @@ void MeshObj::setData(const std::vector<Vertex> &vertexData, const std::vector<u
   // save local copy of vertex data (needed for shadow volume computation) //
   mVertexData.assign(vertexData.begin(), vertexData.end());
   mIndexData.assign(indexData.begin(), indexData.end());
+  mIndexCount = indexData.size();
+
+  // init and bind a VBO (vertex buffer object) //
+  if (mVBO == 0) {
+    glGenBuffers(1, &mVBO);
+  }
+  glBindBuffer(GL_ARRAY_BUFFER, mVBO);
+  // copy data into the VBO //
+  glBufferData(GL_ARRAY_BUFFER, mVertexData.size() * sizeof(Vertex), &mVertexData[0], GL_STATIC_DRAW);
+
+  // init and bind a IBO (index buffer object) //
+  if (mIBO == 0) {
+    glGenBuffers(1, &mIBO);
+  }
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO);
+  // copy data into the IBO //
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, mIndexCount * sizeof(GLint), &mIndexData[0], GL_STATIC_DRAW);
+
+  // unbind buffers //
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void MeshObj::setMaterial(Material *material) {
@@ -50,26 +71,16 @@ void MeshObj::render(void) {
   if (mMaterial != NULL) {
     mMaterial->enable();
   }
+
   if (mVBO != 0) {
     // init vertex attribute arrays //
     glBindBuffer(GL_ARRAY_BUFFER, mVBO);
-
-    GLint vertexLoc = glGetAttribLocation(mMaterial->getShaderProgram()->getProgramID(), "vertex_OS");
-    GLint texCoordLoc = glGetAttribLocation(mMaterial->getShaderProgram()->getProgramID(), "texCoord_OS");
-    GLint normalLoc = glGetAttribLocation(mMaterial->getShaderProgram()->getProgramID(), "normal_OS");
-    GLint tangentLoc = glGetAttribLocation(mMaterial->getShaderProgram()->getProgramID(), "tangent_OS");
-    GLint bitangentLoc = glGetAttribLocation(mMaterial->getShaderProgram()->getProgramID(), "bitangent_OS");
-
-    glEnableVertexAttribArray(vertexLoc);
-    glVertexAttribPointer(vertexLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(0));
-    glEnableVertexAttribArray(normalLoc);
-    glVertexAttribPointer(normalLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(3 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(texCoordLoc);
-    glVertexAttribPointer(texCoordLoc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(6 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(tangentLoc);
-    glVertexAttribPointer(tangentLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(8 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(bitangentLoc);
-    glVertexAttribPointer(bitangentLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(11 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(0));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(12));
+//    glEnableVertexAttribArray(8);
+//    glVertexAttribPointer(8, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(24));
 
     // bind the index buffer object mIBO here //
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO);
@@ -77,11 +88,16 @@ void MeshObj::render(void) {
     // render VBO as triangles //
     glDrawElements(GL_TRIANGLES, mIndexCount, GL_UNSIGNED_INT, (void*)0);
 
+    // unbind the buffers //
+    glDisableVertexAttribArray(0);
+    glDisableVertexAttribArray(2);
+//    glDisableVertexAttribArray(8);
     // unbind the element render buffer //
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     // unbind the vertex array buffer //
     glBindBuffer(GL_ARRAY_BUFFER, 0);
   }
+
   if (mMaterial != NULL) {
     mMaterial->disable();
   }

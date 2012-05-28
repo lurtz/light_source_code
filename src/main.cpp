@@ -161,6 +161,7 @@ arguments parse_options(const int& argc, char * const argv[]) {
 }
 
 int main(int argc, char * argv[]) {
+  setupOpenGL(&argc, argv);
   arguments args = parse_options(argc, argv);
   cv::Mat image;
   if (args.image_filename != "" && false) {
@@ -171,10 +172,10 @@ int main(int argc, char * argv[]) {
   if (args.mesh_filename != "") {
     ObjLoader objl;
     MeshObj * mesh = objl.loadObjFile(args.mesh_filename, args.mesh_filename);
-    setupOpenGL(&argc, argv, mesh);
     Material * mat = new Material();
     mesh->setMaterial(mat);
     mat->setShaderProgram(new Shader("shader/vertex.s", "shader/fragment.s"));
+    setMesh(mesh);
     run();
   }
 
