@@ -165,9 +165,6 @@ void setupOpenGL(int * argc, char ** argv) {
       std::cerr << "Error: " << glewGetErrorString(err) << std::endl;
     }
     std::cout << "Status: Using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
-    glEnable(GL_NORMALIZE);
-    glEnable(GL_DEPTH_TEST);
-    glShadeModel(GL_SMOOTH);
 
     _zNear = 0.1f;
     _zFar= 1000.0f;
