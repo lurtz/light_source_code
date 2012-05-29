@@ -14,7 +14,7 @@ class Trackball {
     
     void updateMousePos(int x, int y);
     void updateMouseBtn(MouseState state, int x, int y);
-    void updateOffset(Motion motion, float dist = 0.01);
+    void updateOffset(Motion motion, float dist = 0.1);
     
     void reset(float theta = 0, float phi = 0, float dist = 1);
     void rotateView(void);

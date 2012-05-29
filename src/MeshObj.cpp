@@ -87,12 +87,14 @@ void MeshObj::render(void) {
   if (mVBO != 0) {
     // init vertex attribute arrays //
     glBindBuffer(GL_ARRAY_BUFFER, mVBO);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(0));
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(12));
-//    glEnableVertexAttribArray(8);
-//    glVertexAttribPointer(8, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(24));
+
+    GLint vertexLoc = glGetAttribLocation(mMaterial->getShaderProgram()->getProgramID(), "vertex_OS");
+    GLint normalLoc = glGetAttribLocation(mMaterial->getShaderProgram()->getProgramID(), "normal_OS");
+
+    glEnableVertexAttribArray(vertexLoc);
+    glVertexAttribPointer(vertexLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(0));
+    glEnableVertexAttribArray(normalLoc);
+    glVertexAttribPointer(normalLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(12));
 
     // bind the index buffer object mIBO here //
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO);
@@ -101,9 +103,9 @@ void MeshObj::render(void) {
     glDrawElements(GL_TRIANGLES, mIndexCount, GL_UNSIGNED_INT, (void*)0);
 
     // unbind the buffers //
-    glDisableVertexAttribArray(0);
-    glDisableVertexAttribArray(2);
-//    glDisableVertexAttribArray(8);
+    glDisableVertexAttribArray(vertexLoc);
+    glDisableVertexAttribArray(normalLoc);
+
     // unbind the element render buffer //
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     // unbind the vertex array buffer //
