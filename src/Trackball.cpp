@@ -46,7 +46,7 @@ void Trackball::updateMouseBtn(MouseState state, int x, int y) {
   mState = state;
 }
 
-void Trackball::updateOffset(Motion motion) {
+void Trackball::updateOffset(Motion motion, float dist) {
   // init direction multiplicator (forward/backward, left/right are SYMMETRIC!) //
   int dir = 1;
   switch (motion) {
@@ -57,9 +57,9 @@ void Trackball::updateOffset(Motion motion) {
       // rotate unit vector (0,0,1) *looking up the z-axis* using theta and phi //
       // proceed in look direction by STEP_DISTANCE -> scale look vector and add to current view offset //
       // dir allows to reverse look vector //
-      mViewOffset[0] += dir * sin(mTheta) * cos(mPhi) * STEP_DISTANCE;
-      mViewOffset[1] += dir * sin(mPhi) * STEP_DISTANCE;
-      mViewOffset[2] += dir * cos(mTheta) * cos(mPhi) * STEP_DISTANCE;
+      mViewOffset[0] += dir * sin(mTheta) * cos(mPhi) * dist;
+      mViewOffset[1] += dir * sin(mPhi) * dist;
+      mViewOffset[2] += dir * cos(mTheta) * cos(mPhi) * dist;
       break;
     }
     case MOVE_LEFT : {
@@ -68,8 +68,8 @@ void Trackball::updateOffset(Motion motion) {
     case MOVE_RIGHT : {
       // rotate unit vector (1,0,0) *looking up the x-axis* by theta only -> stay in x-z-plane //
       // add x and z components to current view offset //
-      mViewOffset[0] += dir * cos(mTheta) * STEP_DISTANCE;
-      mViewOffset[2] += dir * -sin(mTheta) * STEP_DISTANCE;
+      mViewOffset[0] += dir * cos(mTheta) * dist;
+      mViewOffset[2] += dir * -sin(mTheta) * dist;
       break;
     }
     default : break;

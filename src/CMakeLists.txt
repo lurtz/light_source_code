@@ -1,3 +1,7 @@
+add_custom_target(shaders ALL ${CMAKE_COMMAND} -E copy_directory
+  ${CMAKE_SOURCE_DIR}/shader
+  ${light_sources_BINARY_DIR}/shader)
+
 SET(Exercise10_SRC
   MeshObj.cpp
   ObjLoader.cpp

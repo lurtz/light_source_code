@@ -72,7 +72,7 @@ void MeshObj::render(void) {
     mMaterial->enable();
   }
 
-#ifdef true
+#if false
   // set OpenGL to rendering triangles from all upcoming position values //
   glBegin(GL_TRIANGLES);
   // iterate over index list //
@@ -83,9 +83,7 @@ void MeshObj::render(void) {
   }
   // stop rendering geometry //
   glEnd();
-#endif
-
-#ifdef false
+#else
   if (mVBO != 0) {
     // init vertex attribute arrays //
     glBindBuffer(GL_ARRAY_BUFFER, mVBO);

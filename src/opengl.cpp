@@ -173,6 +173,8 @@ void setupOpenGL(int * argc, char ** argv) {
     _zFar= 1000.0f;
     _fov = 45.0f;
 
+    _ball.updateOffset(Trackball::MOVE_BACKWARD, 4);
+
     initGL();
 }
 
