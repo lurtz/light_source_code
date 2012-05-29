@@ -72,6 +72,20 @@ void MeshObj::render(void) {
     mMaterial->enable();
   }
 
+#ifdef true
+  // set OpenGL to rendering triangles from all upcoming position values //
+  glBegin(GL_TRIANGLES);
+  // iterate over index list //
+  for (std::vector<unsigned int>::iterator indexIter = mIndexData.begin(); indexIter != mIndexData.end(); ++indexIter) {
+    // render indexed vertex //
+    glNormal3f(mVertexData[*indexIter].normal[0], mVertexData[*indexIter].normal[1], mVertexData[*indexIter].normal[2]);
+    glVertex3f(mVertexData[*indexIter].position[0], mVertexData[*indexIter].position[1], mVertexData[*indexIter].position[2]);
+  }
+  // stop rendering geometry //
+  glEnd();
+#endif
+
+#ifdef false
   if (mVBO != 0) {
     // init vertex attribute arrays //
     glBindBuffer(GL_ARRAY_BUFFER, mVBO);
@@ -97,6 +111,7 @@ void MeshObj::render(void) {
     // unbind the vertex array buffer //
     glBindBuffer(GL_ARRAY_BUFFER, 0);
   }
+#endif
 
   if (mMaterial != NULL) {
     mMaterial->disable();

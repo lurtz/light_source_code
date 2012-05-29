@@ -78,7 +78,7 @@ MeshObj* ObjLoader::loadObjFile(std::string fileName, std::string ID, float scal
         sstr.peek();
         while (sstr.good() && vCount < 4) {
           sstr >> vi[vCount];
-          if (!sstr.good()) {
+          if (!sstr) {
             // import of vertex index failed -> end of line reached //
             vi[vCount] = 0;
           } else {
