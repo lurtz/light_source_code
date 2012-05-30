@@ -91,12 +91,14 @@ unsigned int calc_index(unsigned int x, unsigned int y, unsigned int width, unsi
 
 template <class T>
 void flipImage(T * image, unsigned int width, unsigned int height) {
-  for (unsigned int y = 0; y < height/2; y++)
-	  for (unsigned int x = 0; x < width; x++) {
-		  T tmp = image[calc_index(x, y, width, height)];
-		  image[calc_index(x, y, width, height)] = image[calc_index(x, height - 1 - y, width, height)];
-		  image[calc_index(x, height - 1 - y, width, height)] = tmp;
-	  }
+  T tmp[width];
+  for (unsigned int y = 0; y < height/2; y++) {
+    T * upper_line_start = image+calc_index(0, y, width, height);
+    T * lower_line_start = image+calc_index(0, height - 1 - y, width, height);
+    std::copy(upper_line_start, upper_line_start+width, tmp);
+    std::copy(lower_line_start, lower_line_start+width, upper_line_start);
+    std::copy(tmp, tmp+width, lower_line_start);
+  }
 }
 
 void renderSceneIntoFBO() {
