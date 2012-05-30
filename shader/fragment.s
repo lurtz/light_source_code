@@ -7,6 +7,7 @@ varying vec3 vert_light_dir;
 
 uniform float uni_outerSpotAngle;
 uniform float uni_innerSpotAngle;
+uniform vec4 lights[ 12 ]; // 3 possible lights 4 vec4's each
 
 void main () {
     // normalize everything necessary //
@@ -19,7 +20,7 @@ void main () {
     float angle = acos(LdotE)*180/3.14;
     // licht weiß gemacht
     if(angle < uni_innerSpotAngle)
-        gl_FragColor = vec4(0.5, 0.5, 0.5, 1.0);
+        gl_FragColor = vec4(0.5, 0.5, 0.5, 1.0) + lights[3];
     else if(angle < uni_outerSpotAngle)
         gl_FragColor = vec4(0.5, 0.5, 0.5, 1.0) * (uni_outerSpotAngle - angle)/(uni_outerSpotAngle - uni_innerSpotAngle);
     else

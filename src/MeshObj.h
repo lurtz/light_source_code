@@ -38,6 +38,7 @@ class MeshObj {
     
     void setData(const std::vector<Vertex> &vertexData, const std::vector<unsigned int> &indexData);
     void setMaterial(Material *material);
+    void setUniforms(GLuint programm_id);
     
     void render(void);
 

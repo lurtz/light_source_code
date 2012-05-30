@@ -23,6 +23,9 @@ GLuint fboTexture[2];
 GLuint fboDepthTexture;
 GLuint fbo;
 
+// PBO
+GLuint ioBuf;
+
 bool image_displayed = false;
 
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
@@ -83,14 +86,14 @@ void renderScene() {
             }
 }
 
-unsigned int calc_index(unsigned int x, unsigned int y, unsigned int width, unsigned int height) {
+unsigned int calc_index(const unsigned int x, const unsigned int y, const unsigned int width, const unsigned int height) {
   assert(x < width);
   assert(y < height);
   return x+y*width;
 }
 
 template <class T>
-void flipImage(T * image, unsigned int width, unsigned int height) {
+void flipImage(T * image, const unsigned int width, const unsigned int height) {
   T tmp[width];
   for (unsigned int y = 0; y < height/2; y++) {
     T * upper_line_start = image+calc_index(0, y, width, height);
@@ -114,8 +117,21 @@ void renderSceneIntoFBO() {
     renderScene();
 
     float * bla = new float[windowHeight*windowWidth*4];
+
+#if false
+    glReadBuffer(fboTexture[0]);
+    glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, ioBuf);
+    glBufferData(GL_PIXEL_PACK_BUFFER_ARB, windowWidth*windowHeight*sizeof(float)*4, NULL, GL_STREAM_READ);
+    glReadPixels (0, 0, windowWidth, windowHeight, GL_BGRA, GL_FLOAT, BUFFER_OFFSET(0));
+    float * mem = static_cast<float *>(glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_WRITE));
+    assert(mem);
+    std::copy(mem, mem+windowWidth*windowHeight*4, bla);
+    glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
+    glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
+#else
     glReadBuffer(fboTexture[0]);
     glReadPixels(0, 0, windowWidth, windowHeight, GL_BGRA, GL_FLOAT, bla);
+#endif
     flipImage(bla, 4*windowWidth, 1*windowHeight);
 
     cv::Mat image(windowHeight, windowWidth, CV_32FC4, bla, 0);
@@ -146,7 +162,7 @@ void updateGL() {
   
   // render //
   renderScene();
-  renderSceneIntoFBO();
+//  renderSceneIntoFBO();
   
   // swap render and screen buffer //
   glutSwapBuffers();
@@ -235,6 +251,10 @@ void initFBO() {
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+void initPBO() {
+  glGenBuffers(1, &ioBuf);
+}
+
 void setupOpenGL(int * argc, char ** argv) {
     /* Initialize GLUT */
     glutInit(argc, argv);
@@ -264,6 +284,7 @@ void setupOpenGL(int * argc, char ** argv) {
 
     initGL();
     initFBO();
+    initPBO();
 }
 
 void setMesh(MeshObj * const meshobj) {

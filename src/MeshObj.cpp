@@ -67,6 +67,29 @@ void MeshObj::setMaterial(Material *material) {
   mMaterial = material;
 }
 
+void MeshObj::setUniforms(GLuint programm_id) {
+//  mMaterial->enable();
+
+  float innerAngle = 15.0f;
+  float outerAngle = 20.0f;
+  GLint uniform_innerSpotAngle = glGetUniformLocation(programm_id, "uni_innerSpotAngle");
+  GLint uniform_outerSpotAngle = glGetUniformLocation(programm_id, "uni_outerSpotAngle");
+  glUniform1f(uniform_innerSpotAngle, innerAngle);
+  glUniform1f(uniform_outerSpotAngle, outerAngle);
+
+  // position, ambient, diffuse, specular in vec4
+  float light_properties[] = {
+		    1, 1, 0, 0, 1, 1, 1, 0, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0,
+		    3, 1, 0, 0, 1, 1, 1, 0, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0,
+		    3, 3, 0, 0, 1, 1, 1, 0, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0
+  };
+
+  GLint uniform_lights = glGetUniformLocation(programm_id, "lights");
+  glUniform4fv(uniform_lights, 12, light_properties);
+
+//  mMaterial->disable();
+}
+
 void MeshObj::render(void) {
   if (mMaterial != NULL) {
     mMaterial->enable();
@@ -77,14 +100,8 @@ void MeshObj::render(void) {
     glBindBuffer(GL_ARRAY_BUFFER, mVBO);
 
     GLuint programm_id = mMaterial->getShaderProgram()->getProgramID();
-    float innerAngle = 15.0f;
-    float outerAngle = 20.0f;
-    GLint uniform_innerSpotAngle;
-    GLint uniform_outerSpotAngle;
-    uniform_innerSpotAngle = glGetUniformLocation(programm_id, "uni_innerSpotAngle");
-    uniform_outerSpotAngle = glGetUniformLocation(programm_id, "uni_outerSpotAngle");
-    glUniform1f(uniform_innerSpotAngle, innerAngle);
-    glUniform1f(uniform_outerSpotAngle, outerAngle);
+
+    setUniforms(programm_id);
 
     GLint vertexLoc = glGetAttribLocation(programm_id, "vertex_OS");
     GLint normalLoc = glGetAttribLocation(programm_id, "normal_OS");
