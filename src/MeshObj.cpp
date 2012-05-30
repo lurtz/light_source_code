@@ -72,24 +72,22 @@ void MeshObj::render(void) {
     mMaterial->enable();
   }
 
-#if false
-  // set OpenGL to rendering triangles from all upcoming position values //
-  glBegin(GL_TRIANGLES);
-  // iterate over index list //
-  for (std::vector<unsigned int>::iterator indexIter = mIndexData.begin(); indexIter != mIndexData.end(); ++indexIter) {
-    // render indexed vertex //
-    glNormal3f(mVertexData[*indexIter].normal[0], mVertexData[*indexIter].normal[1], mVertexData[*indexIter].normal[2]);
-    glVertex3f(mVertexData[*indexIter].position[0], mVertexData[*indexIter].position[1], mVertexData[*indexIter].position[2]);
-  }
-  // stop rendering geometry //
-  glEnd();
-#else
   if (mVBO != 0) {
     // init vertex attribute arrays //
     glBindBuffer(GL_ARRAY_BUFFER, mVBO);
 
-    GLint vertexLoc = glGetAttribLocation(mMaterial->getShaderProgram()->getProgramID(), "vertex_OS");
-    GLint normalLoc = glGetAttribLocation(mMaterial->getShaderProgram()->getProgramID(), "normal_OS");
+    GLuint programm_id = mMaterial->getShaderProgram()->getProgramID();
+    float innerAngle = 15.0f;
+    float outerAngle = 20.0f;
+    GLint uniform_innerSpotAngle;
+    GLint uniform_outerSpotAngle;
+    uniform_innerSpotAngle = glGetUniformLocation(programm_id, "uni_innerSpotAngle");
+    uniform_outerSpotAngle = glGetUniformLocation(programm_id, "uni_outerSpotAngle");
+    glUniform1f(uniform_innerSpotAngle, innerAngle);
+    glUniform1f(uniform_outerSpotAngle, outerAngle);
+
+    GLint vertexLoc = glGetAttribLocation(programm_id, "vertex_OS");
+    GLint normalLoc = glGetAttribLocation(programm_id, "normal_OS");
 
     glEnableVertexAttribArray(vertexLoc);
     glVertexAttribPointer(vertexLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(0));
@@ -111,7 +109,6 @@ void MeshObj::render(void) {
     // unbind the vertex array buffer //
     glBindBuffer(GL_ARRAY_BUFFER, 0);
   }
-#endif
 
   if (mMaterial != NULL) {
     mMaterial->disable();

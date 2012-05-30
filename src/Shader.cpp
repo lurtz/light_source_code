@@ -127,16 +127,6 @@ void Shader::enable() {
   if (ready()) {
     if (!enabled()) {
       glUseProgram(mShaderProgramID);
-
-      float innerAngle = 15.0f;
-      float outerAngle = 20.0f;
-      GLint uniform_innerSpotAngle;
-      GLint uniform_outerSpotAngle;
-      uniform_innerSpotAngle = glGetUniformLocation(mShaderProgramID, "uni_innerSpotAngle");
-      uniform_outerSpotAngle = glGetUniformLocation(mShaderProgramID, "uni_outerSpotAngle");
-      glUniform1f(uniform_innerSpotAngle, innerAngle);
-      glUniform1f(uniform_outerSpotAngle, outerAngle);
-
       mEnabled = true;
     }
   } else {
