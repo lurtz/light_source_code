@@ -96,9 +96,9 @@ void renderSceneIntoFBO() {
 
     float * bla = new float[windowHeight*windowWidth*4];
     glReadBuffer(fboTexture[0]);
-    glReadPixels(0, 0, windowWidth, windowHeight, GL_RGB, GL_FLOAT, bla);
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_RGBA, GL_FLOAT, bla);
 
-    cv::Mat image(windowHeight, windowWidth, CV_32FC3, bla, 0);
+    cv::Mat image(windowHeight, windowWidth, CV_32FC4, bla, 0);
     cv::imshow("FBO texture", image);
     cv::waitKey(0);
 
@@ -133,7 +133,6 @@ void updateGL() {
 }
 
 void run() {
-    renderSceneIntoFBO();
     glutMainLoop();
 }
 
