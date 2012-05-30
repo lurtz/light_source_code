@@ -135,7 +135,7 @@ void keyboardEvent(unsigned char key, int x, int y) {
 }
 
 void initGL() {
-  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClearColor(0.3, 0.3, 0.3, 0.3);
   glEnable(GL_DEPTH_TEST);
 
   // set projectionmatrix

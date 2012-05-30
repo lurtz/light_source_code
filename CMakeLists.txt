@@ -19,8 +19,16 @@ INCLUDE_DIRECTORIES(SYSTEM ${OpenCV_INCLUDE_DIRS})
 #ENDIF()
 
 FIND_PACKAGE(OpenGL REQUIRED)
-FIND_PACKAGE(GLEW REQUIRED)
 FIND_PACKAGE(GLUT REQUIRED)
+include(FindPkgConfig)
+pkg_check_modules(GLEW glew)
+if(NOT GLEW_FOUND)
+  find_package(GLEW REQUIRED)
+  if(GLEW_FOUND)
+    message(STATUS "But fallback FindGLEW.cmake works")
+  endif()
+endif()
+include_directories(${GLEW_INCLUDE_DIRS})
 
 # Compiler setup
 set(CMAKE_BUILD_TYPE debug)
