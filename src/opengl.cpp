@@ -8,12 +8,22 @@
 #include <limits>
 #include "opengl.h"
 #include "Trackball.h"
+#include <cv.hpp>
+#include <highgui.h>
+
 
 MeshObj * _meshobj;
 Trackball _ball;
 
 GLfloat _zNear, _zFar;
 GLfloat _fov;
+
+// FBO stuff //
+GLuint fboTexture[2];
+GLuint fboDepthTexture;
+GLuint fbo;
+
+bool image_displayed = false;
 
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
@@ -72,6 +82,31 @@ void renderScene() {
             }
 }
 
+void renderSceneIntoFBO() {
+    if (image_displayed)
+      return;
+    image_displayed = true;
+    // render scene into first color attachment of FBO -> use as filter texture later on //
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glDrawBuffer(GL_COLOR_ATTACHMENT0);
+    glDepthMask(GL_TRUE);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+    renderScene();
+
+    float * bla = new float[windowHeight*windowWidth*4];
+    glReadBuffer(fboTexture[0]);
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_RGB, GL_FLOAT, bla);
+
+    cv::Mat image(windowHeight, windowWidth, CV_32FC3, bla, 0);
+    cv::imshow("FBO texture", image);
+    cv::waitKey(0);
+
+    delete [] bla;
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 void updateGL() {
   GLfloat aspectRatio = static_cast<GLfloat>(windowWidth) / windowHeight;
   
@@ -91,12 +126,14 @@ void updateGL() {
   
   // render //
   renderScene();
+  renderSceneIntoFBO();
   
   // swap render and screen buffer //
   glutSwapBuffers();
 }
 
 void run() {
+    renderSceneIntoFBO();
     glutMainLoop();
 }
 
@@ -145,6 +182,40 @@ void initGL() {
   glLoadIdentity();
 }
 
+void initFBO() {
+  // init color textures //
+  glGenTextures(2, fboTexture);
+  for (unsigned int i = 0; i < 2; ++i) {
+    glBindTexture(GL_TEXTURE_2D, fboTexture[i]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, windowWidth, windowHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+  }
+  // init depth texture //
+  glGenTextures(1, &fboDepthTexture);
+  glBindTexture(GL_TEXTURE_2D, fboDepthTexture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_LUMINANCE);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, windowWidth, windowHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+
+  // generate FBO and depthBuffer //
+  glGenFramebuffers(1, &fbo);
+
+  // attach textures to FBO //
+  glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture[0], 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, fboTexture[1], 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, fboDepthTexture, 0);
+
+  // unbind FBO until it's needed //
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 void setupOpenGL(int * argc, char ** argv) {
     /* Initialize GLUT */
     glutInit(argc, argv);
@@ -173,6 +244,7 @@ void setupOpenGL(int * argc, char ** argv) {
     _ball.updateOffset(Trackball::MOVE_BACKWARD, 4);
 
     initGL();
+    initFBO();
 }
 
 void setMesh(MeshObj * const meshobj) {
