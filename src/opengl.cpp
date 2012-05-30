@@ -77,9 +77,26 @@ void renderScene() {
             for (int z = -1; z < 2; z+=2) {
               glPushMatrix();
               glTranslatef(x, y, z);
+              glColor3f((x+1.0)/3, (y+1.0)/3, (z+1.0)/3);
               glutSolidSphere(.10, 4, 4);
               glPopMatrix();
             }
+}
+
+unsigned int calc_index(unsigned int x, unsigned int y, unsigned int width, unsigned int height) {
+  assert(x < width);
+  assert(y < height);
+  return x+y*width;
+}
+
+template <class T>
+void flipImage(T * image, unsigned int width, unsigned int height) {
+  for (unsigned int y = 0; y < height/2; y++)
+	  for (unsigned int x = 0; x < width; x++) {
+		  T tmp = image[calc_index(x, y, width, height)];
+		  image[calc_index(x, y, width, height)] = image[calc_index(x, height - 1 - y, width, height)];
+		  image[calc_index(x, height - 1 - y, width, height)] = tmp;
+	  }
 }
 
 void renderSceneIntoFBO() {
@@ -96,7 +113,8 @@ void renderSceneIntoFBO() {
 
     float * bla = new float[windowHeight*windowWidth*4];
     glReadBuffer(fboTexture[0]);
-    glReadPixels(0, 0, windowWidth, windowHeight, GL_RGBA, GL_FLOAT, bla);
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGRA, GL_FLOAT, bla);
+    flipImage(bla, 4*windowWidth, 1*windowHeight);
 
     cv::Mat image(windowHeight, windowWidth, CV_32FC4, bla, 0);
     cv::imshow("FBO texture", image);
