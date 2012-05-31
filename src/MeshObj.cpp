@@ -115,9 +115,10 @@ void prints_lights(const std::vector<typename Light<T>::properties> &lights) {
 			  std::cout
 			    << "light property name: "
 			    << name
-			    << ", value: "
-			    << value[0] << ", " << value[1] << ", " << value[2] << ", " << value[3]
-			    << std::endl;
+			    << ", value: ";
+			  for (auto iter_val = value.begin(); iter_val != value.end(); iter_val++)
+			    std::cout << *iter_val << ", ";
+			  std::cout << std::endl;
 		  }
 	  }
 }
@@ -140,10 +141,21 @@ void MeshObj::setUniforms(GLuint programm_id) {
   };
 
   std::vector<Light<float>::properties> lights = create_lights(light_properties, 3);
-  prints_lights<float>(lights);
+//  prints_lights<float>(lights);
 
-  GLint uniform_lights1 = glGetUniformLocation(programm_id, "lights[0].position");
-  glUniform4f(uniform_lights1, 1, 2, 3, 4);
+  int i = 0;
+  for (auto iter_lights = lights.begin(); iter_lights != lights.end(); iter_lights++, i++) {
+    for (auto iter_properties = iter_lights->begin(); iter_properties != iter_lights->end(); iter_properties++) {
+      std::stringstream name;
+      name << "lights[" << i << "]." << iter_properties->first;
+      GLint uniform_light_property = glGetUniformLocation(programm_id, name.str().c_str());
+      auto value = iter_properties->second;
+      glUniform4f(uniform_light_property, value[0], value[1], value[2], value[3]);
+
+      if (uniform_light_property == -1)
+    	  std::cout << "uniform handle is -1 with uniform name " << name.str() << std::endl;
+    }
+  }
 
 //  mMaterial->disable();
 }

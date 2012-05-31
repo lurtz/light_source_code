@@ -27,7 +27,7 @@ void main () {
     float angle = acos(LdotE)*180/3.14;
     // licht weiß gemacht
     if(angle < uni_innerSpotAngle)
-        gl_FragColor = vec4(0.5, 0.5, 0.5, 1.0) + lights[0].specular;
+        gl_FragColor = vec4(0.5, 0.5, 0.5, 1.0) + lights[0].specular + lights[1].specular + lights[2].specular;
     else if(angle < uni_outerSpotAngle)
         gl_FragColor = vec4(0.5, 0.5, 0.5, 1.0) * (uni_outerSpotAngle - angle)/(uni_outerSpotAngle - uni_innerSpotAngle);
     else
