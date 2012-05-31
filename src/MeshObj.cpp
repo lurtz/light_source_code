@@ -73,24 +73,24 @@ struct Light {
 };
 
 template<typename T>
-typename Light<T>::properties create_light(std::vector<T> position, std::vector<T> ambient, std::vector<T> diffuse, std::vector<T> specular) {
+typename Light<T>::properties create_light(const std::vector<T>& position, const std::vector<T>& ambient, const std::vector<T>& diffuse, const std::vector<T>& specular) {
   typename Light<T>::properties tmp;
-  tmp.insert(typename Light<T>::properties::value_type( "position", position));
-  tmp.insert(typename Light<T>::properties::value_type( "ambient", ambient));
-  tmp.insert(typename Light<T>::properties::value_type( "diffuse", diffuse));
-  tmp.insert(typename Light<T>::properties::value_type( "specular", specular));
+  tmp["position"] = position;
+  tmp["ambient"] =  ambient;
+  tmp["diffuse"] = diffuse;
+  tmp["specular"] = specular;
   return tmp;
 }
 
 template<typename T, int dim>
-std::vector<T> create_vector_from_array(T (&array)[dim]) {
+std::vector<T> create_vector_from_array(const T (&array)[dim]) {
   std::vector<T> tmp(array, array+dim);
   return tmp;
 }
 
 template<typename T, int dim>
-std::vector<typename Light<T>::properties> create_lights(T light_props[][dim], unsigned int count) {
-  std::vector<typename Light<T>::properties> tmp(count);
+std::vector<typename Light<T>::properties> create_lights(const T light_props[][dim], const unsigned int count) {
+  std::vector<typename Light<T>::properties> tmp;
   for (unsigned int i = 0; i < 4*count; i+=4) {
 	  std::vector<T> position = create_vector_from_array(light_props[i+0]);
 	  std::vector<T> ambient = create_vector_from_array(light_props[i+1]);
@@ -101,6 +101,25 @@ std::vector<typename Light<T>::properties> create_lights(T light_props[][dim], u
 	  tmp.push_back(props);
   }
   return tmp;
+}
+
+template<typename T>
+void prints_lights(const std::vector<typename Light<T>::properties> &lights) {
+	unsigned int size = lights.size();
+	  std::cout << size << std::endl;
+	  for (auto iter = lights.begin(); iter != lights.end(); iter++) {
+		  typename Light<T>::properties prop = *iter;
+		  for (auto iter_prop = prop.begin(); iter_prop != prop.end(); iter_prop++) {
+			  std::string name = iter_prop->first;
+			  std::vector<T> value = iter_prop->second;
+			  std::cout
+			    << "light property name: "
+			    << name
+			    << ", value: "
+			    << value[0] << ", " << value[1] << ", " << value[2] << ", " << value[3]
+			    << std::endl;
+		  }
+	  }
 }
 
 void MeshObj::setUniforms(GLuint programm_id) {
@@ -120,8 +139,8 @@ void MeshObj::setUniforms(GLuint programm_id) {
 		    {3, 3, 0, 0}, {1, 1, 1, 0}, {0.5, 0.5, 0.5, 0}, {0, 0, 0, 0}
   };
 
-  std::vector<Light<float>::properties> lights = create_lights<float, 4>(light_properties, static_cast<unsigned int>(3));
-
+  std::vector<Light<float>::properties> lights = create_lights(light_properties, 3);
+  prints_lights<float>(lights);
 
   GLint uniform_lights1 = glGetUniformLocation(programm_id, "lights[0].position");
   glUniform4f(uniform_lights1, 1, 2, 3, 4);
