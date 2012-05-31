@@ -67,6 +67,42 @@ void MeshObj::setMaterial(Material *material) {
   mMaterial = material;
 }
 
+template<typename T>
+struct Light {
+  typedef std::map<std::string, std::vector<T> > properties;
+};
+
+template<typename T>
+typename Light<T>::properties create_light(std::vector<T> position, std::vector<T> ambient, std::vector<T> diffuse, std::vector<T> specular) {
+  typename Light<T>::properties tmp;
+  tmp.insert(typename Light<T>::properties::value_type( "position", position));
+  tmp.insert(typename Light<T>::properties::value_type( "ambient", ambient));
+  tmp.insert(typename Light<T>::properties::value_type( "diffuse", diffuse));
+  tmp.insert(typename Light<T>::properties::value_type( "specular", specular));
+  return tmp;
+}
+
+template<typename T, int dim>
+std::vector<T> create_vector_from_array(T (&array)[dim]) {
+  std::vector<T> tmp(array, array+dim);
+  return tmp;
+}
+
+template<typename T, int dim>
+std::vector<typename Light<T>::properties> create_lights(T light_props[][dim], unsigned int count) {
+  std::vector<typename Light<T>::properties> tmp(count);
+  for (unsigned int i = 0; i < 4*count; i+=4) {
+	  std::vector<T> position = create_vector_from_array(light_props[i+0]);
+	  std::vector<T> ambient = create_vector_from_array(light_props[i+1]);
+	  std::vector<T> diffuse = create_vector_from_array(light_props[i+2]);
+	  std::vector<T> specular = create_vector_from_array(light_props[i+3]);
+
+	  typename Light<T>::properties props = create_light(position, ambient, diffuse, specular);
+	  tmp.push_back(props);
+  }
+  return tmp;
+}
+
 void MeshObj::setUniforms(GLuint programm_id) {
 //  mMaterial->enable();
 
@@ -78,14 +114,17 @@ void MeshObj::setUniforms(GLuint programm_id) {
   glUniform1f(uniform_outerSpotAngle, outerAngle);
 
   // position, ambient, diffuse, specular in vec4
-  float light_properties[] = {
-		    1, 1, 0, 0, 1, 1, 1, 0, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0,
-		    3, 1, 0, 0, 1, 1, 1, 0, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0,
-		    3, 3, 0, 0, 1, 1, 1, 0, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0
+  float light_properties[][4] = {
+		    {1, 1, 0, 0}, {1, 1, 1, 0}, {0.5, 0.5, 0.5, 0}, {0, 0, 0, 0},
+		    {3, 1, 0, 0}, {1, 1, 1, 0}, {0.5, 0.5, 0.5, 0}, {0, 0, 0, 0},
+		    {3, 3, 0, 0}, {1, 1, 1, 0}, {0.5, 0.5, 0.5, 0}, {0, 0, 0, 0}
   };
 
-  GLint uniform_lights = glGetUniformLocation(programm_id, "lights");
-  glUniform4fv(uniform_lights, 12, light_properties);
+  std::vector<Light<float>::properties> lights = create_lights<float, 4>(light_properties, static_cast<unsigned int>(3));
+
+
+  GLint uniform_lights1 = glGetUniformLocation(programm_id, "lights[0].position");
+  glUniform4f(uniform_lights1, 1, 2, 3, 4);
 
 //  mMaterial->disable();
 }
