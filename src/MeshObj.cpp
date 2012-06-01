@@ -143,23 +143,22 @@ void MeshObj::setUniforms(GLuint programm_id) {
 
   // position, ambient, diffuse, specular in vec4
   float light_properties[][4] = {
-		    {1, 1, 0, 0}, {1, 1, 1, 0}, {0.5, 0.5, 0.5, 0}, {0, 0, 0, 0},
-		    {3, 1, 0, 0}, {1, 1, 1, 0}, {0.5, 0.5, 0.5, 0}, {0, 0, 0, 0},
-		    {3, 3, 0, 0}, {1, 1, 1, 0}, {0.5, 0.5, 0.5, 0}, {0, 0, 0, 0}
+		    {0, -5, 0, 0}, {1, 1, 1, 0}, {0.5, 0.5, 0.5, 0}, {0, 0, 0, 0},
+		    {-6, 1, 0, 0}, {1, 1, 1, 0}, {0.5, 0.5, 0.5, 0}, {0, 0, 0, 0},
+		    {3, 0, 0, 0}, {1, 1, 1, 0}, {0.5, 0.5, 0.5, 0}, {0, 0, 0, 0}
   };
 
-  std::vector<Light<float>::properties> lights = create_lights(light_properties, 3);
+  std::vector<Light<float>::properties> lights = create_lights(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/4);
 //  prints_lights<float>(lights);
 
   for (auto iter_lights = lights.begin(); iter_lights != lights.end(); iter_lights++) {
     for (auto iter_properties = iter_lights->begin(); iter_properties != iter_lights->end(); iter_properties++) {
-      std::stringstream name;
       GLint uniform_light_property = glGetUniformLocation(programm_id, iter_properties->first.c_str());
       auto value = iter_properties->second;
       glUniform4f(uniform_light_property, value[0], value[1], value[2], value[3]);
 
       if (uniform_light_property == -1)
-    	  std::cout << "uniform handle is -1 with uniform name " << name.str() << std::endl;
+    	  std::cout << "uniform handle is -1 with uniform name " << iter_properties->first << std::endl;
     }
   }
 
