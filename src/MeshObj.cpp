@@ -73,12 +73,20 @@ struct Light {
 };
 
 template<typename T>
-typename Light<T>::properties create_light(const std::vector<T>& position, const std::vector<T>& ambient, const std::vector<T>& diffuse, const std::vector<T>& specular) {
+typename Light<T>::properties create_light(const unsigned int number, const std::vector<T>& position, const std::vector<T>& ambient, const std::vector<T>& diffuse, const std::vector<T>& specular) {
   typename Light<T>::properties tmp;
-  tmp["position"] = position;
-  tmp["ambient"] =  ambient;
-  tmp["diffuse"] = diffuse;
-  tmp["specular"] = specular;
+  std::stringstream name;
+  name << "lights[" << number << "]." << "position";
+  tmp[name.str()] = position;
+  name.str("");
+  name << "lights[" << number << "]." << "ambient";
+  tmp[name.str()] =  ambient;
+  name.str("");
+  name << "lights[" << number << "]." << "diffuse";
+  tmp[name.str()] = diffuse;
+  name.str("");
+  name << "lights[" << number << "]." << "specular";
+  tmp[name.str()] = specular;
   return tmp;
 }
 
@@ -97,7 +105,7 @@ std::vector<typename Light<T>::properties> create_lights(const T light_props[][d
 	  std::vector<T> diffuse = create_vector_from_array(light_props[i+2]);
 	  std::vector<T> specular = create_vector_from_array(light_props[i+3]);
 
-	  typename Light<T>::properties props = create_light(position, ambient, diffuse, specular);
+	  typename Light<T>::properties props = create_light(i/4, position, ambient, diffuse, specular);
 	  tmp.push_back(props);
   }
   return tmp;
@@ -143,12 +151,10 @@ void MeshObj::setUniforms(GLuint programm_id) {
   std::vector<Light<float>::properties> lights = create_lights(light_properties, 3);
 //  prints_lights<float>(lights);
 
-  int i = 0;
-  for (auto iter_lights = lights.begin(); iter_lights != lights.end(); iter_lights++, i++) {
+  for (auto iter_lights = lights.begin(); iter_lights != lights.end(); iter_lights++) {
     for (auto iter_properties = iter_lights->begin(); iter_properties != iter_lights->end(); iter_properties++) {
       std::stringstream name;
-      name << "lights[" << i << "]." << iter_properties->first;
-      GLint uniform_light_property = glGetUniformLocation(programm_id, name.str().c_str());
+      GLint uniform_light_property = glGetUniformLocation(programm_id, iter_properties->first.c_str());
       auto value = iter_properties->second;
       glUniform4f(uniform_light_property, value[0], value[1], value[2], value[3]);
 
