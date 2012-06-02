@@ -10,9 +10,11 @@
 #include "Trackball.h"
 #include <cv.hpp>
 #include <highgui.h>
+#include "solver.h"
 
 
 MeshObj * _meshobj;
+cv::Mat const * _original_image;
 Trackball _ball;
 
 GLfloat _zNear, _zFar;
@@ -143,6 +145,8 @@ void renderSceneIntoFBO() {
     delete [] bla;
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    optimize_lights<float>(*_original_image, image, lights);
 }
 
 void updateGL() {
@@ -170,7 +174,10 @@ void updateGL() {
   glutSwapBuffers();
 }
 
-void run() {
+void run(const cv::Mat& original_image, MeshObj * const meshobj) {
+	_original_image = &original_image;
+    _meshobj = meshobj;
+    _meshobj->setLight(lights);
     glutMainLoop();
 }
 
@@ -294,9 +301,4 @@ void setupOpenGL(int * argc, char ** argv) {
     initFBO();
     initPBO();
     initLights();
-}
-
-void setMesh(MeshObj * const meshobj) {
-    _meshobj = meshobj;
-    _meshobj->setLight(lights);
 }

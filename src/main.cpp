@@ -175,8 +175,7 @@ int main(int argc, char * argv[]) {
     Material * mat = new Material();
     mesh->setMaterial(mat);
     mat->setShaderProgram(new Shader("shader/vertex.s", "shader/fragment.s"));
-    setMesh(mesh);
-    run();
+    run(image, mesh);
   }
 
   std::cout << "OK" << std::endl;

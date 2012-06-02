@@ -6,7 +6,6 @@
 
 void setupOpenGL(int * argc, char ** argv);
 // starts the glutMainLoop
-void run();
-void setMesh(MeshObj * const meshobj);
+void run(const cv::Mat& original_image, MeshObj * const meshobj);
 
 #endif // __OPENGL_H__
