@@ -6,8 +6,8 @@
 
 #define OFFSET(i) ((char*)NULL + (i))
 
-MeshObj::MeshObj(float const * const rotation, float const * const translation, const float scale)
-  : mMaterial(0), mVBO(0), mIBO(0), mIndexCount(0), mShadowVBO(0), mShadowIBO(0), mShadowIndexCount(0), _scale(scale) {
+MeshObj::MeshObj(std::vector<Light<float>::properties> const * lights, float const * const rotation, float const * const translation, const float scale)
+  : mMaterial(0), mVBO(0), mIBO(0), mIndexCount(0), mShadowVBO(0), mShadowIBO(0), mShadowIndexCount(0), _scale(scale), _lights(lights) {
   for (int i = 0; i < 3; ++i) {
     mMinBounds[i] = std::numeric_limits<float>::max();
     mMaxBounds[i] = std::numeric_limits<float>::min();
@@ -72,40 +72,6 @@ void MeshObj::setMaterial(Material *material) {
   mMaterial = material;
 }
 
-void MeshObj::setUniforms(GLuint programm_id) {
-//  mMaterial->enable();
-
-  float innerAngle = 15.0f;
-  float outerAngle = 20.0f;
-  GLint uniform_innerSpotAngle = glGetUniformLocation(programm_id, "uni_innerSpotAngle");
-  GLint uniform_outerSpotAngle = glGetUniformLocation(programm_id, "uni_outerSpotAngle");
-  glUniform1f(uniform_innerSpotAngle, innerAngle);
-  glUniform1f(uniform_outerSpotAngle, outerAngle);
-
-  // position, ambient, diffuse, specular in vec4
-  float light_properties[][4] = {
-		    {0, -5, 0, 0}, {1, 1, 1, 0}, {0.5, 0.5, 0.5, 0}, {0, 0, 0, 0},
-		    {-6, 1, 0, 0}, {1, 1, 1, 0}, {0.5, 0.5, 0.5, 0}, {0, 0, 0, 0},
-		    {3, 0, 0, 0}, {1, 1, 1, 0}, {0.5, 0.5, 0.5, 0}, {0, 0, 0, 0}
-  };
-
-  std::vector<Light<float>::properties> lights = create_lights(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/4);
-//  prints_lights<float>(lights);
-
-  for (auto iter_lights = lights.begin(); iter_lights != lights.end(); iter_lights++) {
-    for (auto iter_properties = iter_lights->begin(); iter_properties != iter_lights->end(); iter_properties++) {
-      GLint uniform_light_property = glGetUniformLocation(programm_id, iter_properties->first.c_str());
-      auto value = iter_properties->second;
-      glUniform4f(uniform_light_property, value[0], value[1], value[2], value[3]);
-
-      if (uniform_light_property == -1)
-    	  std::cout << "uniform handle is -1 with uniform name " << iter_properties->first << std::endl;
-    }
-  }
-
-//  mMaterial->disable();
-}
-
 void MeshObj::render(void) {
   if (mMaterial != NULL) {
     mMaterial->enable();
@@ -117,7 +83,8 @@ void MeshObj::render(void) {
 
     GLuint programm_id = mMaterial->getShaderProgram()->getProgramID();
 
-    setUniforms(programm_id);
+    if (_lights != NULL)
+      setUniforms<float>(programm_id, *_lights);
 
     GLint vertexLoc = glGetAttribLocation(programm_id, "vertex_OS");
     GLint normalLoc = glGetAttribLocation(programm_id, "normal_OS");
@@ -172,4 +139,9 @@ void MeshObj::translate(float translation[3]) {
 
 void MeshObj::scale(float scale) {
   _scale = scale;
+}
+
+
+void MeshObj::setLight(const std::vector<Light<float>::properties> &lights) {
+	_lights = &lights;
 }

@@ -26,6 +26,8 @@ GLuint fbo;
 // PBO
 GLuint ioBuf;
 
+std::vector<Light<float>::properties> lights;
+
 bool image_displayed = false;
 
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
@@ -255,6 +257,12 @@ void initPBO() {
   glGenBuffers(1, &ioBuf);
 }
 
+void initLights() {
+  lights = create_lights(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
+  if (_meshobj != NULL)
+	  _meshobj->setLight(lights);
+}
+
 void setupOpenGL(int * argc, char ** argv) {
     /* Initialize GLUT */
     glutInit(argc, argv);
@@ -285,8 +293,10 @@ void setupOpenGL(int * argc, char ** argv) {
     initGL();
     initFBO();
     initPBO();
+    initLights();
 }
 
 void setMesh(MeshObj * const meshobj) {
     _meshobj = meshobj;
+    _meshobj->setLight(lights);
 }

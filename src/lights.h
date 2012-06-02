@@ -1,6 +1,17 @@
 #ifndef LIGHTS_H_
 #define LIGHTS_H_
 
+#include <GL/glew.h>
+#include <GL/glut.h>
+
+// position, ambient, diffuse, specular in vec4
+const unsigned int NUM_PROPERTIES = 4;
+const float light_properties[][4] = {
+    {0, -5, 0, 0}, {1, 1, 1, 0}, {0.5, 0.5, 0.5, 0}, {0, 0, 0, 0},
+    {-6, 1, 0, 0}, {1, 1, 1, 0}, {0.5, 0.5, 0.5, 0}, {0, 0, 0, 0},
+    {3, 0, 0, 0}, {1, 1, 1, 0}, {0.5, 0.5, 0.5, 0}, {0, 0, 0, 0}
+};
+
 template<typename T>
 struct Light {
   typedef std::map<std::string, std::vector<T> > properties;
@@ -63,6 +74,20 @@ void prints_lights(const std::vector<typename Light<T>::properties> &lights) {
 			  std::cout << std::endl;
 		  }
 	  }
+}
+
+template<typename T>
+void setUniforms(GLuint programm_id, const std::vector<typename Light<T>::properties> &lights) {
+  for (auto iter_lights = lights.begin(); iter_lights != lights.end(); iter_lights++) {
+    for (auto iter_properties = iter_lights->begin(); iter_properties != iter_lights->end(); iter_properties++) {
+      GLint uniform_light_property = glGetUniformLocation(programm_id, iter_properties->first.c_str());
+      auto value = iter_properties->second;
+      glUniform4f(uniform_light_property, value[0], value[1], value[2], value[3]);
+
+      if (uniform_light_property == -1)
+    	  std::cout << "uniform handle is -1 with uniform name " << iter_properties->first << std::endl;
+    }
+  }
 }
 
 #endif /* LIGHTS_H_ */

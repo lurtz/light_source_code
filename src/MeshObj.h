@@ -6,6 +6,7 @@
 
 #include <vector>
 #include "Material.h"
+#include "lights.h"
 
 struct Vertex {
   Vertex(float x = 0, float y = 0, float z = 0, float nx = 1, float ny = 0, float nz = 0, float tx = 0, float ty = 0) {
@@ -33,12 +34,11 @@ struct Vertex {
 
 class MeshObj {
   public:
-    MeshObj(float const * const rotation = 0, float const * const translation = 0, const float scale = 1);
+    MeshObj(std::vector<Light<float>::properties> const * const lights = 0, float const * const rotation = 0, float const * const translation = 0, const float scale = 1);
     ~MeshObj();
     
     void setData(const std::vector<Vertex> &vertexData, const std::vector<unsigned int> &indexData);
     void setMaterial(Material *material);
-    void setUniforms(GLuint programm_id);
     
     void render(void);
 
@@ -49,6 +49,7 @@ class MeshObj {
     void rotate(float rotation[3]);
     void translate(float translation[3]);
     void scale(float scale);
+    void setLight(const std::vector<Light<float>::properties> &lights);
   private:
     std::vector<Vertex> mVertexData;
     std::vector<unsigned int> mIndexData;
@@ -68,6 +69,8 @@ class MeshObj {
     float _rotation[3];
     float _translation[3];
     float _scale;
+
+    std::vector<Light<float>::properties> const *_lights;
 };
 
 #endif
