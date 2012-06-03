@@ -120,27 +120,28 @@ void renderSceneIntoFBO() {
 
     renderScene();
 
-    float * bla = new float[windowHeight*windowWidth*4];
+    const unsigned int channels = 3;
+    float * bla = new float[windowHeight*windowWidth*channels];
 
 #if false
     glReadBuffer(fboTexture[0]);
     glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, ioBuf);
-    glBufferData(GL_PIXEL_PACK_BUFFER_ARB, windowWidth*windowHeight*sizeof(float)*4, NULL, GL_STREAM_READ);
+    glBufferData(GL_PIXEL_PACK_BUFFER_ARB, windowWidth*windowHeight*sizeof(float)*channels, NULL, GL_STREAM_READ);
     glReadPixels (0, 0, windowWidth, windowHeight, GL_BGRA, GL_FLOAT, BUFFER_OFFSET(0));
     float * mem = static_cast<float *>(glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_WRITE));
     assert(mem);
-    std::copy(mem, mem+windowWidth*windowHeight*4, bla);
+    std::copy(mem, mem+windowWidth*windowHeight*channels, bla);
     glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
     glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
 #else
     glReadBuffer(fboTexture[0]);
-    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGRA, GL_FLOAT, bla);
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, bla);
 #endif
-    flipImage(bla, 4*windowWidth, 1*windowHeight);
+    flipImage(bla, channels*windowWidth, windowHeight);
 
-    cv::Mat image(windowHeight, windowWidth, CV_32FC4, bla, 0);
-    cv::imshow("FBO texture", image);
-    cv::waitKey(0);
+    cv::Mat image(windowHeight, windowWidth, CV_32FC3, bla, 0);
+//    cv::imshow("FBO texture", image);
+//    cv::waitKey(0);
 
     delete [] bla;
 
@@ -167,8 +168,8 @@ void updateGL() {
   _ball.rotateView();
   
   // render //
-  renderScene();
-//  renderSceneIntoFBO();
+//  renderScene();
+  renderSceneIntoFBO();
   
   // swap render and screen buffer //
   glutSwapBuffers();
@@ -270,12 +271,12 @@ void initLights() {
 	  _meshobj->setLight(lights);
 }
 
-void setupOpenGL(int * argc, char ** argv) {
+void setupOpenGL(int * argc, char ** argv, const unsigned int width, const unsigned int height) {
     /* Initialize GLUT */
     glutInit(argc, argv);
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGB);
     glutInitWindowPosition(100, 100);
-    glutInitWindowSize(windowWidth = 800, windowHeight = 600);
+    glutInitWindowSize(windowWidth = width, windowHeight = height);
     glutCreateWindow("light sources");
 //    glutFullScreen();
     glutDisplayFunc(updateGL);
