@@ -30,6 +30,11 @@ if(NOT GLEW_FOUND)
 endif()
 include_directories(${GLEW_INCLUDE_DIRS})
 
+FIND_PACKAGE(LPSolve)
+IF (LPSOLVE_FOUND)
+  INCLUDE_DIRECTORIES(${LPSOLVE_INCLUDE_DIR})
+ENDIF()
+
 # Compiler setup
 set(CMAKE_BUILD_TYPE debug)
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x ${VALID_FLAGS}")
