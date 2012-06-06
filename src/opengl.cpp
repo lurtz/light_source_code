@@ -114,7 +114,9 @@ void renderSceneIntoFBO() {
     image_displayed = true;
     // render scene into first color attachment of FBO -> use as filter texture later on //
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-    glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+    static const GLenum buffers = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+    glDrawBuffers(2, buffers);
     glDepthMask(GL_TRUE);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -140,14 +142,16 @@ void renderSceneIntoFBO() {
     flipImage(bla, channels*windowWidth, windowHeight);
 
     cv::Mat image(windowHeight, windowWidth, CV_32FC3, bla, 0);
-//    cv::imshow("FBO texture", image);
+    cv::imshow("FBO texture", image);
 //    cv::waitKey(0);
-
-    delete [] bla;
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    optimize_lights<float>(*_original_image, image, lights);
+    cv::Mat original_copy = _original_image->clone();
+    cv::Mat image_copy = image.clone();
+    optimize_lights<float>(original_copy, image_copy, lights);
+
+    delete [] bla;
 }
 
 void updateGL() {
