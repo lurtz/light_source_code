@@ -25,9 +25,6 @@ GLuint fboTexture[2];
 GLuint fboDepthTexture;
 GLuint fbo;
 
-// PBO
-GLuint ioBuf;
-
 std::vector<Light<float>::properties> lights;
 
 bool image_displayed = false;
@@ -115,43 +112,39 @@ void renderSceneIntoFBO() {
     // render scene into first color attachment of FBO -> use as filter texture later on //
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-    static const GLenum buffers = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+    static const GLenum buffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
     glDrawBuffers(2, buffers);
+//    glDrawBuffer(GL_COLOR_ATTACHMENT0);
     glDepthMask(GL_TRUE);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
     renderScene();
 
     const unsigned int channels = 3;
-    float * bla = new float[windowHeight*windowWidth*channels];
+    float * fbo_image = new float[windowHeight*windowWidth*channels];
+    float * fbo_normal = new float[windowHeight*windowWidth*channels];
 
-#if false
     glReadBuffer(fboTexture[0]);
-    glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, ioBuf);
-    glBufferData(GL_PIXEL_PACK_BUFFER_ARB, windowWidth*windowHeight*sizeof(float)*channels, NULL, GL_STREAM_READ);
-    glReadPixels (0, 0, windowWidth, windowHeight, GL_BGRA, GL_FLOAT, BUFFER_OFFSET(0));
-    float * mem = static_cast<float *>(glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_WRITE));
-    assert(mem);
-    std::copy(mem, mem+windowWidth*windowHeight*channels, bla);
-    glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
-    glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
-#else
-    glReadBuffer(fboTexture[0]);
-    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, bla);
-#endif
-    flipImage(bla, channels*windowWidth, windowHeight);
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, fbo_image);
+    glReadBuffer(fboTexture[1]);
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, fbo_normal);
 
-    cv::Mat image(windowHeight, windowWidth, CV_32FC3, bla, 0);
+    flipImage(fbo_image, channels*windowWidth, windowHeight);
+    flipImage(fbo_normal, channels*windowWidth, windowHeight);
+
+    cv::Mat image(windowHeight, windowWidth, CV_32FC3, fbo_image, 0);
+    cv::Mat normals(windowHeight, windowWidth, CV_32FC3, fbo_normal, 0);
     cv::imshow("FBO texture", image);
 //    cv::waitKey(0);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     cv::Mat original_copy = _original_image->clone();
-    cv::Mat image_copy = image.clone();
-    optimize_lights<float>(original_copy, image_copy, lights);
 
-    delete [] bla;
+    optimize_lights<float>(original_copy, image, normals, lights);
+
+    delete [] fbo_image;
+    delete [] fbo_normal;
 }
 
 void updateGL() {
@@ -184,13 +177,14 @@ void run(const cv::Mat& original_image, MeshObj * const meshobj) {
     _meshobj = meshobj;
     _meshobj->setLight(lights);
     glutMainLoop();
+//    glutMainLoopEvent();
 }
 
 void keyboardEvent(unsigned char key, int x, int y) {
   switch (key) {
     case 'x':
     case 27 : {
-      exit(0);
+      glutLeaveMainLoop();
       break;
     }
     case 'w': {
@@ -265,10 +259,6 @@ void initFBO() {
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void initPBO() {
-  glGenBuffers(1, &ioBuf);
-}
-
 void initLights() {
   lights = create_lights(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
   if (_meshobj != NULL)
@@ -304,6 +294,5 @@ void setupOpenGL(int * argc, char ** argv, const unsigned int width, const unsig
 
     initGL();
     initFBO();
-    initPBO();
     initLights();
 }

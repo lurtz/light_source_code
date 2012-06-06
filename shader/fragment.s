@@ -26,9 +26,13 @@ void main () {
       vec3 L = normalize(light_positions[i].xyz);
       NdotL += min(max(0.0, dot(-N, L)), 1.0);
     }
-    gl_FragColor = vec4(1,1,1,0);
-    gl_FragColor *= min(NdotL/MAX_LIGHTS, 1);
+    vec4 color = vec4(1, 1, 1, 0);
+    color *= min(NdotL/MAX_LIGHTS, 1);
 
     float amb_val = 0.1;
-    gl_FragColor += vec4(amb_val, amb_val, amb_val, 0.0);
+    color += vec4(amb_val, amb_val, amb_val, 0.0);
+
+//    gl_FragColor = color;
+    gl_FragData[0] = color;
+    gl_FragData[1] = vec4(N, 0.0);
 }

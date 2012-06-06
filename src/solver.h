@@ -7,7 +7,7 @@
 #include <lpsolve/lp_lib.h>
 
 template<typename T>
-void optimize_lights(cv::Mat& original_image , cv::Mat& image, std::vector<typename Light<T>::properties>& lights) {
+void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, std::vector<typename Light<T>::properties>& lights) {
   int new_channel_count = std::max(original_image.channels(), image.channels());
   original_image.reshape(new_channel_count);
   image.reshape(new_channel_count);
@@ -17,7 +17,7 @@ void optimize_lights(cv::Mat& original_image , cv::Mat& image, std::vector<typen
 
   cv::Mat diff = image - correct_format_image;
   cv::imshow("differenz", diff);
-  cv::waitKey(0);
+  cv::waitKey(1000);
 }
 
 #endif /* SOLVER_H_ */
