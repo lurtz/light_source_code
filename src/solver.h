@@ -1,12 +1,17 @@
 #ifndef SOLVER_H_
 #define SOLVER_H_
 
+#define WITH_LP true
+
 #include "lights.h"
 #include <cv.hpp>
 #include <vector>
+#if WITH_LP
 #include <lpsolve/lp_lib.h>
+#endif
 
 #if false
+#if WITH_LP
 int demo()
 {
   lprec *lp;
@@ -144,6 +149,7 @@ int demo()
   return(ret);
 }
 #endif
+#endif
 
 template<typename T>
 void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, std::vector<typename Light<T>::properties>& lights) {
@@ -158,18 +164,21 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
   cv::imshow("differenz", diff);
   cv::waitKey(1000);
 
+#if WITH_LP
 //  demo();
 
-  lprec * lp;
+  lprec * lp = 0;
   // add rows dynamically, columns are properties of our light sources
-  lp = make_lp(0, image.cols);
+//  lp = make_lp(0, image.cols);
 
   if (lp == 0) {
 	  std::cout << "could not create LP" << std::endl;
 	  return;
   }
 
-  delete_lp(lp);
+//  delete_lp(lp);
+
+#endif
 }
 
 #endif /* SOLVER_H_ */
