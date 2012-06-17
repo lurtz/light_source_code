@@ -30,11 +30,13 @@ if(NOT GLEW_FOUND)
 endif()
 include_directories(${GLEW_INCLUDE_DIRS})
 
-OPTION(USE_LPSOLVE "Compile with lpsolve support, if lpsolve can be found" ON)
-FIND_PACKAGE(LPSolve REQUIRED)
-IF (LPSOLVE_FOUND)
-  INCLUDE_DIRECTORIES(${LPSOLVE_INCLUDE_DIR})
-ENDIF()
+#OPTION(USE_LPSOLVE "Compile with lpsolve support, if lpsolve can be found" ON)
+#FIND_PACKAGE(LPSolve REQUIRED)
+#IF (LPSOLVE_FOUND)
+#  INCLUDE_DIRECTORIES(${LPSOLVE_INCLUDE_DIR})
+#ENDIF()
+
+FIND_PACKAGE(GSL REQUIRED)
 
 # Compiler setup
 set(CMAKE_BUILD_TYPE debug)

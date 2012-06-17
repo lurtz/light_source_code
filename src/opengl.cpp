@@ -114,26 +114,37 @@ void renderSceneIntoFBO() {
 
     static const GLenum buffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
     glDrawBuffers(2, buffers);
-//    glDrawBuffer(GL_COLOR_ATTACHMENT0);
     glDepthMask(GL_TRUE);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
     renderScene();
 
+    // read data from frame buffer
     const unsigned int channels = 3;
     float * fbo_image = new float[windowHeight*windowWidth*channels];
     float * fbo_normal = new float[windowHeight*windowWidth*channels];
+    float * fbo_depth = new float[windowHeight*windowWidth];
 
+    // read each texture into an array
     glReadBuffer(fboTexture[0]);
     glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, fbo_image);
     glReadBuffer(fboTexture[1]);
     glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, fbo_normal);
+    glReadBuffer(fboDepthTexture);
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_DEPTH_COMPONENT, GL_FLOAT, fbo_depth);
 
+    // opencv images are upside down
     flipImage(fbo_image, channels*windowWidth, windowHeight);
     flipImage(fbo_normal, channels*windowWidth, windowHeight);
+    flipImage(fbo_depth, windowWidth, windowHeight);
 
+    // create opencv images
     cv::Mat image(windowHeight, windowWidth, CV_32FC3, fbo_image, 0);
     cv::Mat normals(windowHeight, windowWidth, CV_32FC3, fbo_normal, 0);
+    cv::Mat depth(windowHeight, windowWidth, CV_32FC1, fbo_depth, 0);
+    // scale data from depth buffer, which is from 0.0 to 1.0
+    cv::Mat depth2 = depth * (_zFar - _zNear) + _zFar;
+
     cv::imshow("FBO texture", image);
 //    cv::waitKey(0);
 
@@ -141,10 +152,20 @@ void renderSceneIntoFBO() {
 
     cv::Mat original_copy = _original_image->clone();
 
-    optimize_lights<float>(original_copy, image, normals, lights);
+    GLfloat model_view_matrix[16];
+    glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix);
+    cv::Mat model_view_matrix_cv(4, 4, CV_32FC1, model_view_matrix, 0);
+
+    GLfloat projection_matrix[16];
+    glGetFloatv(GL_PROJECTION_MATRIX, projection_matrix);
+    cv::Mat projection_matrix_cv(4, 4, CV_32FC1, projection_matrix, 0);
+
+    cv::Mat modelview_projection_matrix = projection_matrix_cv * model_view_matrix_cv;
+    optimize_lights<float>(original_copy, image, normals, depth2, modelview_projection_matrix, lights);
 
     delete [] fbo_image;
     delete [] fbo_normal;
+    delete [] fbo_depth;
 }
 
 void updateGL() {
@@ -165,8 +186,8 @@ void updateGL() {
   _ball.rotateView();
   
   // render //
-//  renderScene();
   renderSceneIntoFBO();
+  renderScene();
   
   // swap render and screen buffer //
   glutSwapBuffers();

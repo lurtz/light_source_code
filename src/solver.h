@@ -1,158 +1,68 @@
 #ifndef SOLVER_H_
 #define SOLVER_H_
 
-#define WITH_LP true
-
 #include "lights.h"
 #include <cv.hpp>
 #include <vector>
-#if WITH_LP
-#include <lpsolve/lp_lib.h>
-#endif
+#include <gsl/gsl_multifit.h>
+#include <iomanip>
 
-#if false
-#if WITH_LP
-int demo()
-{
-  lprec *lp;
-  int Ncol, *colno = NULL, j, ret = 0;
-  REAL *row = NULL;
-
-  /* We will build the model row by row
-     So we start with creating a model with 0 rows and 2 columns */
-  Ncol = 2; /* there are two variables in the model */
-  lp = make_lp(0, Ncol);
-  if(lp == NULL)
-    ret = 1; /* couldn't construct a new model... */
-
-  if(ret == 0) {
-    /* let us name our variables. Not required, but can be useful for debugging */
-    set_col_name(lp, 1, "x");
-    set_col_name(lp, 2, "y");
-
-    /* create space large enough for one row */
-    colno = (int *) malloc(Ncol * sizeof(*colno));
-    row = (REAL *) malloc(Ncol * sizeof(*row));
-    if((colno == NULL) || (row == NULL))
-      ret = 2;
-  }
-
-  if(ret == 0) {
-    set_add_rowmode(lp, TRUE);  /* makes building the model faster if it is done rows by row */
-
-    /* construct first row (120 x + 210 y <= 15000) */
-    j = 0;
-
-    colno[j] = 1; /* first column */
-    row[j++] = 120;
-
-    colno[j] = 2; /* second column */
-    row[j++] = 210;
-
-    /* add the row to lpsolve */
-    if(!add_constraintex(lp, j, row, colno, LE, 15000))
-      ret = 3;
-  }
-
-  if(ret == 0) {
-    /* construct second row (110 x + 30 y <= 4000) */
-    j = 0;
-
-    colno[j] = 1; /* first column */
-    row[j++] = 110;
-
-    colno[j] = 2; /* second column */
-    row[j++] = 30;
-
-    /* add the row to lpsolve */
-    if(!add_constraintex(lp, j, row, colno, LE, 4000))
-      ret = 3;
-  }
-
-  if(ret == 0) {
-    /* construct third row (x + y <= 75) */
-    j = 0;
-
-    colno[j] = 1; /* first column */
-    row[j++] = 1;
-
-    colno[j] = 2; /* second column */
-    row[j++] = 1;
-
-    /* add the row to lpsolve */
-    if(!add_constraintex(lp, j, row, colno, LE, 75))
-      ret = 3;
-  }
-
-  if(ret == 0) {
-    set_add_rowmode(lp, FALSE); /* rowmode should be turned off again when done building the model */
-
-    /* set the objective function (143 x + 60 y) */
-    j = 0;
-
-    colno[j] = 1; /* first column */
-    row[j++] = 143;
-
-    colno[j] = 2; /* second column */
-    row[j++] = 60;
-
-    /* set the objective in lpsolve */
-    if(!set_obj_fnex(lp, j, row, colno))
-      ret = 4;
-  }
-
-  if(ret == 0) {
-    /* set the object direction to maximize */
-    set_maxim(lp);
-
-    /* just out of curioucity, now show the model in lp format on screen */
-    /* this only works if this is a console application. If not, use write_lp and a filename */
-    write_LP(lp, stdout);
-    /* write_lp(lp, "model.lp"); */
-
-    /* I only want to see important messages on screen while solving */
-    set_verbose(lp, IMPORTANT);
-
-    /* Now let lpsolve calculate a solution */
-    ret = solve(lp);
-    if(ret == OPTIMAL)
-      ret = 0;
-    else
-      ret = 5;
-  }
-
-  if(ret == 0) {
-    /* a solution is calculated, now lets get some results */
-
-    /* objective value */
-    printf("Objective value: %f\n", get_objective(lp));
-
-    /* variable values */
-    get_variables(lp, row);
-    for(j = 0; j < Ncol; j++)
-      printf("%s: %f\n", get_col_name(lp, j + 1), row[j]);
-
-    /* we are done now */
-  }
-
-  /* free allocated memory */
-  if(row != NULL)
-    free(row);
-  if(colno != NULL)
-    free(colno);
-
-  if(lp != NULL) {
-    /* clean up such that all used memory by lpsolve is freed */
-    delete_lp(lp);
-  }
-
-  return(ret);
+void print_gsl_matrix_row(const gsl_matrix& m, const unsigned int row) {
+  for (unsigned int col = 0; col < m.size2 - 1; col++)
+    std::cout << std::setw(10) << gsl_matrix_get(&m, row, col) << ", ";
+  std::cout << std::setw(10) << gsl_matrix_get(&m, row, m.size2-1);
 }
-#endif
-#endif
+
+void print_gsl_matrix(const gsl_matrix& m) {
+  for (unsigned int i = 0; i < m.size1; i++) {
+    print_gsl_matrix_row(m, i);
+    std::cout << std::endl;
+  }
+}
+
+void print_gsl_linear_system(const gsl_matrix& m, const gsl_vector& c, const gsl_vector& y) {
+  // print row by row
+  std::cout << std::setiosflags(std::ios::fixed) << std::setprecision(4) << std::setfill(' ');
+  for (unsigned int row = 0; row < y.size; row++) {
+    print_gsl_matrix_row(m, row);
+    std::cout << "  ";
+    if (row < c.size)
+      std::cout << std::setw(10) << gsl_vector_get(&c, row);
+    else
+      std::cout << "          ";
+    std::cout << "  " << std::setw(10) << gsl_vector_get(&y, row) << std::endl;
+  }
+}
+
+void sample_linear_problem() {
+  const unsigned int rows = 6;
+  const unsigned int cols = 3;
+  gsl_matrix *x = gsl_matrix_alloc(rows, cols);
+  gsl_matrix *cov = gsl_matrix_alloc(cols, cols);
+  gsl_vector *y = gsl_vector_alloc(rows);
+  gsl_vector *c = gsl_vector_alloc(cols);
+
+  for (unsigned int i = 0; i < rows; i++) {
+    for (unsigned int j = 0; j < cols; j++)
+      gsl_matrix_set(x, i, j, (j + 1) * (i + 1));
+    gsl_vector_set(y, i, cols * (cols + 1) / 2);
+  }
+
+  double chisq;
+  gsl_multifit_linear_workspace * problem = gsl_multifit_linear_alloc(rows, cols);
+  gsl_multifit_linear(x, y, c, cov, &chisq, problem);
+  gsl_multifit_linear_free(problem);
+
+  print_gsl_linear_system(*x, *c, *y);
+
+  gsl_matrix_free(x);
+  gsl_matrix_free(cov);
+  gsl_vector_free(y);
+  gsl_vector_free(c);
+}
 
 template<typename T>
-void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, std::vector<typename Light<T>::properties>& lights) {
+void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, cv::Mat& depth, cv::Mat& modelview_projection_matrix, std::vector<typename Light<T>::properties>& lights) {
   int new_channel_count = std::max(original_image.channels(), image.channels());
   original_image.reshape(new_channel_count);
   image.reshape(new_channel_count);
@@ -162,23 +72,89 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
 
   cv::Mat diff = image - correct_format_image;
   cv::imshow("differenz", diff);
-  cv::waitKey(1000);
+  cv::waitKey(100);
 
-#if WITH_LP
-//  demo();
+//  gsl_multifit_linear_workspace * problem = gsl_multifit_linear_alloc(1000, lights.size()*9);
+  // do not take all points of the image
+  // TODO calculate this value somehow, maybe specify the number of samples and
+  //      distribute them over the mesh in the image
 
-  lprec * lp = 0;
-  // add rows dynamically, columns are properties of our light sources
-//  lp = make_lp(0, image.cols);
+  const unsigned int div = 1000;
+  const unsigned int rows = original_image.rows * original_image.cols / div;
+  const unsigned int components_per_light = 2;
+  const unsigned int colors_per_light = 3;
+  const unsigned int cols = (1 + lights.size() * components_per_light) * colors_per_light;
+  gsl_matrix *x = gsl_matrix_alloc (rows, cols);
+  gsl_matrix *cov = gsl_matrix_alloc(cols, cols);
+  gsl_vector *y = gsl_vector_alloc(rows);
+  gsl_vector *c = gsl_vector_alloc(cols);
 
-  if (lp == 0) {
-	  std::cout << "could not create LP" << std::endl;
-	  return;
+  cv::Mat eye_dir = (cv::Mat_<float>(3,1) << 0, 0, -1);
+
+  for (unsigned int row = 0; row < rows; row+=colors_per_light) {
+    // 1. find a good pixel
+    unsigned int _x = 0;
+    unsigned int _y = 0;
+    // TODO needs to be done
+    assert(false);
+
+    // 2. set matrix parameter for pixel
+    // set value of pixel in the image to the vector
+    const cv::Vec<float, colors_per_light>& pixel = image.at<cv::Vec<float, colors_per_light> >(_y, _x);
+    for (unsigned int i = 0; i < colors_per_light; i++) {
+      gsl_vector_set(y, colors_per_light*row + i, pixel[i]);
+    }
+    // set shading parameter for a pixel in the matrix
+    // ambient term
+    gsl_matrix_set(x, row, 0, 1);
+
+    const cv::Mat pos_vec = (cv::Mat_<float>(3,1) << _x, _y, depth.at<float>(_y, _x));
+    const cv::Mat normal(normals.at<cv::Vec<float, 3> >(_y, _x), false);
+    for (unsigned int col = 1; col < cols; col+=components_per_light) {
+      typename Light<T>::properties& props = lights.at(col/2);
+      // TODO need to transform light_pos to image_space
+      const std::vector<T>& light_pos_in_world_space_vector = props[get_position_name(col/2)];
+      cv::Mat light_pos_in_world_space_mat(light_pos_in_world_space_vector, false);
+      cv::Mat light_pos(modelview_projection_matrix * light_pos_in_world_space_mat, cv::Range(0, 4));
+
+      cv::Mat L_m = light_pos - pos_vec;
+      // should be a scalar
+      cv::Mat L_m_N = L_m * normal.t();
+      cv::Mat R_m = 2*L_m_N * normal - L_m;
+      // should be a scalar
+      cv::Mat R_m_V = R_m * eye_dir;
+
+      assert(L_m_N.dims == 2);
+      assert(L_m_N.cols == 1);
+      assert(L_m_N.rows == 1);
+      float diffuse = L_m_N.at<float>(0,0);
+
+      assert(R_m_V.dims == 2);
+      assert(R_m_V.cols == 1);
+      assert(R_m_V.rows == 1);
+      float specular = R_m_V.at<float>(0,0);
+
+      const std::vector<T>& diffuse_light_properties = props[get_diffuse_name(col/2)];
+      const std::vector<T>& specular_light_properties = props[get_specular_name(col/2)];
+      // 0 == r, 1 == g, 2 == b or bgr
+      for (unsigned int i = 0; i < colors_per_light; i++) {
+        gsl_matrix_set(x, row+i, col, diffuse * diffuse_light_properties.at(i));
+        gsl_matrix_set(x, row+i, col + 1, specular * specular_light_properties.at(i));
+      }
+    }
   }
 
-//  delete_lp(lp);
+  double chisq;
+  gsl_multifit_linear_workspace * problem = gsl_multifit_linear_alloc(rows, cols);
+  gsl_multifit_linear (x, y, c, cov, &chisq, problem);
+  gsl_multifit_linear_free(problem);
 
-#endif
+//  print_gsl_linear_system(*x, *c, *y);
+
+  gsl_matrix_free(x);
+  gsl_matrix_free(cov);
+  gsl_vector_free(y);
+  gsl_vector_free(c);
 }
 
 #endif /* SOLVER_H_ */
