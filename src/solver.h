@@ -80,55 +80,74 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
   //      distribute them over the mesh in the image
 
   const unsigned int div = 1000;
-  const unsigned int rows = original_image.rows * original_image.cols / div;
-  const unsigned int components_per_light = 2;
   const unsigned int colors_per_light = 3;
-  const unsigned int cols = (1 + lights.size() * components_per_light) * colors_per_light;
+  const unsigned int rows = original_image.rows * original_image.cols / div * colors_per_light;
+  const unsigned int components_per_light = 2;
+  const unsigned int cols = (1 + lights.size() * components_per_light);
   gsl_matrix *x = gsl_matrix_alloc (rows, cols);
   gsl_matrix *cov = gsl_matrix_alloc(cols, cols);
   gsl_vector *y = gsl_vector_alloc(rows);
   gsl_vector *c = gsl_vector_alloc(cols);
 
   cv::Mat eye_dir = (cv::Mat_<float>(3,1) << 0, 0, -1);
+  cv::Mat used_pixels(image.rows, image.cols, CV_8S, cv::Scalar(0));
 
   for (unsigned int row = 0; row < rows; row+=colors_per_light) {
     // 1. find a good pixel
     unsigned int _x = 0;
     unsigned int _y = 0;
-    // TODO needs to be done
-    assert(false);
+    while (_x == 0 && _y == 0) {
+      unsigned int x = image.cols * drand48();
+      unsigned int y = image.rows * drand48();
+
+      // skip if already taken
+      if (used_pixels.at<char>(y, x))
+        continue;
+
+      // skip if no object
+      // assume that a normal is (0,0,0) where no object is
+      cv::Vec<float, 3> normal = normals.at<cv::Vec<float, 3> >(y, x);
+      if (normal[0] == 0 && normal[1] == 0 && normal[2] == 0)
+        continue;
+
+      _x = x;
+      _y = y;
+      used_pixels.at<char>(y,x) = 1;
+    }
 
     // 2. set matrix parameter for pixel
     // set value of pixel in the image to the vector
     const cv::Vec<float, colors_per_light>& pixel = image.at<cv::Vec<float, colors_per_light> >(_y, _x);
     for (unsigned int i = 0; i < colors_per_light; i++) {
-      gsl_vector_set(y, colors_per_light*row + i, pixel[i]);
+      std::cout << "number of rows: " << rows << ", current row:" << row + i << std::endl;
+      gsl_vector_set(y, row + i, pixel[i]);
     }
     // set shading parameter for a pixel in the matrix
     // ambient term
-    gsl_matrix_set(x, row, 0, 1);
+    for (unsigned int i = 0; i < colors_per_light; i++)
+      gsl_matrix_set(x, row + 1, 0, 1);
 
     const cv::Mat pos_vec = (cv::Mat_<float>(3,1) << _x, _y, depth.at<float>(_y, _x));
     const cv::Mat normal(normals.at<cv::Vec<float, 3> >(_y, _x), false);
     for (unsigned int col = 1; col < cols; col+=components_per_light) {
+      std::cout << col << std::endl;
       typename Light<T>::properties& props = lights.at(col/2);
       // TODO need to transform light_pos to image_space
       const std::vector<T>& light_pos_in_world_space_vector = props[get_position_name(col/2)];
       cv::Mat light_pos_in_world_space_mat(light_pos_in_world_space_vector, false);
-      cv::Mat light_pos(modelview_projection_matrix * light_pos_in_world_space_mat, cv::Range(0, 4));
+      cv::Mat light_pos(modelview_projection_matrix * light_pos_in_world_space_mat, cv::Range(0, 3));
 
       cv::Mat L_m = light_pos - pos_vec;
       // should be a scalar
-      cv::Mat L_m_N = L_m * normal.t();
-      cv::Mat R_m = 2*L_m_N * normal - L_m;
-      // should be a scalar
-      cv::Mat R_m_V = R_m * eye_dir;
-
+      cv::Mat L_m_N = L_m.t() * normal;
       assert(L_m_N.dims == 2);
       assert(L_m_N.cols == 1);
       assert(L_m_N.rows == 1);
       float diffuse = L_m_N.at<float>(0,0);
 
+      cv::Mat R_m = 2*diffuse * normal - L_m;
+      // should be a scalar
+      cv::Mat R_m_V = R_m.t() * eye_dir;
       assert(R_m_V.dims == 2);
       assert(R_m_V.cols == 1);
       assert(R_m_V.rows == 1);
