@@ -62,7 +62,7 @@ void sample_linear_problem() {
 }
 
 template<typename T>
-void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, cv::Mat& depth, cv::Mat& modelview_projection_matrix, std::vector<typename Light<T>::properties>& lights) {
+void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, cv::Mat& depth, cv::Mat& modelview_projection_matrix, std::vector<typename Light<T>::properties>& lights, const int alpha = 50) {
   int new_channel_count = std::max(original_image.channels(), image.channels());
   original_image.reshape(new_channel_count);
   image.reshape(new_channel_count);
@@ -83,7 +83,7 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
   const unsigned int colors_per_light = 3;
   const unsigned int rows = original_image.rows * original_image.cols / div * colors_per_light;
   const unsigned int components_per_light = 2;
-  const unsigned int cols = (1 + lights.size() * components_per_light);
+  const unsigned int cols = (1 + lights.size() * components_per_light) * colors_per_light; // TODO add for each component RGB
   gsl_matrix *x = gsl_matrix_alloc (rows, cols);
   gsl_matrix *cov = gsl_matrix_alloc(cols, cols);
   gsl_vector *y = gsl_vector_alloc(rows);
@@ -119,46 +119,65 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
     // set value of pixel in the image to the vector
     const cv::Vec<float, colors_per_light>& pixel = image.at<cv::Vec<float, colors_per_light> >(_y, _x);
     for (unsigned int i = 0; i < colors_per_light; i++) {
-      std::cout << "number of rows: " << rows << ", current row:" << row + i << std::endl;
       gsl_vector_set(y, row + i, pixel[i]);
     }
     // set shading parameter for a pixel in the matrix
     // ambient term
     for (unsigned int i = 0; i < colors_per_light; i++)
-      gsl_matrix_set(x, row + 1, 0, 1);
+      for (unsigned int j = 0; j < colors_per_light; j++)
+        if (i == j)
+          gsl_matrix_set(x, row + i, 0, 1);
+        else
+          gsl_matrix_set(x, row + i, 0, 0);
 
     const cv::Mat pos_vec = (cv::Mat_<float>(3,1) << _x, _y, depth.at<float>(_y, _x));
     const cv::Mat normal(normals.at<cv::Vec<float, 3> >(_y, _x), false);
-    for (unsigned int col = 1; col < cols; col+=components_per_light) {
-      std::cout << col << std::endl;
-      typename Light<T>::properties& props = lights.at(col/2);
+    for (unsigned int col = colors_per_light; col < cols; col+=components_per_light*colors_per_light) {
+      typename Light<T>::properties& props = lights.at(col/components_per_light/colors_per_light);
       // TODO need to transform light_pos to image_space
-      const std::vector<T>& light_pos_in_world_space_vector = props[get_position_name(col/2)];
-      cv::Mat light_pos_in_world_space_mat(light_pos_in_world_space_vector, false);
-      cv::Mat light_pos(modelview_projection_matrix * light_pos_in_world_space_mat, cv::Range(0, 3));
+      const std::vector<T>& light_pos_in_world_space_vector = props[get_position_name(col/components_per_light/colors_per_light)];
+      const cv::Mat light_pos_in_world_space_mat(light_pos_in_world_space_vector, false);
+      const cv::Mat light_pos(modelview_projection_matrix * light_pos_in_world_space_mat, cv::Range(0, 3));
 
-      cv::Mat L_m = light_pos - pos_vec;
+      const cv::Mat L_m = light_pos - pos_vec;
       // should be a scalar
-      cv::Mat L_m_N = L_m.t() * normal;
+      const cv::Mat L_m_N = L_m.t() * normal;
       assert(L_m_N.dims == 2);
       assert(L_m_N.cols == 1);
       assert(L_m_N.rows == 1);
-      float diffuse = L_m_N.at<float>(0,0);
+      const float diffuse = L_m_N.at<float>(0,0);
 
-      cv::Mat R_m = 2*diffuse * normal - L_m;
+      const cv::Mat R_m = 2*diffuse * normal - L_m;
       // should be a scalar
-      cv::Mat R_m_V = R_m.t() * eye_dir;
+      const cv::Mat R_m_V = R_m.t() * eye_dir;
       assert(R_m_V.dims == 2);
       assert(R_m_V.cols == 1);
       assert(R_m_V.rows == 1);
-      float specular = R_m_V.at<float>(0,0);
+      const float specular = std::pow(R_m_V.at<float>(0,0), alpha);
 
-      const std::vector<T>& diffuse_light_properties = props[get_diffuse_name(col/2)];
-      const std::vector<T>& specular_light_properties = props[get_specular_name(col/2)];
-      // 0 == r, 1 == g, 2 == b or bgr
+      //   global  each light
+      //   amb     diff   spec
+      //   r g b   r g b  r g b
+      // r 1 0 0   1 0 0  1 0 0
+      // g 0 1 0   0 1 0  0 1 0
+      // b 0 0 1   0 0 1  0 0 1
       for (unsigned int i = 0; i < colors_per_light; i++) {
-        gsl_matrix_set(x, row+i, col, diffuse * diffuse_light_properties.at(i));
-        gsl_matrix_set(x, row+i, col + 1, specular * specular_light_properties.at(i));
+        for (unsigned int j = 0; j < colors_per_light; j++) {
+          std::cout << col+j << "/" << cols << std::endl;
+          std::cout << col+colors_per_light+j << "/" << cols << std::endl;
+          if (i == j) {
+            // diffuse
+            gsl_matrix_set(x, row+i, col+j, diffuse);
+            // specular
+            gsl_matrix_set(x, row+i, col+colors_per_light+j, specular);
+          } else {
+            // diffuse
+            gsl_matrix_set(x, row+i, col+j, 0);
+            // specular
+            std::cout << col+colors_per_light+j << "/" << cols << std::endl;
+            gsl_matrix_set(x, row+i, col+colors_per_light+j, 0);
+          }
+        }
       }
     }
   }
@@ -168,7 +187,16 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
   gsl_multifit_linear (x, y, c, cov, &chisq, problem);
   gsl_multifit_linear_free(problem);
 
-//  print_gsl_linear_system(*x, *c, *y);
+  // TODO handle ambient light here and in shader
+  for (unsigned int col = colors_per_light; col < cols; col+=components_per_light*colors_per_light) {
+    typename Light<T>::properties& props = lights.at(col/components_per_light/colors_per_light);
+    std::vector<T>& diff = props[get_diffuse_name(col/components_per_light/colors_per_light)];
+    std::vector<T>& spec = props[get_specular_name(col/components_per_light/colors_per_light)];
+    for (unsigned int i = 0; i < colors_per_light; i++) {
+      diff.at(i) = gsl_vector_get(c, col + i);
+      spec.at(i) = gsl_vector_get(c, col + colors_per_light + i);
+    }
+  }
 
   gsl_matrix_free(x);
   gsl_matrix_free(cov);
