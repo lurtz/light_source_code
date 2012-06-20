@@ -49,7 +49,7 @@ class MeshObj {
     void rotate(float rotation[3]);
     void translate(float translation[3]);
     void scale(float scale);
-    void setLight(const std::vector<Light<float>::properties> &lights);
+    void setLight(const std::vector<float> &ambient_color, const std::vector<Light<float>::properties> &lights);
   private:
     std::vector<Vertex> mVertexData;
     std::vector<unsigned int> mIndexData;
@@ -70,6 +70,7 @@ class MeshObj {
     float _translation[3];
     float _scale;
 
+    std::vector<float> const *_ambient_color;
     std::vector<Light<float>::properties> const *_lights;
 };
 

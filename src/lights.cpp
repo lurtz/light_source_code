@@ -10,10 +10,6 @@ std::string get_position_name(const unsigned int number) {
   return get_name(number, "position");
 }
 
-std::string get_ambient_name(const unsigned int number) {
-  return get_name(number, "ambient");
-}
-
 std::string get_diffuse_name(const unsigned int number) {
   return get_name(number, "diffuse");
 }

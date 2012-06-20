@@ -84,7 +84,7 @@ void MeshObj::render(void) {
     GLuint programm_id = mMaterial->getShaderProgram()->getProgramID();
 
     if (_lights != NULL)
-      setUniforms<float>(programm_id, *_lights);
+      setUniforms<float>(programm_id, *_ambient_color, *_lights);
 
     GLint vertexLoc = glGetAttribLocation(programm_id, "vertex_OS");
     GLint normalLoc = glGetAttribLocation(programm_id, "normal_OS");
@@ -142,6 +142,7 @@ void MeshObj::scale(float scale) {
 }
 
 
-void MeshObj::setLight(const std::vector<Light<float>::properties> &lights) {
+void MeshObj::setLight(const std::vector<float> &ambient_color, const std::vector<Light<float>::properties> &lights) {
+  _ambient_color = &ambient_color;
 	_lights = &lights;
 }

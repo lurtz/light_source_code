@@ -25,6 +25,7 @@ GLuint fboTexture[2];
 GLuint fboDepthTexture;
 GLuint fbo;
 
+std::vector<float> ambient;
 std::vector<Light<float>::properties> lights;
 
 bool image_displayed = false;
@@ -161,7 +162,7 @@ void renderSceneIntoFBO() {
     cv::Mat projection_matrix_cv(4, 4, CV_32FC1, projection_matrix, 0);
 
     cv::Mat modelview_projection_matrix = projection_matrix_cv * model_view_matrix_cv;
-    optimize_lights<float>(original_copy, image, normals, depth2, modelview_projection_matrix, lights);
+    optimize_lights<float>(original_copy, image, normals, depth2, modelview_projection_matrix, ambient, lights);
 
     delete [] fbo_image;
     delete [] fbo_normal;
@@ -186,7 +187,7 @@ void updateGL() {
   _ball.rotateView();
   
   // render //
-  renderSceneIntoFBO();
+//  renderSceneIntoFBO();
   renderScene();
   
   // swap render and screen buffer //
@@ -196,7 +197,7 @@ void updateGL() {
 void run(const cv::Mat& original_image, MeshObj * const meshobj) {
 	_original_image = &original_image;
     _meshobj = meshobj;
-    _meshobj->setLight(lights);
+    _meshobj->setLight(ambient, lights);
     glutMainLoop();
 //    glutMainLoopEvent();
 }
@@ -281,9 +282,10 @@ void initFBO() {
 }
 
 void initLights() {
+  ambient = create_ambient_color<float>();
   lights = create_lights(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
   if (_meshobj != NULL)
-	  _meshobj->setLight(lights);
+	  _meshobj->setLight(ambient, lights);
 }
 
 void setupOpenGL(int * argc, char ** argv, const unsigned int width, const unsigned int height) {

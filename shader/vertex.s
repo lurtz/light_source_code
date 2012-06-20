@@ -8,7 +8,6 @@ attribute vec3 normal_OS;
 
 struct Light_properties {
   vec4 position;
-  vec4 ambient;
   vec4 diffuse;
   vec4 specular;
 };
