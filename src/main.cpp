@@ -176,6 +176,9 @@ int main(int argc, char * argv[]) {
   if (args.mesh_filename != "") {
     ObjLoader objl;
     MeshObj * mesh = objl.loadObjFile(args.mesh_filename, args.mesh_filename);
+    mesh->translate(args.translation);
+    mesh->rotate(args.rotation);
+    mesh->scale(args.scale);
     Material * mat = new Material();
     mesh->setMaterial(mat);
     mat->setShaderProgram(new Shader("shader/vertex.s", "shader/fragment.s"));

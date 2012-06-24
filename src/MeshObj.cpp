@@ -73,6 +73,13 @@ void MeshObj::setMaterial(Material *material) {
 }
 
 void MeshObj::render(void) {
+  glPushMatrix();
+  glTranslatef(_translation[0], _translation[1], _translation[2]);
+  glRotatef(_rotation[0], 1, 0, 0);
+  glRotatef(_rotation[1], 0, 1, 0);
+  glRotatef(_rotation[2], 0, 0, 1);
+  glScalef(_scale, _scale, _scale);
+
   if (mMaterial != NULL) {
     mMaterial->enable();
   }
@@ -113,6 +120,8 @@ void MeshObj::render(void) {
   if (mMaterial != NULL) {
     mMaterial->disable();
   }
+
+  glPopMatrix();
 }
 
 float MeshObj::getWidth(void) {
