@@ -125,6 +125,10 @@ void read_config_file(const std::string filename, arguments &args) {
 
 arguments parse_options(const int& argc, char * const argv[]) {
   arguments args;
+  if (argc == 1) {
+    read_config_file("../config", args);
+    return args;
+  }
   int opt = 0;
   int long_index = 0;
   while ((opt = getopt_long(argc, argv, opt_string, long_opts, &long_index)) != -1) {
