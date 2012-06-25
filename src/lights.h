@@ -69,20 +69,30 @@ std::vector<typename Light<T>::properties> create_lights(const T light_props[][d
 }
 
 template<typename T>
-void prints_lights(const std::vector<typename Light<T>::properties> &lights) {
+void print_lights(const std::vector<typename Light<T>::properties> &lights) {
   unsigned int size = lights.size();
-  std::cout << size << std::endl;
-  for (auto iter = lights.begin(); iter != lights.end(); iter++) {
+  std::cout << "number of lights: " << size << std::endl;
+  unsigned int i = 0;
+  for (auto iter = lights.begin(); iter != lights.end(); iter++, i++) {
     typename Light<T>::properties prop = *iter;
     for (auto iter_prop = prop.begin(); iter_prop != prop.end(); iter_prop++) {
       std::string name = iter_prop->first;
       std::vector<T> value = iter_prop->second;
-      std::cout << "light property name: " << name << ", value: ";
+      std::cout << "light " << i << ", property: " << name << ", value: ";
       for (auto iter_val = value.begin(); iter_val != value.end(); iter_val++)
         std::cout << *iter_val << ", ";
       std::cout << std::endl;
     }
   }
+}
+
+template<typename T>
+void print_lights(const std::vector<typename Light<T>::properties> &lights, const std::vector<T> &ambient) {
+  std::cout << "ambient illumination: ";
+  for (auto iter = ambient.begin(); iter != ambient.end(); iter++)
+    std::cout << *iter << ", ";
+  std::cout << std::endl;
+  print_lights<T>(lights);
 }
 
 template<typename T>

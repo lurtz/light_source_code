@@ -6,6 +6,7 @@
 #include <vector>
 #include <gsl/gsl_multifit.h>
 #include <iomanip>
+#include <limits>
 
 void print_gsl_matrix_row(const gsl_matrix& m, const unsigned int row) {
   for (unsigned int col = 0; col < m.size2 - 1; col++)
@@ -63,18 +64,24 @@ void sample_linear_problem() {
 
 template<typename T>
 void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, cv::Mat& depth, cv::Mat& modelview_projection_matrix, std::vector<T> &ambient, std::vector<typename Light<T>::properties>& lights, const int alpha = 50) {
+//  cv::imshow("FBO texture", image);
+
   int new_channel_count = std::max(original_image.channels(), image.channels());
   original_image.reshape(new_channel_count);
   image.reshape(new_channel_count);
+//  cv::imshow("original image right channel count", original_image);
 
   cv::Mat correct_format_image;
-  original_image.convertTo(correct_format_image, CV_32F);
+  original_image.convertTo(correct_format_image, CV_32F, 1.0/std::numeric_limits<unsigned char>::max());
+//  cv::imshow("correct format image", correct_format_image);
 
   cv::Mat diff = image - correct_format_image;
   cv::imshow("differenz", diff);
+
   cv::waitKey(100);
 
-//  gsl_multifit_linear_workspace * problem = gsl_multifit_linear_alloc(1000, lights.size()*9);
+  print_lights(lights, ambient);
+
   // do not take all points of the image
   // TODO calculate this value somehow, maybe specify the number of samples and
   //      distribute them over the mesh in the image
@@ -126,9 +133,9 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
     for (unsigned int i = 0; i < colors_per_light; i++)
       for (unsigned int j = 0; j < colors_per_light; j++)
         if (i == j)
-          gsl_matrix_set(x, row + i, 0, 1);
+          gsl_matrix_set(x, row + i, j, 1);
         else
-          gsl_matrix_set(x, row + i, 0, 0);
+          gsl_matrix_set(x, row + i, j, 0);
 
     const cv::Mat pos_vec = (cv::Mat_<float>(3,1) << _x, _y, depth.at<float>(_y, _x));
     const cv::Mat normal(normals.at<cv::Vec<float, 3> >(_y, _x), false);
@@ -139,21 +146,29 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
       const cv::Mat light_pos_in_world_space_mat(light_pos_in_world_space_vector, false);
       const cv::Mat light_pos(modelview_projection_matrix * light_pos_in_world_space_mat, cv::Range(0, 3));
 
-      const cv::Mat L_m = light_pos - pos_vec;
+      const cv::Mat L_m_ = light_pos - pos_vec;
+      cv::Mat L_m(L_m_.rows, L_m_.cols, L_m_.type());
+      cv::normalize(L_m_, L_m);
       // should be a scalar
       const cv::Mat L_m_N = L_m.t() * normal;
       assert(L_m_N.dims == 2);
       assert(L_m_N.cols == 1);
       assert(L_m_N.rows == 1);
-      const float diffuse = L_m_N.at<float>(0,0);
+      float diffuse = L_m_N.at<float>(0,0);
+      if (diffuse < 0.0f)
+        diffuse = 0.0f;
 
-      const cv::Mat R_m = 2*diffuse * normal - L_m;
-      // should be a scalar
-      const cv::Mat R_m_V = R_m.t() * eye_dir;
-      assert(R_m_V.dims == 2);
-      assert(R_m_V.cols == 1);
-      assert(R_m_V.rows == 1);
-      const float specular = std::pow(R_m_V.at<float>(0,0), alpha);
+      float specular = 0.0f;
+      if (diffuse > 0.0f) {
+        // R =  I - 2.0 * dot(N, I) * N
+        const cv::Mat R_m = -L_m - 2*diffuse * normal;
+        // should be a scalar
+        const cv::Mat R_m_V = R_m.t() * eye_dir;
+        assert(R_m_V.dims == 2);
+        assert(R_m_V.cols == 1);
+        assert(R_m_V.rows == 1);
+        specular = std::pow(R_m_V.at<float>(0,0), alpha);
+      }
 
       //   global  each light
       //   amb     diff   spec
@@ -200,10 +215,14 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
     }
   }
 
+  print_gsl_linear_system(*x, *c, *y);
+
   gsl_matrix_free(x);
   gsl_matrix_free(cov);
   gsl_vector_free(y);
   gsl_vector_free(c);
+
+  print_lights(lights, ambient);
 }
 
 #endif /* SOLVER_H_ */

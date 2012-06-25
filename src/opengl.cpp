@@ -146,9 +146,6 @@ void renderSceneIntoFBO() {
     // scale data from depth buffer, which is from 0.0 to 1.0
     cv::Mat depth2 = depth * (_zFar - _zNear) + _zFar;
 
-    cv::imshow("FBO texture", image);
-//    cv::waitKey(0);
-
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     cv::Mat original_copy = _original_image->clone();
@@ -187,7 +184,7 @@ void updateGL() {
   _ball.rotateView();
   
   // render //
-//  renderSceneIntoFBO();
+  renderSceneIntoFBO();
   renderScene();
   
   // swap render and screen buffer //

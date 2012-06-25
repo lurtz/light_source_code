@@ -25,8 +25,6 @@ void main() {
     vec3 vVertex = vec3(gl_ModelViewMatrix * pos);
     eyeVec = -vVertex;
     for (int i = 0; i < MAX_LIGHTS; i++) {
-      vertex_to_light[i] = vec3((gl_ModelViewMatrix * lights[i].position).xyz - vVertex);
+      vertex_to_light[i] = (gl_ModelViewMatrix * lights[i].position).xyz - vVertex;
     }
-
-
 }

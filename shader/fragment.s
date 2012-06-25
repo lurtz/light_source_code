@@ -49,7 +49,6 @@ void main () {
     if (color.z > 1.0)
       color.z = 1.0;
 
-
     gl_FragData[0] = color;
     gl_FragData[1] = vec4(N, 0.0);
 }
