@@ -64,7 +64,7 @@ void sample_linear_problem() {
 
 template<typename T>
 void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, cv::Mat& depth, cv::Mat& modelview_projection_matrix, std::vector<T> &ambient, std::vector<typename Light<T>::properties>& lights, const int alpha = 50) {
-//  cv::imshow("FBO texture", image);
+  cv::imshow("FBO texture", image);
 
   int new_channel_count = std::max(original_image.channels(), image.channels());
   original_image.reshape(new_channel_count);
@@ -78,7 +78,8 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
   cv::Mat diff = image - correct_format_image;
   cv::imshow("differenz", diff);
 
-  cv::waitKey(100);
+  cv::imshow("normals", normals);
+  cv::imshow("depth", depth);
 
   print_lights(lights, ambient);
 
@@ -97,7 +98,7 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
   gsl_vector *c = gsl_vector_alloc(cols);
 
   cv::Mat eye_dir = (cv::Mat_<float>(3,1) << 0, 0, -1);
-  cv::Mat used_pixels(image.rows, image.cols, CV_8S, cv::Scalar(0));
+  cv::Mat used_pixels(image.rows, image.cols, CV_8U, cv::Scalar(0));
 
   for (unsigned int row = 0; row < rows; row+=colors_per_light) {
     // 1. find a good pixel
@@ -108,7 +109,7 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
       unsigned int y = image.rows * drand48();
 
       // skip if already taken
-      if (used_pixels.at<char>(y, x))
+      if (used_pixels.at<unsigned char>(y, x))
         continue;
 
       // skip if no object
@@ -119,12 +120,12 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
 
       _x = x;
       _y = y;
-      used_pixels.at<char>(y,x) = 1;
+      used_pixels.at<unsigned char>(y,x) = std::numeric_limits<unsigned char>::max();
     }
 
     // 2. set matrix parameter for pixel
     // set value of pixel in the image to the vector
-    const cv::Vec<float, colors_per_light>& pixel = image.at<cv::Vec<float, colors_per_light> >(_y, _x);
+    const cv::Vec<float, colors_per_light>& pixel = original_image.at<cv::Vec<float, colors_per_light> >(_y, _x);
     for (unsigned int i = 0; i < colors_per_light; i++) {
       gsl_vector_set(y, row + i, pixel[i]);
     }
@@ -144,6 +145,9 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
       // TODO need to transform light_pos to image_space
       const std::vector<T>& light_pos_in_world_space_vector = props[get_position_name(col/components_per_light/colors_per_light)];
       const cv::Mat light_pos_in_world_space_mat(light_pos_in_world_space_vector, false);
+      // TODO fail right here
+      //      need position of vertex and light in world space for phong shading
+      //      maybe achievable by inverting the projection matrix
       const cv::Mat light_pos(modelview_projection_matrix * light_pos_in_world_space_mat, cv::Range(0, 3));
 
       const cv::Mat L_m_ = light_pos - pos_vec;
@@ -215,12 +219,15 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
     }
   }
 
-  print_gsl_linear_system(*x, *c, *y);
+//  print_gsl_linear_system(*x, *c, *y);
 
   gsl_matrix_free(x);
   gsl_matrix_free(cov);
   gsl_vector_free(y);
   gsl_vector_free(c);
+
+  cv::imshow("used_pixels", used_pixels);
+  cv::waitKey(100);
 
   print_lights(lights, ambient);
 }

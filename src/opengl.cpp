@@ -143,8 +143,14 @@ void renderSceneIntoFBO() {
     cv::Mat image(windowHeight, windowWidth, CV_32FC3, fbo_image, 0);
     cv::Mat normals(windowHeight, windowWidth, CV_32FC3, fbo_normal, 0);
     cv::Mat depth(windowHeight, windowWidth, CV_32FC1, fbo_depth, 0);
+
+    cv::imshow("fbo texture", image);
+    cv::imshow("normals2", normals);
+    cv::imshow("depth before scaling", depth);
+    cv::waitKey(100);
+
     // scale data from depth buffer, which is from 0.0 to 1.0
-    cv::Mat depth2 = depth * (_zFar - _zNear) + _zFar;
+    cv::Mat depth2 = depth * (_zFar - _zNear) + _zNear;
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -159,7 +165,7 @@ void renderSceneIntoFBO() {
     cv::Mat projection_matrix_cv(4, 4, CV_32FC1, projection_matrix, 0);
 
     cv::Mat modelview_projection_matrix = projection_matrix_cv * model_view_matrix_cv;
-    optimize_lights<float>(original_copy, image, normals, depth2, modelview_projection_matrix, ambient, lights);
+//    optimize_lights<float>(original_copy, image, normals, depth2, modelview_projection_matrix, ambient, lights);
 
     delete [] fbo_image;
     delete [] fbo_normal;
