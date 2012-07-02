@@ -127,12 +127,13 @@ void renderSceneIntoFBO() {
     float * fbo_depth = new float[windowHeight*windowWidth];
 
     // read each texture into an array
-    glReadBuffer(fboTexture[0]);
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
     glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, fbo_image);
-    glReadBuffer(fboTexture[1]);
+    glReadBuffer(GL_COLOR_ATTACHMENT1);
     glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, fbo_normal);
-    glReadBuffer(fboDepthTexture);
+    glReadBuffer(GL_DEPTH_ATTACHMENT);
     glReadPixels(0, 0, windowWidth, windowHeight, GL_DEPTH_COMPONENT, GL_FLOAT, fbo_depth);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // opencv images are upside down
     flipImage(fbo_image, channels*windowWidth, windowHeight);
@@ -151,8 +152,6 @@ void renderSceneIntoFBO() {
 
     // scale data from depth buffer, which is from 0.0 to 1.0
     cv::Mat depth2 = depth * (_zFar - _zNear) + _zNear;
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     cv::Mat original_copy = _original_image->clone();
 
