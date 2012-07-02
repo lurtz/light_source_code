@@ -12,16 +12,16 @@
 #include <highgui.h>
 #include "solver.h"
 
-
 MeshObj * _meshobj;
 cv::Mat const * _original_image;
 Trackball _ball;
 
+GLclampf clear_color = 0.3;
 GLfloat _zNear, _zFar;
 GLfloat _fov;
 
 // FBO stuff //
-GLuint fboTexture[2];
+GLuint fboTexture[3];
 GLuint fboDepthTexture;
 GLuint fbo;
 
@@ -113,8 +113,8 @@ void renderSceneIntoFBO() {
     // render scene into first color attachment of FBO -> use as filter texture later on //
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-    static const GLenum buffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
-    glDrawBuffers(2, buffers);
+    static const GLenum buffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2};
+    glDrawBuffers(3, buffers);
     glDepthMask(GL_TRUE);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -124,34 +124,35 @@ void renderSceneIntoFBO() {
     const unsigned int channels = 3;
     float * fbo_image = new float[windowHeight*windowWidth*channels];
     float * fbo_normal = new float[windowHeight*windowWidth*channels];
-    float * fbo_depth = new float[windowHeight*windowWidth];
+    float * fbo_position = new float[windowHeight*windowWidth*channels];
 
     // read each texture into an array
     glReadBuffer(GL_COLOR_ATTACHMENT0);
     glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, fbo_image);
     glReadBuffer(GL_COLOR_ATTACHMENT1);
     glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, fbo_normal);
+    glReadBuffer(GL_COLOR_ATTACHMENT2);
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, fbo_position);
     glReadBuffer(GL_DEPTH_ATTACHMENT);
-    glReadPixels(0, 0, windowWidth, windowHeight, GL_DEPTH_COMPONENT, GL_FLOAT, fbo_depth);
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // opencv images are upside down
     flipImage(fbo_image, channels*windowWidth, windowHeight);
     flipImage(fbo_normal, channels*windowWidth, windowHeight);
-    flipImage(fbo_depth, windowWidth, windowHeight);
+    flipImage(fbo_position, channels*windowWidth, windowHeight);
 
     // create opencv images
     cv::Mat image(windowHeight, windowWidth, CV_32FC3, fbo_image, 0);
     cv::Mat normals(windowHeight, windowWidth, CV_32FC3, fbo_normal, 0);
-    cv::Mat depth(windowHeight, windowWidth, CV_32FC1, fbo_depth, 0);
+    cv::Mat position(windowHeight, windowWidth, CV_32FC3, fbo_position, 0);
 
+#if false
     cv::imshow("fbo texture", image);
     cv::imshow("normals2", normals);
-    cv::imshow("depth before scaling", depth);
+    cv::imshow("position", position);
     cv::waitKey(100);
-
-    // scale data from depth buffer, which is from 0.0 to 1.0
-    cv::Mat depth2 = depth * (_zFar - _zNear) + _zNear;
+#endif
 
     cv::Mat original_copy = _original_image->clone();
 
@@ -159,16 +160,11 @@ void renderSceneIntoFBO() {
     glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix);
     cv::Mat model_view_matrix_cv(4, 4, CV_32FC1, model_view_matrix, 0);
 
-    GLfloat projection_matrix[16];
-    glGetFloatv(GL_PROJECTION_MATRIX, projection_matrix);
-    cv::Mat projection_matrix_cv(4, 4, CV_32FC1, projection_matrix, 0);
-
-    cv::Mat modelview_projection_matrix = projection_matrix_cv * model_view_matrix_cv;
-//    optimize_lights<float>(original_copy, image, normals, depth2, modelview_projection_matrix, ambient, lights);
+    optimize_lights<float>(original_copy, image, normals, position, model_view_matrix_cv, clear_color, ambient, lights);
 
     delete [] fbo_image;
     delete [] fbo_normal;
-    delete [] fbo_depth;
+    delete [] fbo_position;
 }
 
 void updateGL() {
@@ -239,7 +235,7 @@ void keyboardEvent(unsigned char key, int x, int y) {
 }
 
 void initGL() {
-  glClearColor(0.3, 0.3, 0.3, 0.3);
+  glClearColor(clear_color, clear_color, clear_color, clear_color);
   glEnable(GL_DEPTH_TEST);
 
   // set projectionmatrix
@@ -251,8 +247,8 @@ void initGL() {
 
 void initFBO() {
   // init color textures //
-  glGenTextures(2, fboTexture);
-  for (unsigned int i = 0; i < 2; ++i) {
+  glGenTextures(3, fboTexture);
+  for (unsigned int i = 0; i < 3; ++i) {
     glBindTexture(GL_TEXTURE_2D, fboTexture[i]);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
@@ -277,6 +273,7 @@ void initFBO() {
   glBindFramebuffer(GL_FRAMEBUFFER, fbo);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture[0], 0);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, fboTexture[1], 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, fboTexture[2], 0);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, fboDepthTexture, 0);
 
   // unbind FBO until it's needed //

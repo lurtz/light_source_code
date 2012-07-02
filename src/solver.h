@@ -63,7 +63,7 @@ void sample_linear_problem() {
 }
 
 template<typename T>
-void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, cv::Mat& depth, cv::Mat& modelview_projection_matrix, std::vector<T> &ambient, std::vector<typename Light<T>::properties>& lights, const int alpha = 50) {
+void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, cv::Mat& position, cv::Mat& model_view_matrix, float clear_color, std::vector<T> &ambient, std::vector<typename Light<T>::properties>& lights, const int alpha = 50) {
   cv::imshow("FBO texture", image);
 
   int new_channel_count = std::max(original_image.channels(), image.channels());
@@ -79,7 +79,7 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
   cv::imshow("differenz", diff);
 
   cv::imshow("normals", normals);
-  cv::imshow("depth", depth);
+  cv::imshow("position", position);
 
   print_lights(lights, ambient);
 
@@ -113,9 +113,10 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
         continue;
 
       // skip if no object
-      // assume that a normal is (0,0,0) where no object is
+      // assume that a normal is (clear_color,clear_color,clear_color) where no object is
+      float eps = 0.01;
       cv::Vec<float, 3> normal = normals.at<cv::Vec<float, 3> >(y, x);
-      if (normal[0] == 0 && normal[1] == 0 && normal[2] == 0)
+      if (fabs(normal[0] - clear_color) < eps && fabs(normal[1] - clear_color) < eps && fabs(normal[2] - clear_color) < eps)
         continue;
 
       _x = x;
@@ -138,8 +139,9 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
         else
           gsl_matrix_set(x, row + i, j, 0);
 
-    const cv::Mat pos_vec = (cv::Mat_<float>(3,1) << _x, _y, depth.at<float>(_y, _x));
+    const cv::Mat pos_vec(position.at<cv::Vec3f>(_y, _x));
     const cv::Mat normal(normals.at<cv::Vec<float, 3> >(_y, _x), false);
+
     for (unsigned int col = colors_per_light; col < cols; col+=components_per_light*colors_per_light) {
       typename Light<T>::properties& props = lights.at(col/components_per_light/colors_per_light);
       // TODO need to transform light_pos to image_space
@@ -148,7 +150,7 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
       // TODO fail right here
       //      need position of vertex and light in world space for phong shading
       //      maybe achievable by inverting the projection matrix
-      const cv::Mat light_pos(modelview_projection_matrix * light_pos_in_world_space_mat, cv::Range(0, 3));
+      const cv::Mat light_pos(model_view_matrix * light_pos_in_world_space_mat, cv::Range(0, 3));
 
       const cv::Mat L_m_ = light_pos - pos_vec;
       cv::Mat L_m(L_m_.rows, L_m_.cols, L_m_.type());
