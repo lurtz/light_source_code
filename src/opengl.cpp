@@ -77,6 +77,7 @@ void reshape(int width, int height) {
 void renderScene() {
     _meshobj->render();
 
+    if (false)
     for (int x = -1; x < 2; x+=2)
         for (int y = -1; y < 2; y+=2)
             for (int z = -1; z < 2; z+=2) {

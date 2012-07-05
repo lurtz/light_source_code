@@ -62,9 +62,37 @@ void sample_linear_problem() {
   gsl_vector_free(c);
 }
 
+bool check_bounds_of_value(const float value, const std::string valuename, const float min = 0.0f, const float max = 1.0f) {
+  if (value < min)
+    std::cout << valuename << value << " too small" << std::endl;
+  if (value > max)
+    std::cout << valuename << value << " too big" << std::endl;
+  return value >= min && value <= max;
+}
+
+template<typename X, int dim>
+std::pair<X, X> get_min_max(const cv::Mat& mat) {
+  X min = std::numeric_limits<X>::max();
+  X max = std::numeric_limits<X>::lowest();;
+  for (auto iter = mat.begin<cv::Vec<X, dim> >(); iter != mat.end<cv::Vec<X, dim> >(); iter++) {
+    cv::Vec<X, dim> item = *iter;
+    for (unsigned int i = 0; i < dim; i++) {
+        if (item[i] < min)
+          min = item[i];
+        if (item[i] > max)
+          max = item[i];
+    }
+  }
+  std::cout << "min/max value of a pixel is " << static_cast<double>(min) << " / " << static_cast<double>(max) << std::endl;
+  return std::make_pair(min, max);
+}
+
 template<typename T>
 void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, cv::Mat& position, cv::Mat& model_view_matrix, float clear_color, std::vector<T> &ambient, std::vector<typename Light<T>::properties>& lights, const int alpha = 50) {
-  cv::imshow("FBO texture", image);
+//  cv::imshow("FBO texture", image);
+
+  // CV_8UC3  16
+  get_min_max<unsigned char, 3>(original_image);
 
   int new_channel_count = std::max(original_image.channels(), image.channels());
   original_image.reshape(new_channel_count);
@@ -73,13 +101,18 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
 
   cv::Mat correct_format_image;
   original_image.convertTo(correct_format_image, CV_32F, 1.0/std::numeric_limits<unsigned char>::max());
-//  cv::imshow("correct format image", correct_format_image);
+  cv::imshow("correct format image", correct_format_image);
+
+//  CV_32FC3  21
+  get_min_max<float, 3>(correct_format_image);
+
+  assert(correct_format_image.type() == image.type());
 
   cv::Mat diff = image - correct_format_image;
-  cv::imshow("differenz", diff);
+//  cv::imshow("differenz", diff);
 
-  cv::imshow("normals", normals);
-  cv::imshow("position", position);
+//  cv::imshow("normals", normals);
+//  cv::imshow("position", position);
 
   print_lights(lights, ambient);
 
@@ -114,6 +147,7 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
 
       // skip if no object
       // assume that a normal is (clear_color,clear_color,clear_color) where no object is
+      // smallest possible eps is 0.01 (precision)
       float eps = 0.01;
       cv::Vec<float, 3> normal = normals.at<cv::Vec<float, 3> >(y, x);
       if (fabs(normal[0] - clear_color) < eps && fabs(normal[1] - clear_color) < eps && fabs(normal[2] - clear_color) < eps)
@@ -128,6 +162,7 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
     // set value of pixel in the image to the vector
     const cv::Vec<float, colors_per_light>& pixel = original_image.at<cv::Vec<float, colors_per_light> >(_y, _x);
     for (unsigned int i = 0; i < colors_per_light; i++) {
+      check_bounds_of_value(pixel[i], "target");
       gsl_vector_set(y, row + i, pixel[i]);
     }
     // set shading parameter for a pixel in the matrix
@@ -175,6 +210,8 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
         assert(R_m_V.rows == 1);
         specular = std::pow(R_m_V.at<float>(0,0), alpha);
       }
+      check_bounds_of_value(diffuse, "diffuse");
+      check_bounds_of_value(specular, "specular");
 
       //   global  each light
       //   amb     diff   spec
