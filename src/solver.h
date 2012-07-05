@@ -244,14 +244,19 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
         // R =  I - 2.0 * dot(N, I) * N
         const cv::Mat R_m = -L_m - 2*diffuse * normal;
         // should be a scalar
+        // TODO eye_dir is wrong, we are in world space
         const cv::Mat R_m_V = R_m.t() * eye_dir;
         assert(R_m_V.dims == 2);
         assert(R_m_V.cols == 1);
         assert(R_m_V.rows == 1);
         specular = std::pow(R_m_V.at<float>(0,0), alpha);
       }
-      check_bounds_of_value(diffuse, "diffuse");
-      check_bounds_of_value(specular, "specular");
+      if (!check_bounds_of_value(diffuse, "diffuse")) {
+        int x = 3;
+      }
+      if (!check_bounds_of_value(specular, "specular")) {
+        int x = 3;
+      }
 
       //   global  each light
       //   amb     diff   spec
