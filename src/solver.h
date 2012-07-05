@@ -62,29 +62,67 @@ void sample_linear_problem() {
   gsl_vector_free(c);
 }
 
-bool check_bounds_of_value(const float value, const std::string valuename, const float min = 0.0f, const float max = 1.0f) {
-  if (value < min)
-    std::cout << valuename << value << " too small" << std::endl;
-  if (value > max)
-    std::cout << valuename << value << " too big" << std::endl;
-  return value >= min && value <= max;
+template<typename T>
+bool check_bounds_of_value(const T value, const std::string& valuename, const T min = 0.0f, const T max = 1.0f) {
+  bool ret_val = value >= min && value <= max;
+  if (!ret_val) {
+    std::cout << valuename << " " << value << " too ";
+    if (value < min)
+      std::cout << "small";
+    if (value > max)
+      std::cout << "big";
+    std::cout << std::endl;
+  }
+  return ret_val;
+}
+
+template<typename T, int dim>
+bool check_pixel(const cv::Vec<T, dim>& pixel, const std::string& name, const int x, const int y, const T min = 0.0, const T max = 1.0) {
+  bool status = true;
+  for (unsigned int i = 0; i < dim; i++)
+    status &= check_bounds_of_value(pixel[i], name, min, max);
+  if (!status) {
+    std::cout << "point at: " << x << "/" << y << std::endl;
+    std::cout << "point value: ";
+    for (unsigned int j = 0; j < dim; j++)
+      std::cout << pixel[j] << ", ";
+    std::cout << std::endl;
+  }
+  return status;
+}
+
+template<typename T, int dim>
+bool update_min_max(const cv::Vec<T, dim>& item, T& min, T& max) {
+  bool status = false;
+  for (unsigned int i = 0; i < dim; i++) {
+    if (item[i] < min) {
+      status = true;
+      min = item[i];
+    }
+    if (item[i] > max) {
+      status = true;
+      max = item[i];
+    }
+  }
+  return status;
 }
 
 template<typename X, int dim>
 std::pair<X, X> get_min_max(const cv::Mat& mat) {
   X min = std::numeric_limits<X>::max();
-  X max = std::numeric_limits<X>::lowest();;
+  X max = std::numeric_limits<X>::lowest();
   for (auto iter = mat.begin<cv::Vec<X, dim> >(); iter != mat.end<cv::Vec<X, dim> >(); iter++) {
     cv::Vec<X, dim> item = *iter;
-    for (unsigned int i = 0; i < dim; i++) {
-        if (item[i] < min)
-          min = item[i];
-        if (item[i] > max)
-          max = item[i];
-    }
+    update_min_max(item, min, max);
   }
-  std::cout << "min/max value of a pixel is " << static_cast<double>(min) << " / " << static_cast<double>(max) << std::endl;
   return std::make_pair(min, max);
+}
+
+template<typename X, int dim>
+std::pair<X, X> get_min_max_and_print(const cv::Mat& mat) {
+  std::pair<X, X> ret_val = get_min_max<X, dim>(mat);
+  std::cout << "min/max value of a pixel is " << static_cast<double>(ret_val.first) << " / " << static_cast<double>(ret_val.second) << std::endl;
+  return ret_val;
 }
 
 template<typename T>
@@ -92,7 +130,7 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
 //  cv::imshow("FBO texture", image);
 
   // CV_8UC3  16
-  get_min_max<unsigned char, 3>(original_image);
+  get_min_max_and_print<unsigned char, 3>(original_image);
 
   int new_channel_count = std::max(original_image.channels(), image.channels());
   original_image.reshape(new_channel_count);
@@ -104,7 +142,7 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
   cv::imshow("correct format image", correct_format_image);
 
 //  CV_32FC3  21
-  get_min_max<float, 3>(correct_format_image);
+  get_min_max_and_print<float, 3>(correct_format_image);
 
   assert(correct_format_image.type() == image.type());
 
@@ -122,7 +160,7 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
 
   const unsigned int div = 1000;
   const unsigned int colors_per_light = 3;
-  const unsigned int rows = original_image.rows * original_image.cols / div * colors_per_light;
+  const unsigned int rows = correct_format_image.rows * correct_format_image.cols / div * colors_per_light;
   const unsigned int components_per_light = 2;
   const unsigned int cols = (1 + lights.size() * components_per_light) * colors_per_light;
   gsl_matrix *x = gsl_matrix_alloc (rows, cols);
@@ -135,11 +173,11 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
 
   for (unsigned int row = 0; row < rows; row+=colors_per_light) {
     // 1. find a good pixel
-    unsigned int _x = 0;
-    unsigned int _y = 0;
+    int _x = 0;
+    int _y = 0;
     while (_x == 0 && _y == 0) {
-      unsigned int x = image.cols * drand48();
-      unsigned int y = image.rows * drand48();
+      int x = image.cols * drand48();
+      int y = image.rows * drand48();
 
       // skip if already taken
       if (used_pixels.at<unsigned char>(y, x))
@@ -160,9 +198,11 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
 
     // 2. set matrix parameter for pixel
     // set value of pixel in the image to the vector
-    const cv::Vec<float, colors_per_light>& pixel = original_image.at<cv::Vec<float, colors_per_light> >(_y, _x);
+    assert(_x < correct_format_image.cols);
+    assert(_y < correct_format_image.rows);
+    const cv::Vec<float, colors_per_light> pixel = correct_format_image.at<cv::Vec<float, colors_per_light> >(_y, _x);
+    check_pixel(pixel, "target", _x, _y);
     for (unsigned int i = 0; i < colors_per_light; i++) {
-      check_bounds_of_value(pixel[i], "target");
       gsl_vector_set(y, row + i, pixel[i]);
     }
     // set shading parameter for a pixel in the matrix
