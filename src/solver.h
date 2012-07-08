@@ -8,6 +8,9 @@
 #include <iomanip>
 #include <limits>
 
+// smallest possible eps is 0.01 for float and opengl (precision)
+float eps = 0.01;
+
 void print_gsl_matrix_row(const gsl_matrix& m, const unsigned int row) {
   for (unsigned int col = 0; col < m.size2 - 1; col++)
     std::cout << std::setw(10) << gsl_matrix_get(&m, row, col) << ", ";
@@ -126,6 +129,26 @@ std::pair<X, X> get_min_max_and_print(const cv::Mat& mat) {
 }
 
 template<typename T>
+cv::Mat reflect(const cv::Mat& normal, const cv::Mat& vector) {
+  assert(normal.cols == vector.cols);
+  assert(normal.rows == vector.rows);
+  assert(normal.rows == 1 || normal.cols == 1);
+  const cv::Mat L_m_N = vector.t() * normal;
+  T cos = L_m_N.at<T>(0,0);
+  const cv::Mat R_m = vector - 2 * cos * normal;
+  return R_m;
+}
+
+template<typename T>
+void test_reflect() {
+  cv::Mat vector = (cv::Mat_<T>(2, 1) << -1, 0);
+  cv::Mat normal = (cv::Mat_<T>(2, 1) << 1, 1)/sqrt(2);
+  cv::Mat r = reflect<T>(normal, vector);
+  assert(fabs(r.at<T>(0)) <= std::numeric_limits<T>::epsilon());
+  assert(fabs(r.at<T>(1) - 1) <= std::numeric_limits<T>::epsilon());
+}
+
+template<typename T>
 void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, cv::Mat& position, cv::Mat& model_view_matrix, float clear_color, std::vector<T> &ambient, std::vector<typename Light<T>::properties>& lights, const int alpha = 50) {
 //  cv::imshow("FBO texture", image);
 
@@ -158,7 +181,7 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
   // TODO calculate this value somehow, maybe specify the number of samples and
   //      distribute them over the mesh in the image
 
-  const unsigned int div = 1000;
+  const unsigned int div = 100;
   const unsigned int colors_per_light = 3;
   const unsigned int rows = correct_format_image.rows * correct_format_image.cols / div * colors_per_light;
   const unsigned int components_per_light = 2;
@@ -168,7 +191,6 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
   gsl_vector *y = gsl_vector_alloc(rows);
   gsl_vector *c = gsl_vector_alloc(cols);
 
-  cv::Mat eye_dir = (cv::Mat_<float>(3,1) << 0, 0, -1);
   cv::Mat used_pixels(image.rows, image.cols, CV_8U, cv::Scalar(0));
 
   for (unsigned int row = 0; row < rows; row+=colors_per_light) {
@@ -185,8 +207,6 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
 
       // skip if no object
       // assume that a normal is (clear_color,clear_color,clear_color) where no object is
-      // smallest possible eps is 0.01 (precision)
-      float eps = 0.01;
       cv::Vec<float, 3> normal = normals.at<cv::Vec<float, 3> >(y, x);
       if (fabs(normal[0] - clear_color) < eps && fabs(normal[1] - clear_color) < eps && fabs(normal[2] - clear_color) < eps)
         continue;
@@ -215,7 +235,9 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
           gsl_matrix_set(x, row + i, j, 0);
 
     const cv::Mat pos_vec(position.at<cv::Vec3f>(_y, _x));
-    const cv::Mat normal(normals.at<cv::Vec<float, 3> >(_y, _x), false);
+    const cv::Mat normal_(normals.at<cv::Vec<float, 3> >(_y, _x), false);
+    cv::Mat normal(normal.rows, normal.cols, normal.type());
+    cv::normalize(normal_, normal);
 
     for (unsigned int col = colors_per_light; col < cols; col+=components_per_light*colors_per_light) {
       typename Light<T>::properties& props = lights.at(col/components_per_light/colors_per_light);
@@ -238,24 +260,22 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
       float diffuse = L_m_N.at<float>(0,0);
       if (diffuse < 0.0f)
         diffuse = 0.0f;
+      check_bounds_of_value(diffuse, "diffuse");
 
       float specular = 0.0f;
       if (diffuse > 0.0f) {
         // R =  I - 2.0 * dot(N, I) * N
-        const cv::Mat R_m = -L_m - 2*diffuse * normal;
+        const cv::Mat R_m = reflect<float>(normal, -L_m);
         // should be a scalar
-        // TODO eye_dir is wrong, we are in world space
-        const cv::Mat R_m_V = R_m.t() * eye_dir;
+        cv::Mat E (pos_vec.rows, pos_vec.cols, pos_vec.type());
+        cv::normalize(-pos_vec, E);
+        const cv::Mat R_m_V = R_m.t() * E;
         assert(R_m_V.dims == 2);
         assert(R_m_V.cols == 1);
         assert(R_m_V.rows == 1);
-        specular = std::pow(R_m_V.at<float>(0,0), alpha);
-      }
-      if (!check_bounds_of_value(diffuse, "diffuse")) {
-        int x = 3;
-      }
-      if (!check_bounds_of_value(specular, "specular")) {
-        int x = 3;
+        const float base = R_m_V.at<float>(0,0);
+        specular = std::pow(base, alpha);
+        check_bounds_of_value(specular, "specular");
       }
 
       //   global  each light
