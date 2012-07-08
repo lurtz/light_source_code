@@ -8,6 +8,7 @@
 #include <vector>
 #include <iostream>
 #include <sstream>
+#include <cmath>
 
 // position, ambient, diffuse, specular in vec4
 const unsigned int NUM_PROPERTIES = 3;
@@ -48,6 +49,44 @@ typename Light<T>::properties create_light(const unsigned int number, const std:
   return tmp;
 }
 
+/*
+ * http://www.xsi-blog.com/archives/115
+def pointsOnSphere(N):
+    N = float(N) # in case we got an int which we surely got
+    pts = []
+
+    inc = math.pi * (3 - math.sqrt(5))
+    off = 2 / N
+    for k in range(0, N):
+        y = k * off - 1 + (off / 2)
+        r = math.sqrt(1 - y*y)
+        phi = k * inc
+        pts.append([math.cos(phi)*r, y, math.sin(phi)*r])
+
+    return pts
+*/
+
+template<typename T>
+std::vector<typename Light<T>::properties> create_light_sphere(float radius = 10, unsigned int num_lights = 10) {
+  std::vector<typename Light<T>::properties> tmp(num_lights);
+  std::vector<T> default_light_property(4);
+  // distribute light sources uniformly on the sphere
+  const double inc = M_PI * (3 - sqrt(5));
+  const double off = 2.0/num_lights;
+  for (unsigned int i = 0; i < num_lights; i++) {
+    const double y = i*off - 1 + off/2;
+    const double r = sqrt(1 - y*y);
+    const double phi = i * inc;
+    std::vector<T> position(4);
+    position.at(0) = cos(phi)*r * radius;
+    position.at(1) = y          * radius;
+    position.at(2) = sin(phi)*r * radius;
+    position.at(3) = 0;
+    tmp.at(i) = create_light(i, position, default_light_property, default_light_property);
+  }
+  return tmp;
+}
+
 template<typename T, int dim>
 std::vector<T> create_vector_from_array(const T (&array)[dim]) {
   std::vector<T> tmp(array, array + dim);
@@ -55,7 +94,7 @@ std::vector<T> create_vector_from_array(const T (&array)[dim]) {
 }
 
 template<typename T, int dim>
-std::vector<typename Light<T>::properties> create_lights(const T light_props[][dim], const unsigned int count) {
+std::vector<typename Light<T>::properties> create_lights_from_array(const T light_props[][dim], const unsigned int count) {
   std::vector<typename Light<T>::properties> tmp;
   for (unsigned int i = 0; i < NUM_PROPERTIES * count; i += NUM_PROPERTIES) {
     std::vector<T> position = create_vector_from_array(light_props[i + 0]);

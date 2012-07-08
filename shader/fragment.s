@@ -11,7 +11,7 @@ struct Light_properties {
   vec4 diffuse;
   vec4 specular;
 };
-#define MAX_LIGHTS 3
+#define MAX_LIGHTS 10
 uniform Light_properties lights[MAX_LIGHTS];
 
 void main () {

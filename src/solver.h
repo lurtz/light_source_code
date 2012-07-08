@@ -8,9 +8,6 @@
 #include <iomanip>
 #include <limits>
 
-// smallest possible eps is 0.01 for float and opengl (precision)
-float eps = 0.01;
-
 void print_gsl_matrix_row(const gsl_matrix& m, const unsigned int row) {
   for (unsigned int col = 0; col < m.size2 - 1; col++)
     std::cout << std::setw(10) << gsl_matrix_get(&m, row, col) << ", ";
@@ -198,12 +195,15 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
     int _x = 0;
     int _y = 0;
     while (_x == 0 && _y == 0) {
-      int x = image.cols * drand48();
-      int y = image.rows * drand48();
+      const int x = image.cols * drand48();
+      const int y = image.rows * drand48();
 
       // skip if already taken
       if (used_pixels.at<unsigned char>(y, x))
         continue;
+
+      // smallest possible eps is 0.01 for float and opengl (precision)
+      const float eps = 0.01;
 
       // skip if no object
       // assume that a normal is (clear_color,clear_color,clear_color) where no object is
@@ -236,7 +236,7 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
 
     const cv::Mat pos_vec(position.at<cv::Vec3f>(_y, _x));
     const cv::Mat normal_(normals.at<cv::Vec<float, 3> >(_y, _x), false);
-    cv::Mat normal(normal.rows, normal.cols, normal.type());
+    cv::Mat normal(normal_.rows, normal_.cols, normal_.type());
     cv::normalize(normal_, normal);
 
     for (unsigned int col = colors_per_light; col < cols; col+=components_per_light*colors_per_light) {
@@ -302,6 +302,7 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
     }
   }
 
+  // get solution
   double chisq;
   gsl_multifit_linear_workspace * problem = gsl_multifit_linear_alloc(rows, cols);
   gsl_multifit_linear (x, y, c, cov, &chisq, problem);
