@@ -108,18 +108,17 @@ bool update_min_max(const cv::Vec<T, dim>& item, T& min, T& max) {
 }
 
 template<typename X, int dim>
-std::pair<X, X> get_min_max(const cv::Mat& mat) {
+std::pair<X, X> get_min_max(const cv::Mat_<cv::Vec<X, dim> >& mat) {
   X min = std::numeric_limits<X>::max();
   X max = std::numeric_limits<X>::lowest();
-  for (auto iter = mat.begin<cv::Vec<X, dim> >(); iter != mat.end<cv::Vec<X, dim> >(); iter++) {
-    cv::Vec<X, dim> item = *iter;
+  for (auto item : mat) {
     update_min_max(item, min, max);
   }
   return std::make_pair(min, max);
 }
 
 template<typename X, int dim>
-std::pair<X, X> get_min_max_and_print(const cv::Mat& mat) {
+std::pair<X, X> get_min_max_and_print(const cv::Mat_<cv::Vec<X, dim> >& mat) {
   std::pair<X, X> ret_val = get_min_max<X, dim>(mat);
   std::cout << "min/max value of a pixel is " << static_cast<double>(ret_val.first) << " / " << static_cast<double>(ret_val.second) << std::endl;
   return ret_val;
@@ -183,16 +182,16 @@ void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::M
   assert(original_image.channels() == image.channels());
 //  cv::imshow("original image right channel count", original_image);
 
-  cv::Mat correct_format_image;
+  cv::Mat_<cv::Vec3f> correct_format_image;
   original_image.convertTo(correct_format_image, CV_32F, 1.0/std::numeric_limits<unsigned char>::max());
   cv::imshow("correct format image", correct_format_image);
 
 //  CV_32FC3  21
-  get_min_max_and_print<float, 3>(correct_format_image);
+  get_min_max_and_print(correct_format_image);
 
   assert(correct_format_image.type() == image.type());
 
-  cv::Mat diff = image - correct_format_image;
+  cv::Mat_<cv::Vec3f> diff = image - correct_format_image;
 //  cv::imshow("differenz", diff);
 
   cv::imshow("normals", normals);

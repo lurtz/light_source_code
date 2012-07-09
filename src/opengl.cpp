@@ -97,13 +97,19 @@ unsigned int calc_index(const unsigned int x, const unsigned int y, const unsign
 
 template <class T>
 void flipImage(T * image, const unsigned int width, const unsigned int height) {
-  T tmp[width];
   for (unsigned int y = 0; y < height/2; y++) {
     T * upper_line_start = image+calc_index(0, y, width, height);
     T * lower_line_start = image+calc_index(0, height - 1 - y, width, height);
-    std::copy(upper_line_start, upper_line_start+width, tmp);
-    std::copy(lower_line_start, lower_line_start+width, upper_line_start);
-    std::copy(tmp, tmp+width, lower_line_start);
+    std::swap_ranges(upper_line_start, upper_line_start + width, lower_line_start);
+  }
+}
+
+template<class T>
+void flipImage(std::vector<T>& image, const unsigned int width, const unsigned int height) {
+  for (unsigned int y = 0; y < height/2; y++) {
+    T * upper_line_start = image.data()+calc_index(0, y, width, height);
+    T * lower_line_start = image.data()+calc_index(0, height - 1 - y, width, height);
+    std::swap_ranges(upper_line_start, upper_line_start + width, lower_line_start);
   }
 }
 
@@ -123,17 +129,17 @@ void renderSceneIntoFBO() {
 
     // read data from frame buffer
     const unsigned int channels = 3;
-    float * fbo_image = new float[windowHeight*windowWidth*channels];
-    float * fbo_normal = new float[windowHeight*windowWidth*channels];
-    float * fbo_position = new float[windowHeight*windowWidth*channels];
+    std::vector<float> fbo_image(windowHeight*windowWidth*channels);
+    std::vector<float> fbo_normal(windowHeight*windowWidth*channels);
+    std::vector<float> fbo_position(windowHeight*windowWidth*channels);
 
     // read each texture into an array
     glReadBuffer(GL_COLOR_ATTACHMENT0);
-    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, fbo_image);
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, fbo_image.data());
     glReadBuffer(GL_COLOR_ATTACHMENT1);
-    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, fbo_normal);
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, fbo_normal.data());
     glReadBuffer(GL_COLOR_ATTACHMENT2);
-    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, fbo_position);
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, fbo_position.data());
     glReadBuffer(GL_DEPTH_ATTACHMENT);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -144,11 +150,11 @@ void renderSceneIntoFBO() {
     flipImage(fbo_position, channels*windowWidth, windowHeight);
 
     // create opencv images
-    cv::Mat_<cv::Vec3f> image(windowHeight, windowWidth, reinterpret_cast<cv::Vec3f*>(fbo_image), 0);
-    cv::Mat_<cv::Vec3f> normals(windowHeight, windowWidth, reinterpret_cast<cv::Vec3f*>(fbo_normal), 0);
-    cv::Mat_<cv::Vec3f> position(windowHeight, windowWidth, reinterpret_cast<cv::Vec3f*>(fbo_position), 0);
+    cv::Mat_<cv::Vec3f> image(cv::Mat(windowHeight, windowWidth, CV_32FC3, fbo_image.data(), 0));
+    cv::Mat_<cv::Vec3f> normals(cv::Mat(windowHeight, windowWidth, CV_32FC3, fbo_normal.data(), 0));
+    cv::Mat_<cv::Vec3f> position(cv::Mat(windowHeight, windowWidth, CV_32FC3, fbo_position.data(), 0));
 
-#if false
+#if false or true
     cv::imshow("fbo texture", image);
     cv::imshow("normals2", normals);
     cv::imshow("position", position);
@@ -161,11 +167,7 @@ void renderSceneIntoFBO() {
     glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix);
     cv::Mat_<GLfloat> model_view_matrix_cv(4, 4, model_view_matrix, 0);
 
-    optimize_lights<float>(original_copy, image, normals, position, model_view_matrix_cv, clear_color, ambient, lights);
-
-    delete [] fbo_image;
-    delete [] fbo_normal;
-    delete [] fbo_position;
+//    optimize_lights<float>(original_copy, image, normals, position, model_view_matrix_cv, clear_color, ambient, lights);
 }
 
 // TODO bild mit OpenGL und definierten lichtern erzeugen und dann versuchen
