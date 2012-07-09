@@ -130,7 +130,7 @@ cv::Mat reflect(const cv::Mat& normal, const cv::Mat& vector) {
   assert(normal.cols == vector.cols);
   assert(normal.rows == vector.rows);
   assert(normal.rows == 1 || normal.cols == 1);
-  const cv::Mat L_m_N = vector.t() * normal;
+  const cv::Mat L_m_N = (-vector).t() * normal;
   T cos = L_m_N.at<T>(0,0);
   const cv::Mat R_m = vector - 2 * cos * normal;
   return R_m;
@@ -145,16 +145,42 @@ void test_reflect() {
   assert(fabs(r.at<T>(1) - 1) <= std::numeric_limits<T>::epsilon());
 }
 
+void test_normals(const cv::Mat& normals_, const float eps = 0.01f) {
+  cv::Mat_<cv::Vec3f> normals;
+  normals_.copyTo(normals);
+//  for (auto it = normals.begin<cv::Vec3f>(); it != normals.end<cv::Vec3f>(); it++) {
+  for (auto normal : normals) {
+    if (abs(cv::norm(normal) - 1) > eps) {
+      std::cout << "normale kaputt" << std::endl;
+      normal = cv::Vec3f(0, 0, 0);
+    }
+  }
+  cv::imshow("geteste normalen", normals);
+}
+
+void test_normals2(const cv::Mat& normals_, const float eps = 0.01f) {
+  cv::Mat_<cv::Vec3f> normals;
+  normals_.copyTo(normals);
+  for (int y = 0; y < normals.rows; y++)
+    for (int x = 0; x < normals.cols; x++) {
+      cv::Vec3f normal = normals(y, x);
+      if (abs(cv::norm(normal) - 1) > eps) {
+        std::cout << "normale kaputt an stelle " << x << ", " << y << std::endl;
+        normals(y, x) = cv::Vec3f(0, 0, 0);
+      }
+    }
+  cv::imshow("geteste normalen", normals);
+  cv::waitKey(0);
+}
+
 template<typename T>
-void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, cv::Mat& position, cv::Mat& model_view_matrix, float clear_color, std::vector<T> &ambient, std::vector<typename Light<T>::properties>& lights, const int alpha = 50) {
+void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::Mat_<cv::Vec3f>& image, cv::Mat_<cv::Vec3f>& normals, cv::Mat_<cv::Vec3f>& position, cv::Mat_<GLfloat>& model_view_matrix, float clear_color, std::vector<T> &ambient, std::vector<typename Light<T>::properties>& lights, const int alpha = 50) {
 //  cv::imshow("FBO texture", image);
 
   // CV_8UC3  16
   get_min_max_and_print<unsigned char, 3>(original_image);
 
-  int new_channel_count = std::max(original_image.channels(), image.channels());
-  original_image.reshape(new_channel_count);
-  image.reshape(new_channel_count);
+  assert(original_image.channels() == image.channels());
 //  cv::imshow("original image right channel count", original_image);
 
   cv::Mat correct_format_image;
@@ -169,14 +195,17 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
   cv::Mat diff = image - correct_format_image;
 //  cv::imshow("differenz", diff);
 
-//  cv::imshow("normals", normals);
+  cv::imshow("normals", normals);
 //  cv::imshow("position", position);
 
   print_lights(lights, ambient);
 
+  test_normals(normals);
+  test_normals2(normals);
+
   // do not take all points of the image
-  // TODO calculate this value somehow, maybe specify the number of samples and
-  //      distribute them over the mesh in the image
+  // calculate this value somehow, maybe specify the number of samples and
+  // distribute them over the mesh in the image
 
   const unsigned int div = 100;
   const unsigned int colors_per_light = 3;
@@ -207,6 +236,7 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
 
       // skip if no object
       // assume that a normal is (clear_color,clear_color,clear_color) where no object is
+      // TODO normalen nochmal testen
       cv::Vec<float, 3> normal = normals.at<cv::Vec<float, 3> >(y, x);
       if (fabs(normal[0] - clear_color) < eps && fabs(normal[1] - clear_color) < eps && fabs(normal[2] - clear_color) < eps)
         continue;
@@ -236,18 +266,17 @@ void optimize_lights(cv::Mat& original_image, cv::Mat& image, cv::Mat& normals, 
 
     const cv::Mat pos_vec(position.at<cv::Vec3f>(_y, _x));
     const cv::Mat normal_(normals.at<cv::Vec<float, 3> >(_y, _x), false);
+//    assert(fabs(cv::norm(normal_) - 1) < 0.01);
     cv::Mat normal(normal_.rows, normal_.cols, normal_.type());
     cv::normalize(normal_, normal);
 
     for (unsigned int col = colors_per_light; col < cols; col+=components_per_light*colors_per_light) {
       typename Light<T>::properties& props = lights.at(col/components_per_light/colors_per_light);
-      // TODO need to transform light_pos to image_space
       const std::vector<T>& light_pos_in_world_space_vector = props[get_position_name(col/components_per_light/colors_per_light)];
       const cv::Mat light_pos_in_world_space_mat(light_pos_in_world_space_vector, false);
-      // TODO fail right here
-      //      need position of vertex and light in world space for phong shading
-      //      maybe achievable by inverting the projection matrix
-      const cv::Mat light_pos(model_view_matrix * light_pos_in_world_space_mat, cv::Range(0, 3));
+      // durch vierte komponente teilen
+      const cv::Mat light_pos_vec4(model_view_matrix * light_pos_in_world_space_mat);
+      const cv::Mat light_pos(light_pos_vec4 / light_pos_vec4.at<float>(3), cv::Range(0, 3));
 
       const cv::Mat L_m_ = light_pos - pos_vec;
       cv::Mat L_m(L_m_.rows, L_m_.cols, L_m_.type());

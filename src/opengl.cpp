@@ -144,9 +144,9 @@ void renderSceneIntoFBO() {
     flipImage(fbo_position, channels*windowWidth, windowHeight);
 
     // create opencv images
-    cv::Mat image(windowHeight, windowWidth, CV_32FC3, fbo_image, 0);
-    cv::Mat normals(windowHeight, windowWidth, CV_32FC3, fbo_normal, 0);
-    cv::Mat position(windowHeight, windowWidth, CV_32FC3, fbo_position, 0);
+    cv::Mat_<cv::Vec3f> image(windowHeight, windowWidth, reinterpret_cast<cv::Vec3f*>(fbo_image), 0);
+    cv::Mat_<cv::Vec3f> normals(windowHeight, windowWidth, reinterpret_cast<cv::Vec3f*>(fbo_normal), 0);
+    cv::Mat_<cv::Vec3f> position(windowHeight, windowWidth, reinterpret_cast<cv::Vec3f*>(fbo_position), 0);
 
 #if false
     cv::imshow("fbo texture", image);
@@ -155,11 +155,11 @@ void renderSceneIntoFBO() {
     cv::waitKey(100);
 #endif
 
-    cv::Mat original_copy = _original_image->clone();
+    cv::Mat_<cv::Vec<unsigned char, 3> > original_copy = _original_image->clone();
 
     GLfloat model_view_matrix[16];
     glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix);
-    cv::Mat model_view_matrix_cv(4, 4, CV_32FC1, model_view_matrix, 0);
+    cv::Mat_<GLfloat> model_view_matrix_cv(4, 4, model_view_matrix, 0);
 
     optimize_lights<float>(original_copy, image, normals, position, model_view_matrix_cv, clear_color, ambient, lights);
 
@@ -167,6 +167,9 @@ void renderSceneIntoFBO() {
     delete [] fbo_normal;
     delete [] fbo_position;
 }
+
+// TODO bild mit OpenGL und definierten lichtern erzeugen und dann versuchen
+//      davon nochmal die Beleuchtung zu berechnen
 
 void updateGL() {
   GLfloat aspectRatio = static_cast<GLfloat>(windowWidth) / windowHeight;
@@ -284,7 +287,7 @@ void initFBO() {
 void initLights() {
   ambient = create_ambient_color<float>();
 //  lights = create_lights_from_array(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
-  lights = create_light_sphere<float>();
+  lights = create_light_sphere<float>(10, 20);
   if (_meshobj != NULL)
 	  _meshobj->setLight(ambient, lights);
 }

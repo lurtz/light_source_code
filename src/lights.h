@@ -9,13 +9,14 @@
 #include <iostream>
 #include <sstream>
 #include <cmath>
+#include <cv.hpp>
 
 // position, ambient, diffuse, specular in vec4
 const unsigned int NUM_PROPERTIES = 3;
 const float light_properties[][4] = {
-    { 4, 4, 2, 0}, {0.5, 0.0, 0.0, 0}, {1, 0, 0, 0}
-    ,{-60,  1, 0, 0}, {0.0, 0.5, 0.0, 0}, {0, 1, 0, 0}
-    ,{ 30,  0, 0, 0}, {0.0, 0.0, 0.5, 0}, {0, 0, 1, 0}
+    { 4, 4, 2, 1}, {0.5, 0.0, 0.0, 0}, {1, 0, 0, 0}
+    ,{-60,  1, 0, 1}, {0.0, 0.5, 0.0, 0}, {0, 1, 0, 0}
+    ,{ 30,  0, 0, 1}, {0.0, 0.0, 0.5, 0}, {0, 0, 1, 0}
 };
 
 template<typename T>
@@ -81,7 +82,7 @@ std::vector<typename Light<T>::properties> create_light_sphere(float radius = 10
     position.at(0) = cos(phi)*r * radius;
     position.at(1) = y          * radius;
     position.at(2) = sin(phi)*r * radius;
-    position.at(3) = 0;
+    position.at(3) = 1;
     tmp.at(i) = create_light(i, position, default_light_property, default_light_property);
   }
   return tmp;

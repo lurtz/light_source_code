@@ -11,7 +11,7 @@ struct Light_properties {
   vec4 diffuse;
   vec4 specular;
 };
-#define MAX_LIGHTS 10
+#define MAX_LIGHTS 20
 uniform Light_properties lights[MAX_LIGHTS];
 
 void main () {
@@ -43,6 +43,12 @@ void main () {
       color.y = 1.0;
     if (color.z > 1.0)
       color.z = 1.0;
+    if (color.x < 0.0)
+      color.x = 0.0;
+    if (color.y < 0.0)
+      color.y = 0.0;
+    if (color.z < 0.0)
+      color.z = 0.0;
 
     gl_FragData[0] = color;
     gl_FragData[1] = vec4(N, 0.0);
