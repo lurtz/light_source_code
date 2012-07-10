@@ -9,7 +9,6 @@
 #include <iostream>
 #include <sstream>
 #include <cmath>
-#include <cv.hpp>
 
 // position, ambient, diffuse, specular in vec4
 const unsigned int NUM_PROPERTIES = 3;

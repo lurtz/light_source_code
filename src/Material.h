@@ -1,9 +1,6 @@
 #ifndef __MATERIAL__
 #define __MATERIAL__
 
-#include <opencv/cv.h>
-#include <opencv/highgui.h>
-
 #include <string>
 
 #include "Shader.h"

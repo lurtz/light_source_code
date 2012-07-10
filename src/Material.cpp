@@ -1,5 +1,7 @@
 #include "Material.h"
 
+#include <opencv2/highgui/highgui_c.h>
+
 Material::Material() {
   mShaderProgram = NULL;
   setAmbientColor();

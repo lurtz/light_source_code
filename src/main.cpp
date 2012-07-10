@@ -3,7 +3,7 @@
 #include <string>
 #include <iostream>
 #include <stdlib.h>
-#include <cv.hpp>
+#include <opencv2/core/core.hpp>
 #include <highgui.h>
 #include <sstream>
 #include <fstream>

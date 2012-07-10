@@ -2,7 +2,7 @@
 #define SOLVER_H_
 
 #include "lights.h"
-#include <cv.hpp>
+#include <opencv2/core/core.hpp>
 #include <vector>
 #include <gsl/gsl_multifit.h>
 #include <iomanip>

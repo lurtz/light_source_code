@@ -3,6 +3,7 @@
 
 #include <GL/gl.h>
 #include "MeshObj.h"
+#include <opencv2/core/core.hpp>
 
 void setupOpenGL(int * argc, char ** argv, const unsigned int width = 800, const unsigned int height = 600);
 // starts the glutMainLoop

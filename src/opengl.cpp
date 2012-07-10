@@ -9,8 +9,7 @@
 #include <iterator>
 #include "opengl.h"
 #include "Trackball.h"
-#include <cv.hpp>
-#include <highgui.h>
+#include <opencv2/highgui/highgui.hpp>
 #include "solver.h"
 
 MeshObj * _meshobj;
