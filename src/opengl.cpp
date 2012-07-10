@@ -122,6 +122,7 @@ void renderSceneIntoFBO() {
 
     renderScene();
 
+    // TODO problem: value of FBO textures ranges only from 0 to 1
     // read data from frame buffer
     const unsigned int channels = 3;
     std::vector<float> fbo_image(windowHeight*windowWidth*channels);

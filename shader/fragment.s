@@ -51,6 +51,7 @@ void main () {
       color.z = 0.0;
 
     gl_FragData[0] = color;
-    gl_FragData[1] = vec4(N, 0.0);
+//    gl_FragData[1] = vec4(N, 0.0);
+    gl_FragData[1] = vec4(N, 0.0);// + vec4(2.0, 2.0, 2.0, 0.0);
     gl_FragData[2] = vec4(-eyeVec, 0.0);
 }

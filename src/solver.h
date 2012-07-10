@@ -91,29 +91,11 @@ bool check_pixel(const cv::Vec<T, dim>& pixel, const std::string& name, const in
   return status;
 }
 
-template<typename T, int dim>
-bool update_min_max(const cv::Vec<T, dim>& item, T& min, T& max) {
-  bool status = false;
-  for (unsigned int i = 0; i < dim; i++) {
-    if (item[i] < min) {
-      status = true;
-      min = item[i];
-    }
-    if (item[i] > max) {
-      status = true;
-      max = item[i];
-    }
-  }
-  return status;
-}
-
 template<typename X, int dim>
 std::pair<X, X> get_min_max(const cv::Mat_<cv::Vec<X, dim> >& mat) {
-  X min = std::numeric_limits<X>::max();
-  X max = std::numeric_limits<X>::lowest();
-  for (auto item : mat) {
-    update_min_max(item, min, max);
-  }
+  cv::Mat_<X> one_dim(mat.rows, dim*mat.cols, reinterpret_cast<X *>(mat.data));
+  X min = *std::min_element(std::begin(one_dim), std::end(one_dim));
+  X max = *std::max_element(std::begin(one_dim), std::end(one_dim));
   return std::make_pair(min, max);
 }
 
@@ -131,7 +113,7 @@ cv::Mat_<T> reflect(const cv::Mat_<T>& normal, const cv::Mat_<T>& vector) {
   assert(normal.rows == 1 || normal.cols == 1);
   const cv::Mat_<T> L_m_N = (-vector).t() * normal;
   const T cos = L_m_N(0,0);
-  const cv::Mat R_m = vector - 2 * cos * normal;
+  const cv::Mat_<T> R_m = vector - 2 * cos * normal;
   return R_m;
 }
 
@@ -144,30 +126,26 @@ void test_reflect() {
   assert(fabs(r(1) - 1) <= std::numeric_limits<T>::epsilon());
 }
 
-void test_normals(const cv::Mat_<cv::Vec3f>& normals_, const float eps = 0.01f) {
-  cv::Mat_<cv::Vec3f> normals;
+template<typename T, int dim>
+void test_normals(const cv::Mat_<cv::Vec<T, dim> >& normals_, const cv::Vec<T, dim> offset = cv::Vec<T, dim>(), const T eps = 0.01f) {
+  cv::Mat_<cv::Vec<T, dim> > normals;
   normals_.copyTo(normals);
-//  for (auto it = normals.begin<cv::Vec3f>(); it != normals.end<cv::Vec3f>(); it++) {
-  int x = 0;
-  for (auto normal : normals) {
-    x++;
-    if (fabs(cv::norm(normal) - 1) > eps) {
-//      std::cout << "normale kaputt" << std::endl;
-      normal = cv::Vec3f(0, 0, 0);
+  for (auto& normal : normals) {
+    if (fabs(cv::norm(normal - offset) - 1) > eps) {
+      normal = T();
     }
   }
-  assert(x == normals_.rows * normals_.cols);
   cv::imshow("geteste normalen1", normals);
 }
 
 void test_normals2(const cv::Mat_<cv::Vec3f>& normals_, const int x_ = -1, const int y_ = -1, const float eps = 0.01f) {
+  const cv::Vec3f offset(0.0f, 0.0f, 0.0f);
   cv::Mat_<cv::Vec3f> normals;
   normals_.copyTo(normals);
   for (int y = 0; y < normals.rows; y++)
     for (int x = 0; x < normals.cols; x++) {
       cv::Vec3f normal = normals(y, x);
-      if (fabs(cv::norm(normal) - 1) > eps) {
-//        std::cout << "normale kaputt an stelle " << x << ", " << y << std::endl;
+      if (fabs(cv::norm(normal - offset) - 1) > eps) {
         normals(y, x) = cv::Vec3f(0, 0, 0);
       } else if (x != -1 && y != -1 && x == x_ && y == y_) {
         std::cout << "normale ok an stelle " << x << ", " << y << std::endl;
@@ -204,7 +182,8 @@ void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::M
   print_lights(lights, ambient);
 
   test_normals(normals);
-  test_normals2(normals);
+//  test_normals2(normals);
+  get_min_max_and_print(normals);
   cv::waitKey(0);
 
   // do not take all points of the image
@@ -245,7 +224,7 @@ void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::M
       if (fabs(normal[0] - clear_color) < eps && fabs(normal[1] - clear_color) < eps && fabs(normal[2] - clear_color) < eps)
         continue;
 
-      assert(fabs(cv::norm(normal) - 1) < eps);
+//      assert(fabs(cv::norm(normal) - 1) < eps);
 
       _x = x;
       _y = y;
@@ -270,29 +249,29 @@ void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::M
         else
           gsl_matrix_set(x, row + i, j, 0);
 
-    const cv::Mat pos_vec(position(_y, _x));
-    const cv::Mat normal_(normals(_y, _x), false);
+    const cv::Mat_<float> pos_vec(position(_y, _x));
+    const cv::Mat_<float> normal_(normals(_y, _x), false);
 //    assert(fabs(cv::norm(normal_) - 1) < 0.01);
-    cv::Mat normal(normal_.rows, normal_.cols, normal_.type());
+    cv::Mat_<float> normal(normal_.rows, normal_.cols, normal_.type());
     cv::normalize(normal_, normal);
 
     for (unsigned int col = colors_per_light; col < cols; col+=components_per_light*colors_per_light) {
       typename Light<T>::properties& props = lights.at(col/components_per_light/colors_per_light);
       const std::vector<T>& light_pos_in_world_space_vector = props[get_position_name(col/components_per_light/colors_per_light)];
-      const cv::Mat light_pos_in_world_space_mat(light_pos_in_world_space_vector, false);
+      const cv::Mat_<float> light_pos_in_world_space_mat(light_pos_in_world_space_vector, false);
       // durch vierte komponente teilen
-      const cv::Mat light_pos_vec4(model_view_matrix * light_pos_in_world_space_mat);
-      const cv::Mat light_pos(light_pos_vec4 / light_pos_vec4.at<float>(3), cv::Range(0, 3));
+      const cv::Mat_<float> light_pos_vec4(model_view_matrix * light_pos_in_world_space_mat);
+      const cv::Mat_<float> light_pos(light_pos_vec4 / light_pos_vec4(3), cv::Range(0, 3));
 
-      const cv::Mat L_m_ = light_pos - pos_vec;
-      cv::Mat L_m(L_m_.rows, L_m_.cols, L_m_.type());
+      const cv::Mat_<float> L_m_ = light_pos - pos_vec;
+      cv::Mat_<float> L_m(L_m_.rows, L_m_.cols, L_m_.type());
       cv::normalize(L_m_, L_m);
       // should be a scalar
-      const cv::Mat L_m_N = L_m.t() * normal;
+      const cv::Mat_<float> L_m_N = L_m.t() * normal;
       assert(L_m_N.dims == 2);
       assert(L_m_N.cols == 1);
       assert(L_m_N.rows == 1);
-      float diffuse = L_m_N.at<float>(0,0);
+      float diffuse = L_m_N(0,0);
       if (diffuse < 0.0f)
         diffuse = 0.0f;
       check_bounds_of_value(diffuse, "diffuse");
@@ -300,15 +279,15 @@ void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::M
       float specular = 0.0f;
       if (diffuse > 0.0f) {
         // R =  I - 2.0 * dot(N, I) * N
-        const cv::Mat R_m = reflect<float>(normal, -L_m);
+        const cv::Mat_<float> R_m = reflect<float>(normal, -L_m);
         // should be a scalar
-        cv::Mat E (pos_vec.rows, pos_vec.cols, pos_vec.type());
+        cv::Mat_<float> E (pos_vec.rows, pos_vec.cols, pos_vec.type());
         cv::normalize(-pos_vec, E);
-        const cv::Mat R_m_V = R_m.t() * E;
+        const cv::Mat_<float> R_m_V = R_m.t() * E;
         assert(R_m_V.dims == 2);
         assert(R_m_V.cols == 1);
         assert(R_m_V.rows == 1);
-        const float base = R_m_V.at<float>(0,0);
+        const float base = R_m_V(0,0);
         specular = std::pow(base, alpha);
         check_bounds_of_value(specular, "specular");
       }
