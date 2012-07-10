@@ -125,51 +125,55 @@ std::pair<X, X> get_min_max_and_print(const cv::Mat_<cv::Vec<X, dim> >& mat) {
 }
 
 template<typename T>
-cv::Mat reflect(const cv::Mat& normal, const cv::Mat& vector) {
+cv::Mat_<T> reflect(const cv::Mat_<T>& normal, const cv::Mat_<T>& vector) {
   assert(normal.cols == vector.cols);
   assert(normal.rows == vector.rows);
   assert(normal.rows == 1 || normal.cols == 1);
-  const cv::Mat L_m_N = (-vector).t() * normal;
-  T cos = L_m_N.at<T>(0,0);
+  const cv::Mat_<T> L_m_N = (-vector).t() * normal;
+  const T cos = L_m_N(0,0);
   const cv::Mat R_m = vector - 2 * cos * normal;
   return R_m;
 }
 
 template<typename T>
 void test_reflect() {
-  cv::Mat vector = (cv::Mat_<T>(2, 1) << -1, 0);
-  cv::Mat normal = (cv::Mat_<T>(2, 1) << 1, 1)/sqrt(2);
-  cv::Mat r = reflect<T>(normal, vector);
-  assert(fabs(r.at<T>(0)) <= std::numeric_limits<T>::epsilon());
-  assert(fabs(r.at<T>(1) - 1) <= std::numeric_limits<T>::epsilon());
+  cv::Mat_<T> vector = (cv::Mat_<T>(2, 1) << -1, 0);
+  cv::Mat_<T> normal = (cv::Mat_<T>(2, 1) << 1, 1)/sqrt(2);
+  cv::Mat_<T> r = reflect(normal, vector);
+  assert(fabs(r(0)) <= std::numeric_limits<T>::epsilon());
+  assert(fabs(r(1) - 1) <= std::numeric_limits<T>::epsilon());
 }
 
-void test_normals(const cv::Mat& normals_, const float eps = 0.01f) {
+void test_normals(const cv::Mat_<cv::Vec3f>& normals_, const float eps = 0.01f) {
   cv::Mat_<cv::Vec3f> normals;
   normals_.copyTo(normals);
 //  for (auto it = normals.begin<cv::Vec3f>(); it != normals.end<cv::Vec3f>(); it++) {
+  int x = 0;
   for (auto normal : normals) {
-    if (abs(cv::norm(normal) - 1) > eps) {
-      std::cout << "normale kaputt" << std::endl;
+    x++;
+    if (fabs(cv::norm(normal) - 1) > eps) {
+//      std::cout << "normale kaputt" << std::endl;
       normal = cv::Vec3f(0, 0, 0);
     }
   }
-  cv::imshow("geteste normalen", normals);
+  assert(x == normals_.rows * normals_.cols);
+  cv::imshow("geteste normalen1", normals);
 }
 
-void test_normals2(const cv::Mat& normals_, const float eps = 0.01f) {
+void test_normals2(const cv::Mat_<cv::Vec3f>& normals_, const int x_ = -1, const int y_ = -1, const float eps = 0.01f) {
   cv::Mat_<cv::Vec3f> normals;
   normals_.copyTo(normals);
   for (int y = 0; y < normals.rows; y++)
     for (int x = 0; x < normals.cols; x++) {
       cv::Vec3f normal = normals(y, x);
-      if (abs(cv::norm(normal) - 1) > eps) {
-        std::cout << "normale kaputt an stelle " << x << ", " << y << std::endl;
+      if (fabs(cv::norm(normal) - 1) > eps) {
+//        std::cout << "normale kaputt an stelle " << x << ", " << y << std::endl;
         normals(y, x) = cv::Vec3f(0, 0, 0);
+      } else if (x != -1 && y != -1 && x == x_ && y == y_) {
+        std::cout << "normale ok an stelle " << x << ", " << y << std::endl;
       }
     }
-  cv::imshow("geteste normalen", normals);
-  cv::waitKey(0);
+  cv::imshow("geteste normalen2", normals);
 }
 
 template<typename T>
@@ -201,6 +205,7 @@ void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::M
 
   test_normals(normals);
   test_normals2(normals);
+  cv::waitKey(0);
 
   // do not take all points of the image
   // calculate this value somehow, maybe specify the number of samples and
@@ -216,7 +221,7 @@ void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::M
   gsl_vector *y = gsl_vector_alloc(rows);
   gsl_vector *c = gsl_vector_alloc(cols);
 
-  cv::Mat used_pixels(image.rows, image.cols, CV_8U, cv::Scalar(0));
+  cv::Mat_<unsigned char> used_pixels(cv::Mat(image.rows, image.cols, CV_8U, cv::Scalar(0)));
 
   for (unsigned int row = 0; row < rows; row+=colors_per_light) {
     // 1. find a good pixel
@@ -227,7 +232,7 @@ void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::M
       const int y = image.rows * drand48();
 
       // skip if already taken
-      if (used_pixels.at<unsigned char>(y, x))
+      if (used_pixels(y, x))
         continue;
 
       // smallest possible eps is 0.01 for float and opengl (precision)
@@ -236,20 +241,22 @@ void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::M
       // skip if no object
       // assume that a normal is (clear_color,clear_color,clear_color) where no object is
       // TODO normalen nochmal testen
-      cv::Vec<float, 3> normal = normals.at<cv::Vec<float, 3> >(y, x);
+      cv::Vec<float, 3> normal = normals(y, x);
       if (fabs(normal[0] - clear_color) < eps && fabs(normal[1] - clear_color) < eps && fabs(normal[2] - clear_color) < eps)
         continue;
 
+      assert(fabs(cv::norm(normal) - 1) < eps);
+
       _x = x;
       _y = y;
-      used_pixels.at<unsigned char>(y,x) = std::numeric_limits<unsigned char>::max();
+      used_pixels(y,x) = std::numeric_limits<unsigned char>::max();
     }
 
     // 2. set matrix parameter for pixel
     // set value of pixel in the image to the vector
     assert(_x < correct_format_image.cols);
     assert(_y < correct_format_image.rows);
-    const cv::Vec<float, colors_per_light> pixel = correct_format_image.at<cv::Vec<float, colors_per_light> >(_y, _x);
+    const cv::Vec<float, colors_per_light> pixel = correct_format_image(_y, _x);
     check_pixel(pixel, "target", _x, _y);
     for (unsigned int i = 0; i < colors_per_light; i++) {
       gsl_vector_set(y, row + i, pixel[i]);
@@ -263,8 +270,8 @@ void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::M
         else
           gsl_matrix_set(x, row + i, j, 0);
 
-    const cv::Mat pos_vec(position.at<cv::Vec3f>(_y, _x));
-    const cv::Mat normal_(normals.at<cv::Vec<float, 3> >(_y, _x), false);
+    const cv::Mat pos_vec(position(_y, _x));
+    const cv::Mat normal_(normals(_y, _x), false);
 //    assert(fabs(cv::norm(normal_) - 1) < 0.01);
     cv::Mat normal(normal_.rows, normal_.cols, normal_.type());
     cv::normalize(normal_, normal);

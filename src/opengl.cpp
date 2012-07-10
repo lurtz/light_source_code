@@ -6,6 +6,7 @@
 #include <sstream>
 #include <cstdlib>
 #include <limits>
+#include <iterator>
 #include "opengl.h"
 #include "Trackball.h"
 #include <cv.hpp>
@@ -95,22 +96,16 @@ unsigned int calc_index(const unsigned int x, const unsigned int y, const unsign
   return x+y*width;
 }
 
-template <class T>
-void flipImage(T * image, const unsigned int width, const unsigned int height) {
-  for (unsigned int y = 0; y < height/2; y++) {
-    T * upper_line_start = image+calc_index(0, y, width, height);
-    T * lower_line_start = image+calc_index(0, height - 1 - y, width, height);
-    std::swap_ranges(upper_line_start, upper_line_start + width, lower_line_start);
+template<class RandomAccessIterator>
+void flipImage(RandomAccessIterator first_row, RandomAccessIterator past_last_row, const unsigned int width) {
+  for (; first_row < past_last_row; first_row+=width, past_last_row-=width) {
+    std::swap_ranges(first_row, first_row + width, past_last_row - width);
   }
 }
 
 template<class T>
-void flipImage(std::vector<T>& image, const unsigned int width, const unsigned int height) {
-  for (unsigned int y = 0; y < height/2; y++) {
-    T * upper_line_start = image.data()+calc_index(0, y, width, height);
-    T * lower_line_start = image.data()+calc_index(0, height - 1 - y, width, height);
-    std::swap_ranges(upper_line_start, upper_line_start + width, lower_line_start);
-  }
+void flipImage(T& image, const unsigned int width) {
+  flipImage(std::begin(image), std::end(image), width);
 }
 
 void renderSceneIntoFBO() {
@@ -145,16 +140,16 @@ void renderSceneIntoFBO() {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // opencv images are upside down
-    flipImage(fbo_image, channels*windowWidth, windowHeight);
-    flipImage(fbo_normal, channels*windowWidth, windowHeight);
-    flipImage(fbo_position, channels*windowWidth, windowHeight);
+    flipImage(fbo_image, channels*windowWidth);
+    flipImage(fbo_normal, channels*windowWidth);
+    flipImage(fbo_position, channels*windowWidth);
 
     // create opencv images
     cv::Mat_<cv::Vec3f> image(cv::Mat(windowHeight, windowWidth, CV_32FC3, fbo_image.data(), 0));
     cv::Mat_<cv::Vec3f> normals(cv::Mat(windowHeight, windowWidth, CV_32FC3, fbo_normal.data(), 0));
     cv::Mat_<cv::Vec3f> position(cv::Mat(windowHeight, windowWidth, CV_32FC3, fbo_position.data(), 0));
 
-#if false or true
+#if false
     cv::imshow("fbo texture", image);
     cv::imshow("normals2", normals);
     cv::imshow("position", position);
@@ -167,7 +162,7 @@ void renderSceneIntoFBO() {
     glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix);
     cv::Mat_<GLfloat> model_view_matrix_cv(4, 4, model_view_matrix, 0);
 
-//    optimize_lights<float>(original_copy, image, normals, position, model_view_matrix_cv, clear_color, ambient, lights);
+    optimize_lights<float>(original_copy, image, normals, position, model_view_matrix_cv, clear_color, ambient, lights);
 }
 
 // TODO bild mit OpenGL und definierten lichtern erzeugen und dann versuchen
