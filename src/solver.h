@@ -256,13 +256,13 @@ void optimize_lights(cv::Mat_<cv::Vec3f >& image, cv::Mat_<cv::Vec3f>& normals, 
       const cv::Mat_<float> light_pos_vec4(model_view_matrix * light_pos_in_world_space_mat);
       const cv::Mat_<float> light_pos(light_pos_vec4 / light_pos_vec4(3), cv::Range(0, 3));
 
-      const cv::Mat_<float> L_m_ = light_pos - pos_vec;
-      cv::Mat_<float> L_m(L_m_.rows, L_m_.cols, L_m_.type());
-      cv::normalize(L_m_, L_m);
+      const cv::Mat_<float> L_ = light_pos - pos_vec;
+      cv::Mat_<float> L(L_.rows, L_.cols, L_.type());
+      cv::normalize(L_, L);
       // should be a scalar
-      const cv::Mat_<float> L_m_N = L_m.t() * normal;
-      assert(is_scalar(L_m_N));
-      float diffuse = L_m_N(0,0);
+      const cv::Mat_<float> LN = L.t() * normal;
+      assert(is_scalar(LN));
+      float diffuse = LN(0,0);
       if (diffuse < 0.0f)
         diffuse = 0.0f;
       check_bounds_of_value(diffuse, "diffuse");
@@ -270,13 +270,13 @@ void optimize_lights(cv::Mat_<cv::Vec3f >& image, cv::Mat_<cv::Vec3f>& normals, 
       float specular = 0.0f;
       if (diffuse > 0.0f) {
         // R =  I - 2.0 * dot(N, I) * N
-        const cv::Mat_<float> R_m = reflect<float>(normal, -L_m);
+        const cv::Mat_<float> R = reflect<float>(normal, -L);
         cv::Mat_<float> E (pos_vec.rows, pos_vec.cols, pos_vec.type());
         cv::normalize(-pos_vec, E);
         // should be a scalar
-        const cv::Mat_<float> R_m_V = R_m.t() * E;
-        assert(is_scalar(R_m_V));
-        const float base = R_m_V(0,0);
+        const cv::Mat_<float> RE = R.t() * E;
+        assert(is_scalar(RE));
+        const float base = RE(0,0);
         assert(base <= 1.0f);
         specular = std::pow(base, alpha);
         check_bounds_of_value(specular, "specular");
