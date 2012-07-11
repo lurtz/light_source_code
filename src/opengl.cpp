@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <limits>
 #include <iterator>
+#include <tuple>
 #include "opengl.h"
 #include "Trackball.h"
 #include <opencv2/highgui/highgui.hpp>
@@ -102,14 +103,13 @@ void flipImage(RandomAccessIterator first_row, RandomAccessIterator past_last_ro
   }
 }
 
+// this nice friend works with std::vector<> as well as for cv::Mat_<>
 template<class T>
 void flipImage(T& image, const unsigned int width) {
   flipImage(std::begin(image), std::end(image), width);
 }
 
-void renderSceneIntoFBO() {
-    if (image_displayed)
-      return;
+std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f> > renderSceneIntoFBO() {
     image_displayed = true;
     // render scene into first color attachment of FBO -> use as filter texture later on //
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -123,46 +123,62 @@ void renderSceneIntoFBO() {
 
     // TODO problem: value of FBO textures ranges only from 0 to 1
     // read data from frame buffer
-    const unsigned int channels = 3;
-    std::vector<float> fbo_image(windowHeight*windowWidth*channels);
-    std::vector<float> fbo_normal(windowHeight*windowWidth*channels);
-    std::vector<float> fbo_position(windowHeight*windowWidth*channels);
+    // create opencv images
+    cv::Mat_<cv::Vec3f> image(windowHeight, windowWidth);
+    cv::Mat_<cv::Vec3f> normals(windowHeight, windowWidth);
+    cv::Mat_<cv::Vec3f> position(windowHeight, windowWidth);
 
     // read each texture into an array
     glReadBuffer(GL_COLOR_ATTACHMENT0);
-    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, fbo_image.data());
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, image.data);
     glReadBuffer(GL_COLOR_ATTACHMENT1);
-    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, fbo_normal.data());
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, normals.data);
     glReadBuffer(GL_COLOR_ATTACHMENT2);
-    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, fbo_position.data());
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, position.data);
     glReadBuffer(GL_DEPTH_ATTACHMENT);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // opencv images are upside down
-    flipImage(fbo_image, channels*windowWidth);
-    flipImage(fbo_normal, channels*windowWidth);
-    flipImage(fbo_position, channels*windowWidth);
+    flipImage(image, windowWidth);
+    flipImage(normals, windowWidth);
+    flipImage(position, windowWidth);
 
-    // create opencv images
-    cv::Mat_<cv::Vec3f> image(cv::Mat(windowHeight, windowWidth, CV_32FC3, fbo_image.data(), 0));
-    cv::Mat_<cv::Vec3f> normals(cv::Mat(windowHeight, windowWidth, CV_32FC3, fbo_normal.data(), 0));
-    cv::Mat_<cv::Vec3f> position(cv::Mat(windowHeight, windowWidth, CV_32FC3, fbo_position.data(), 0));
+    return std::make_tuple(image, normals, position);
+}
+
+std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f> > create_test_image() {
+  auto tmp_lights = create_lights_from_array(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
+  _meshobj->setLight(ambient, tmp_lights);
+
+  auto tuple = renderSceneIntoFBO();
+
+  _meshobj->setLight(ambient, lights);
+  return tuple;
+}
+
+void calc_lights() {
+  if (image_displayed)
+    return;
+
+  cv::Mat_<cv::Vec3f> image;
+  cv::Mat_<cv::Vec3f> normals;
+  cv::Mat_<cv::Vec3f> position;
+  std::tie(image, normals, position) = create_test_image();
 
 #if false
     cv::imshow("fbo texture", image);
     cv::imshow("normals2", normals);
     cv::imshow("position", position);
     cv::waitKey(100);
+#else
+
+  GLfloat model_view_matrix[16];
+  glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix);
+  cv::Mat_<GLfloat> model_view_matrix_cv(4, 4, model_view_matrix, 0);
+
+  optimize_lights<float>(image, normals, position, model_view_matrix_cv, clear_color, ambient, lights);
 #endif
-
-    cv::Mat_<cv::Vec<unsigned char, 3> > original_copy = _original_image->clone();
-
-    GLfloat model_view_matrix[16];
-    glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix);
-    cv::Mat_<GLfloat> model_view_matrix_cv(4, 4, model_view_matrix, 0);
-
-    optimize_lights<float>(original_copy, image, normals, position, model_view_matrix_cv, clear_color, ambient, lights);
 }
 
 // TODO bild mit OpenGL und definierten lichtern erzeugen und dann versuchen
@@ -186,7 +202,7 @@ void updateGL() {
   _ball.rotateView();
   
   // render //
-  renderSceneIntoFBO();
+  calc_lights();
   renderScene();
   
   // swap render and screen buffer //

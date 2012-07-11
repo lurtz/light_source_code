@@ -155,26 +155,22 @@ void test_normals2(const cv::Mat_<cv::Vec3f>& normals_, const int x_ = -1, const
 }
 
 template<typename T>
-void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::Mat_<cv::Vec3f>& image, cv::Mat_<cv::Vec3f>& normals, cv::Mat_<cv::Vec3f>& position, cv::Mat_<GLfloat>& model_view_matrix, float clear_color, std::vector<T> &ambient, std::vector<typename Light<T>::properties>& lights, const int alpha = 50) {
+bool is_scalar(const cv::Mat_<T>& mat) {
+  const bool dims = mat.dims == 2;
+  const bool cols = mat.cols == 1;
+  const bool rows = mat.rows == 1;
+  return dims && cols && rows;
+}
+
+
+// smallest possible eps is 0.01 for float and opengl (precision)
+const float eps = 0.01;
+
+template<typename T>
+void optimize_lights(cv::Mat_<cv::Vec3f >& image, cv::Mat_<cv::Vec3f>& normals, cv::Mat_<cv::Vec3f>& position, cv::Mat_<GLfloat>& model_view_matrix, float clear_color, std::vector<T> &ambient, std::vector<typename Light<T>::properties>& lights, const int alpha = 50) {
 //  cv::imshow("FBO texture", image);
 
-  // CV_8UC3  16
-  get_min_max_and_print<unsigned char, 3>(original_image);
-
-  assert(original_image.channels() == image.channels());
-//  cv::imshow("original image right channel count", original_image);
-
-  cv::Mat_<cv::Vec3f> correct_format_image;
-  original_image.convertTo(correct_format_image, CV_32F, 1.0/std::numeric_limits<unsigned char>::max());
-  cv::imshow("correct format image", correct_format_image);
-
 //  CV_32FC3  21
-  get_min_max_and_print(correct_format_image);
-
-  assert(correct_format_image.type() == image.type());
-
-  cv::Mat_<cv::Vec3f> diff = image - correct_format_image;
-//  cv::imshow("differenz", diff);
 
   cv::imshow("normals", normals);
 //  cv::imshow("position", position);
@@ -192,7 +188,7 @@ void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::M
 
   const unsigned int div = 100;
   const unsigned int colors_per_light = 3;
-  const unsigned int rows = correct_format_image.rows * correct_format_image.cols / div * colors_per_light;
+  const unsigned int rows = image.rows * image.cols / div * colors_per_light;
   const unsigned int components_per_light = 2;
   const unsigned int cols = (1 + lights.size() * components_per_light) * colors_per_light;
   gsl_matrix *x = gsl_matrix_alloc (rows, cols);
@@ -214,9 +210,6 @@ void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::M
       if (used_pixels(y, x))
         continue;
 
-      // smallest possible eps is 0.01 for float and opengl (precision)
-      const float eps = 0.01;
-
       // skip if no object
       // assume that a normal is (clear_color,clear_color,clear_color) where no object is
       // TODO normalen nochmal testen
@@ -224,6 +217,8 @@ void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::M
       if (fabs(normal[0] - clear_color) < eps && fabs(normal[1] - clear_color) < eps && fabs(normal[2] - clear_color) < eps)
         continue;
 
+      if (!(fabs(cv::norm(normal) - 1) < eps))
+        continue;
 //      assert(fabs(cv::norm(normal) - 1) < eps);
 
       _x = x;
@@ -233,9 +228,9 @@ void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::M
 
     // 2. set matrix parameter for pixel
     // set value of pixel in the image to the vector
-    assert(_x < correct_format_image.cols);
-    assert(_y < correct_format_image.rows);
-    const cv::Vec<float, colors_per_light> pixel = correct_format_image(_y, _x);
+    assert(_x < image.cols);
+    assert(_y < image.rows);
+    const cv::Vec<float, colors_per_light> pixel = image(_y, _x);
     check_pixel(pixel, "target", _x, _y);
     for (unsigned int i = 0; i < colors_per_light; i++) {
       gsl_vector_set(y, row + i, pixel[i]);
@@ -250,10 +245,8 @@ void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::M
           gsl_matrix_set(x, row + i, j, 0);
 
     const cv::Mat_<float> pos_vec(position(_y, _x));
-    const cv::Mat_<float> normal_(normals(_y, _x), false);
-//    assert(fabs(cv::norm(normal_) - 1) < 0.01);
-    cv::Mat_<float> normal(normal_.rows, normal_.cols, normal_.type());
-    cv::normalize(normal_, normal);
+    const cv::Mat_<float> normal(normals(_y, _x), false);
+    assert(fabs(cv::norm(normal) - 1) < eps);
 
     for (unsigned int col = colors_per_light; col < cols; col+=components_per_light*colors_per_light) {
       typename Light<T>::properties& props = lights.at(col/components_per_light/colors_per_light);
@@ -268,9 +261,7 @@ void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::M
       cv::normalize(L_m_, L_m);
       // should be a scalar
       const cv::Mat_<float> L_m_N = L_m.t() * normal;
-      assert(L_m_N.dims == 2);
-      assert(L_m_N.cols == 1);
-      assert(L_m_N.rows == 1);
+      assert(is_scalar(L_m_N));
       float diffuse = L_m_N(0,0);
       if (diffuse < 0.0f)
         diffuse = 0.0f;
@@ -284,9 +275,7 @@ void optimize_lights(cv::Mat_<cv::Vec<unsigned char, 3> >& original_image, cv::M
         cv::Mat_<float> E (pos_vec.rows, pos_vec.cols, pos_vec.type());
         cv::normalize(-pos_vec, E);
         const cv::Mat_<float> R_m_V = R_m.t() * E;
-        assert(R_m_V.dims == 2);
-        assert(R_m_V.cols == 1);
-        assert(R_m_V.rows == 1);
+        assert(is_scalar(R_m_V));
         const float base = R_m_V(0,0);
         specular = std::pow(base, alpha);
         check_bounds_of_value(specular, "specular");
