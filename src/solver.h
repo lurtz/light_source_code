@@ -111,7 +111,7 @@ cv::Mat_<T> reflect(const cv::Mat_<T>& normal, const cv::Mat_<T>& vector) {
   assert(normal.cols == vector.cols);
   assert(normal.rows == vector.rows);
   assert(normal.rows == 1 || normal.cols == 1);
-  const cv::Mat_<T> L_m_N = (-vector).t() * normal;
+  const cv::Mat_<T> L_m_N = vector.t() * normal;
   const T cos = L_m_N(0,0);
   const cv::Mat_<T> R_m = vector - 2 * cos * normal;
   return R_m;
@@ -168,7 +168,7 @@ const float eps = 0.01;
 
 template<typename T>
 void optimize_lights(cv::Mat_<cv::Vec3f >& image, cv::Mat_<cv::Vec3f>& normals, cv::Mat_<cv::Vec3f>& position, cv::Mat_<GLfloat>& model_view_matrix, float clear_color, std::vector<T> &ambient, std::vector<typename Light<T>::properties>& lights, const int alpha = 50) {
-//  cv::imshow("FBO texture", image);
+  cv::imshow("target image", image);
 
 //  CV_32FC3  21
 
@@ -271,12 +271,13 @@ void optimize_lights(cv::Mat_<cv::Vec3f >& image, cv::Mat_<cv::Vec3f>& normals, 
       if (diffuse > 0.0f) {
         // R =  I - 2.0 * dot(N, I) * N
         const cv::Mat_<float> R_m = reflect<float>(normal, -L_m);
-        // should be a scalar
         cv::Mat_<float> E (pos_vec.rows, pos_vec.cols, pos_vec.type());
         cv::normalize(-pos_vec, E);
+        // should be a scalar
         const cv::Mat_<float> R_m_V = R_m.t() * E;
         assert(is_scalar(R_m_V));
         const float base = R_m_V(0,0);
+        assert(base <= 1.0f);
         specular = std::pow(base, alpha);
         check_bounds_of_value(specular, "specular");
       }
