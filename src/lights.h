@@ -135,7 +135,7 @@ void print_lights(const std::vector<typename Light<T>::properties> &lights, cons
 }
 
 template<typename T>
-void setUniforms(GLuint programm_id, const std::vector<T> ambient_color, const std::vector<typename Light<T>::properties> &lights) {
+void setUniforms(GLuint programm_id, const std::vector<T> &ambient_color, const std::vector<typename Light<T>::properties> &lights) {
   GLint uniform_light_property = glGetUniformLocation(programm_id, "ambient_color");
   glUniform4f(uniform_light_property, ambient_color.at(0), ambient_color.at(1), ambient_color.at(2), ambient_color.at(3));
   if (uniform_light_property == -1)
