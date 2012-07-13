@@ -7,7 +7,7 @@
 
 struct Texture {
   Texture() {
-    data = NULL;
+    data = nullptr;
     width = 0;
     height = 0;
     glTextureLocation = 0;
@@ -21,7 +21,7 @@ struct Texture {
   };
   
   ~Texture() {
-    if (data != NULL) {
+    if (data != nullptr) {
       delete data;
     }
   };

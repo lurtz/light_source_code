@@ -3,7 +3,7 @@
 #include <opencv2/highgui/highgui_c.h>
 
 Material::Material() {
-  mShaderProgram = NULL;
+  mShaderProgram = nullptr;
   setAmbientColor();
   setDiffuseColor();
   setEmissiveColor();
@@ -159,7 +159,7 @@ void Material::initUniforms() {
 }
 
 void Material::enable() {
-  if (mShaderProgram != NULL && mShaderProgram->ready()) {
+  if (mShaderProgram != nullptr && mShaderProgram->ready()) {
     mShaderProgram->enable();
     if (!mUniformsInitialized) {
       initUniforms();
@@ -205,7 +205,7 @@ void Material::enable() {
 }
 
 void Material::disable() {
-  if (mShaderProgram != NULL) {
+  if (mShaderProgram != nullptr) {
     mShaderProgram->disable();
   }
   for (unsigned int layer = 0; layer < TEX_LAYER_COUNT; ++layer) {
@@ -216,7 +216,7 @@ void Material::disable() {
 
 bool Material::loadTextureData(const char *textureFile, Texture &texture) {
   IplImage *image = cvLoadImage(textureFile, CV_LOAD_IMAGE_COLOR);
-  if (image != NULL) {
+  if (image != nullptr) {
     texture.width = image->width;
     texture.height = image->height;
     texture.data = new unsigned char[image->imageSize];

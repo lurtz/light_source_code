@@ -12,7 +12,7 @@ ObjLoader::~ObjLoader() {
   // thanks to Vincent for pointing out the broken destructor ... erasing pointers without deleting the referenced object is baaaaad //
   for (std::map<std::string, MeshObj*>::iterator iter = mMeshMap.begin(); iter != mMeshMap.end(); ++iter) {
     delete iter->second;
-    iter->second = NULL;
+    iter->second = nullptr;
   }
   mMeshMap.clear();
 }
@@ -20,11 +20,11 @@ ObjLoader::~ObjLoader() {
 MeshObj* ObjLoader::loadObjFile(std::string fileName, std::string ID, float scale) {
   // sanity check for identfier -> must not be empty //
   if (ID.length() == 0) {
-    return NULL;
+    return nullptr;
   }
   // try to load the MeshObj for ID //
   MeshObj* obj = getMeshObj(ID);
-  if (obj != NULL) {
+  if (obj != nullptr) {
     // if found, return it instead of loading a new one from file //
     return obj;
   }
@@ -205,7 +205,7 @@ MeshObj* ObjLoader::loadObjFile(std::string fileName, std::string ID, float scal
     return obj;
   } else {
     std::cout << "(ObjLoader::loadObjFile) : Could not open file: \"" << fileName << "\"" << std::endl;
-    return NULL;
+    return nullptr;
   }
 }
 
@@ -310,8 +310,8 @@ MeshObj* ObjLoader::getMeshObj(std::string ID) {
       return mapLocation->second;
     }
   }
-  // no MeshObj found for ID -> return NULL //
-  return NULL;
+  // no MeshObj found for ID -> return nullptr //
+  return nullptr;
 }
 
 void ObjLoader::normalizeVector(float *vector, int dim) {

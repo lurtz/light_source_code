@@ -42,14 +42,14 @@ typedef struct arguments {
 const char * opt_string = "m:i:s:r:t:hc:";
 
 const struct option long_opts[] = {
-  { "mesh-name", required_argument, NULL, 'm'},
-  { "image-name", required_argument, NULL, 'i'},
-  { "scale", required_argument, NULL, 's'},
-  { "rotation", required_argument, NULL, 'r'},
-  { "translation", required_argument, NULL, 't'},
-  { "help", no_argument, NULL, 'h'},
-  { "config", required_argument, NULL, 'c'},
-  { NULL, no_argument, NULL, 0}
+  { "mesh-name", required_argument, nullptr, 'm'},
+  { "image-name", required_argument, nullptr, 'i'},
+  { "scale", required_argument, nullptr, 's'},
+  { "rotation", required_argument, nullptr, 'r'},
+  { "translation", required_argument, nullptr, 't'},
+  { "help", no_argument, nullptr, 'h'},
+  { "config", required_argument, nullptr, 'c'},
+  { nullptr, no_argument, nullptr, 0}
 };
 
 template<class T, int N>

@@ -13,8 +13,8 @@
 #include <opencv2/highgui/highgui.hpp>
 #include "solver.h"
 
-MeshObj * _meshobj;
-cv::Mat const * _original_image;
+MeshObj * _meshobj = nullptr;
+cv::Mat const * _original_image = nullptr;
 Trackball _ball;
 
 GLclampf clear_color = 0.3;
@@ -31,7 +31,7 @@ std::vector<Light<float>::properties> lights;
 
 bool image_displayed = false;
 
-#define BUFFER_OFFSET(i) ((char *)NULL + (i))
+#define BUFFER_OFFSET(i) ((char *)nullptr + (i))
 
 // Define some globals
 int windowWidth, windowHeight;
@@ -181,9 +181,6 @@ void calc_lights() {
 #endif
 }
 
-// TODO bild mit OpenGL und definierten lichtern erzeugen und dann versuchen
-//      davon nochmal die Beleuchtung zu berechnen
-
 void updateGL() {
   GLfloat aspectRatio = static_cast<GLfloat>(windowWidth) / windowHeight;
   
@@ -267,11 +264,11 @@ void initFBO() {
   glGenTextures(3, fboTexture);
   for (unsigned int i = 0; i < 3; ++i) {
     glBindTexture(GL_TEXTURE_2D, fboTexture[i]);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, windowWidth, windowHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, windowWidth, windowHeight, 0, GL_RGBA, GL_FLOAT, nullptr);
   }
   // init depth texture //
   glGenTextures(1, &fboDepthTexture);
@@ -281,7 +278,7 @@ void initFBO() {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_LUMINANCE);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, windowWidth, windowHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, windowWidth, windowHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 
   // generate FBO and depthBuffer //
   glGenFramebuffers(1, &fbo);
@@ -301,7 +298,7 @@ void initLights() {
   ambient = create_ambient_color<float>();
 //  lights = create_lights_from_array(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
   lights = create_light_sphere<float>(10, 20);
-  if (_meshobj != NULL)
+  if (_meshobj != nullptr)
 	  _meshobj->setLight(ambient, lights);
 }
 

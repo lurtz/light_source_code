@@ -4,7 +4,7 @@
 #include <cmath>
 #include "lights.h"
 
-#define OFFSET(i) ((char*)NULL + (i))
+#define OFFSET(i) ((char*)nullptr + (i))
 
 MeshObj::MeshObj(std::vector<Light<float>::properties> const * lights, float const * const rotation, float const * const translation, const float scale)
   : mMaterial(0), mVBO(0), mIBO(0), mIndexCount(0), mShadowVBO(0), mShadowIBO(0), mShadowIndexCount(0), _scale(scale), _lights(lights) {
@@ -80,7 +80,7 @@ void MeshObj::render(void) {
   glRotatef(_rotation[2], 0, 0, 1);
   glScalef(_scale, _scale, _scale);
 
-  if (mMaterial != NULL) {
+  if (mMaterial != nullptr) {
     mMaterial->enable();
   }
 
@@ -90,7 +90,7 @@ void MeshObj::render(void) {
 
     GLuint programm_id = mMaterial->getShaderProgram()->getProgramID();
 
-    if (_lights != NULL)
+    if (_lights != nullptr)
       setUniforms<float>(programm_id, *_ambient_color, *_lights);
 
     GLint vertexLoc = glGetAttribLocation(programm_id, "vertex_OS");
@@ -105,7 +105,7 @@ void MeshObj::render(void) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO);
 
     // render VBO as triangles //
-    glDrawElements(GL_TRIANGLES, mIndexCount, GL_UNSIGNED_INT, (void*)0);
+    glDrawElements(GL_TRIANGLES, mIndexCount, GL_UNSIGNED_INT, nullptr);
 
     // unbind the buffers //
     glDisableVertexAttribArray(vertexLoc);
@@ -117,7 +117,7 @@ void MeshObj::render(void) {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
   }
 
-  if (mMaterial != NULL) {
+  if (mMaterial != nullptr) {
     mMaterial->disable();
   }
 

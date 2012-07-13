@@ -43,8 +43,8 @@ GLuint Shader::loadShaderCode(const char* fileName, GLenum shaderType) {
   }
   
   const char* shaderSrc = loadShaderSource(fileName);
-  if (shaderSrc == NULL) return 0;
-  glShaderSource(shader, 1, (const char**)&shaderSrc, NULL);
+  if (shaderSrc == nullptr) return 0;
+  glShaderSource(shader, 1, (const char**)&shaderSrc, nullptr);
   
   glCompileShader(shader);
   
@@ -86,7 +86,7 @@ char* Shader::loadShaderSource(const char* fileName) {
     return srcData;
   } else {
     std::cout << "(Shader::loadShaderSource) - Could not open file \"" << fileName << "\"." << std::endl;
-    return NULL;
+    return nullptr;
   }
 }
 
