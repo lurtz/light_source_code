@@ -218,11 +218,11 @@ void updateGL() {
 }
 
 void run(const cv::Mat& original_image, MeshObj * const meshobj) {
-	_original_image = &original_image;
-    _meshobj = meshobj;
-    _meshobj->setLight(ambient, lights);
-    glutMainLoop();
-//    glutMainLoopEvent();
+  _original_image = &original_image;
+  _meshobj = meshobj;
+  _meshobj->setLight(ambient, lights);
+  glutMainLoop();
+//  glutMainLoopEvent();
 }
 
 void keyboardEvent(unsigned char key, int x, int y) {

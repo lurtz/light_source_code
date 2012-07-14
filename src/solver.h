@@ -99,7 +99,7 @@ bool check_pixel(const cv::Vec<T, dim>& pixel, const std::string& name, const in
 
 template<typename X, int dim>
 std::pair<X, X> get_min_max(const cv::Mat_<cv::Vec<X, dim> >& mat) {
-  cv::Mat_<X> one_dim(mat.rows, dim*mat.cols, reinterpret_cast<X *>(mat.data));
+  cv::Mat_<X> one_dim(cv::Mat(mat).reshape(1));
   X min = *std::min_element(std::begin(one_dim), std::end(one_dim));
   X max = *std::max_element(std::begin(one_dim), std::end(one_dim));
   return std::make_pair(min, max);
@@ -186,7 +186,6 @@ void optimize_lights(cv::Mat_<cv::Vec3f >& image, cv::Mat_<cv::Vec3f>& normals, 
   test_normals(normals);
 //  test_normals2(normals);
   get_min_max_and_print(normals);
-  cv::waitKey(0);
 
   // do not take all points of the image
   // calculate this value somehow, maybe specify the number of samples and

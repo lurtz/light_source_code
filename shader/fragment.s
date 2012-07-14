@@ -11,6 +11,9 @@ struct Light_properties {
   vec4 diffuse;
   vec4 specular;
 };
+
+// reached a value of 150 lights with big computer
+// without solving equations I can get up to 800 lights with a Radeon HD6850 and Mesa
 #define MAX_LIGHTS 20
 uniform Light_properties lights[MAX_LIGHTS];
 
