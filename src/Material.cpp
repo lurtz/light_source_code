@@ -1,6 +1,11 @@
 #include "Material.h"
 
-#include <opencv2/highgui/highgui_c.h>
+#ifdef OPENCV_OLD_INCLUDES
+  #include <highgui.h>
+#else
+  #include <opencv2/highgui/highgui_c.h>
+#endif
+
 
 Material::Material() {
   mShaderProgram = nullptr;

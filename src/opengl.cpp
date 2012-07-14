@@ -10,7 +10,15 @@
 #include <tuple>
 #include "opengl.h"
 #include "Trackball.h"
-#include <opencv2/highgui/highgui.hpp>
+
+#ifdef OPENCV_OLD_INCLUDES
+  #include <cv.h>
+  #include <highgui.h>
+#else
+  #include <opencv2/core/core.hpp>
+  #include <opencv2/highgui/highgui.hpp>
+#endif
+
 #include "solver.h"
 
 MeshObj * _meshobj = nullptr;

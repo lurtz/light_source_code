@@ -2,7 +2,13 @@
 #define SOLVER_H_
 
 #include "lights.h"
-#include <opencv2/core/core.hpp>
+
+#ifdef OPENCV_OLD_INCLUDES
+  #include <cv.h>
+#else
+  #include <opencv2/core/core.hpp>
+#endif
+
 #include <vector>
 #include <gsl/gsl_multifit.h>
 #include <iomanip>
