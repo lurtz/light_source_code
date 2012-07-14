@@ -152,6 +152,9 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f> > rende
     flipImage(normals, windowWidth);
     flipImage(position, windowWidth);
 
+    // convert normals from [0,1] to [-1,1]
+    normals = (normals*2) -1;
+
     return std::make_tuple(image, normals, position);
 }
 
