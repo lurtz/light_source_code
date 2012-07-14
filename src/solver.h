@@ -100,9 +100,8 @@ bool check_pixel(const cv::Vec<T, dim>& pixel, const std::string& name, const in
 template<typename X, int dim>
 std::pair<X, X> get_min_max(const cv::Mat_<cv::Vec<X, dim> >& mat) {
   cv::Mat_<X> one_dim(cv::Mat(mat).reshape(1));
-  X min = *std::min_element(std::begin(one_dim), std::end(one_dim));
-  X max = *std::max_element(std::begin(one_dim), std::end(one_dim));
-  return std::make_pair(min, max);
+  std::pair<cv::MatIterator_<X>, cv::MatIterator_<X> > tmp = std::minmax_element(std::begin(one_dim), std::end(one_dim));
+  return std::make_pair(*tmp.first, *tmp.second);
 }
 
 template<typename X, int dim>
