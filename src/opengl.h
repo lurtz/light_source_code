@@ -1,7 +1,6 @@
 #ifndef __OPENGL_H__
 #define __OPENGL_H__
 
-#include <GL/gl.h>
 #include "MeshObj.h"
 #include <opencv2/core/core.hpp>
 
