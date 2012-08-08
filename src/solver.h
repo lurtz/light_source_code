@@ -9,6 +9,7 @@
 #else
   #include <opencv2/core/core.hpp>
   #include<opencv2/highgui/highgui.hpp>
+  #include <opencv2/imgproc/imgproc.hpp>
 #endif
 
 #include <vector>
@@ -140,7 +141,7 @@ void test_reflect() {
 }
 
 template<typename T, int dim>
-void test_normals(const cv::Mat_<cv::Vec<T, dim> >& normals_, const cv::Vec<T, dim> offset = cv::Vec<T, dim>(), const T eps = 0.01f) {
+void test_normals(const cv::Mat_<cv::Vec<T, dim> >& normals_, const cv::Vec<T, dim> offset = cv::Vec<T, dim>(), const T eps = std::numeric_limits<float>::epsilon()) {
   cv::Mat_<cv::Vec<T, dim> > normals;
   normals_.copyTo(normals);
   for (auto& normal : normals) {
@@ -151,22 +152,6 @@ void test_normals(const cv::Mat_<cv::Vec<T, dim> >& normals_, const cv::Vec<T, d
   cv::imshow("geteste normalen1", normals);
 }
 
-void test_normals2(const cv::Mat_<cv::Vec3f>& normals_, const int x_ = -1, const int y_ = -1, const float eps = 0.01f) {
-  const cv::Vec3f offset(0.0f, 0.0f, 0.0f);
-  cv::Mat_<cv::Vec3f> normals;
-  normals_.copyTo(normals);
-  for (int y = 0; y < normals.rows; y++)
-    for (int x = 0; x < normals.cols; x++) {
-      cv::Vec3f normal = normals(y, x);
-      if (fabs(cv::norm(normal - offset) - 1) > eps) {
-        normals(y, x) = cv::Vec3f(0, 0, 0);
-      } else if (x != -1 && y != -1 && x == x_ && y == y_) {
-        std::cout << "normale ok an stelle " << x << ", " << y << std::endl;
-      }
-    }
-  cv::imshow("geteste normalen2", normals);
-}
-
 template<typename T>
 bool is_scalar(const cv::Mat_<T>& mat) {
   const bool dims = mat.dims == 2;
@@ -175,23 +160,24 @@ bool is_scalar(const cv::Mat_<T>& mat) {
   return dims && cols && rows;
 }
 
-
-// smallest possible eps is 0.01 for float and opengl (precision)
-const float eps = 0.01;
+template<typename T>
+void show_rgb_image(std::string name, cv::Mat_<cv::Vec<T, 3>> image) {
+  decltype(image) bla;
+  cv::cvtColor(image, bla, CV_RGB2BGR);
+  cv::imshow(name, bla);
+}
 
 template<typename T>
 void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const cv::Mat_<GLfloat>& projection_matrix, const float clear_color, std::vector<T> &ambient, std::vector<typename Light<T>::properties>& lights, const int alpha = 50) {
-  cv::imshow("target image", image);
-
-//  CV_32FC3  21
-
+  show_rgb_image("target image", image);
 //  cv::imshow("normals", normals);
 //  cv::imshow("position", position);
+  
+  //  order of images is: xyz, RGB
 
   print_lights(lights, ambient);
-
+  
 //  test_normals(normals);
-//  test_normals2(normals);
   //get_min_max_and_print(normals);
 
   // do not take all points of the image
@@ -222,6 +208,8 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
       if (used_pixels(y, x))
         continue;
 
+      const float eps = std::numeric_limits<float>::epsilon();
+      
       // skip if no object
       // assume that a normal is (clear_color,clear_color,clear_color) where no object is
       cv::Vec<float, 3> normal = normals(y, x);
@@ -266,6 +254,13 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
       // durch vierte komponente teilen
       const cv::Mat_<float> light_pos_vec4(model_view_matrix * light_pos_in_world_space_mat);
       const cv::Mat_<float> light_pos(light_pos_vec4 / light_pos_vec4(3), cv::Range(0, 3));
+      
+      std::cout << "light source: " 
+        << col/components_per_light/colors_per_light
+        << ", Position: (" << light_pos_vec4(0) << ", " << light_pos_vec4(1) << ", " << light_pos_vec4(2) << ", " << light_pos_vec4(3) << ")" << std::endl;
+      std::cout << "light source: " 
+        << col/components_per_light/colors_per_light
+        << ", Position: (" << light_pos(0) << ", " << light_pos(1) << ", " << light_pos(2) << ")" << std::endl;
 
       const cv::Mat_<float> L_ = light_pos - pos_vec;
       cv::Mat_<float> L(L_.rows, L_.cols, L_.type());

@@ -14,6 +14,7 @@ struct Light_properties {
 
 // reached a value of 150 lights with big computer
 // without solving equations I can get up to 800 lights with a Radeon HD6850 and Mesa
+// my thinkpad seems not to like huge values, 30 is max
 #define MAX_LIGHTS 20
 uniform Light_properties lights[MAX_LIGHTS];
 
@@ -55,5 +56,5 @@ void main () {
 
     gl_FragData[0] = color;
     gl_FragData[1] = vec4(N, 0.0);
-    gl_FragData[2] = vec4(-eyeVec, 0.0);
+    gl_FragData[2] = vec4(-eyeVec, 1.0);
 }

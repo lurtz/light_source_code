@@ -120,7 +120,6 @@ void flipImage(T& image, const unsigned int width) {
 }
 
 std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<float> > renderSceneIntoFBO() {
-    image_displayed = true;
     // render scene into first color attachment of FBO -> use as filter texture later on //
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
@@ -140,21 +139,23 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Ma
 
     // read each texture into an array
     glReadBuffer(GL_COLOR_ATTACHMENT0);
-    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, image.data);
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_RGB, GL_FLOAT, image.data);
     glReadBuffer(GL_COLOR_ATTACHMENT1);
-    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, normals.data);
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_RGB, GL_FLOAT, normals.data);
     glReadBuffer(GL_COLOR_ATTACHMENT2);
-    glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, position.data);
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_RGB, GL_FLOAT, position.data);
     glReadBuffer(GL_DEPTH_ATTACHMENT);
     glReadPixels(0, 0, windowWidth, windowHeight, GL_DEPTH_COMPONENT, GL_FLOAT, depth.data);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     
     // opencv images are upside down
-    flipImage(image, windowWidth);
-    flipImage(normals, windowWidth);
-    flipImage(position, windowWidth);
-    flipImage(depth, windowWidth);
+    if (true) {
+      flipImage(image, windowWidth);
+      flipImage(normals, windowWidth);
+      flipImage(position, windowWidth);
+      flipImage(depth, windowWidth);
+    }
 
     return std::make_tuple(image, normals, position, depth);
 }
@@ -172,34 +173,24 @@ decltype(renderSceneIntoFBO()) create_test_image() {
 void calc_lights() {
   if (image_displayed)
     return;
+  image_displayed = true;
 
   cv::Mat_<cv::Vec3f> image;
   cv::Mat_<cv::Vec3f> normals;
   cv::Mat_<cv::Vec3f> position;
-  cv::Mat_<float> depth;
-  std::tie(image, normals, position, depth) = create_test_image();
+  std::tie(image, normals, position, std::ignore) = create_test_image();
   
-//  static if (true) std::cout << "static if!" << std::endl;
-
-#if false
-    cv::imshow("fbo texture", image);
-    cv::imshow("normals2", normals);
-    cv::imshow("position", position);
-    cv::waitKey(100);
-#else
-
+  // do not need to be flipped
   GLfloat model_view_matrix_stack[16];
   glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix_stack);
   cv::Mat_<GLfloat> model_view_matrix(4, 4, model_view_matrix_stack);
-  flipImage(model_view_matrix, 4);
   
+  // do not need to be flipped
   GLfloat projection_matrix_stack[16];
   glGetFloatv(GL_PROJECTION, projection_matrix_stack);
   cv::Mat_<GLfloat> projection_matrix(4, 4, projection_matrix_stack);
-  flipImage(projection_matrix, 4);
   
   optimize_lights<float>(image, normals, position, model_view_matrix, projection_matrix, clear_color, ambient, lights);
-#endif
 }
 
 void updateGL() {
@@ -317,8 +308,8 @@ void initFBO() {
 
 void initLights() {
   ambient = create_ambient_color<float>();
-//  lights = create_lights_from_array(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
-  lights = create_light_sphere<float>(10, 20);
+  lights = create_lights_from_array(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
+//  lights = create_light_sphere<float>(10, 20);
   if (_meshobj != nullptr)
 	  _meshobj->setLight(ambient, lights);
 }

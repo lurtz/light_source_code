@@ -11,6 +11,7 @@
 #include <cmath>
 
 // position, ambient, diffuse, specular in vec4
+// RGB format
 const unsigned int NUM_PROPERTIES = 3;
 const float light_properties[][4] = {
     { 4, 4, 2, 1}, {0.5, 0.0, 0.0, 0}, {1, 0, 0, 0}

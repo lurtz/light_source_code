@@ -1,4 +1,4 @@
 mesh-name testscenes/unitsphere.obj
 image-name testscenes/unitsphere_1_color.png
 translation 0/0/0
-scale 0.91
+#scale 0.91
