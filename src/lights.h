@@ -82,7 +82,7 @@ std::vector<typename Light<T>::properties> create_light_sphere(float radius = 10
     position.at(1) = y          * radius;
     position.at(2) = sin(phi)*r * radius;
     position.at(3) = 1;
-    tmp.at(i) = create_light(i, position, default_light_property, default_light_property);
+    tmp.at(i) = create_light(i, std::move(position), default_light_property, default_light_property);
   }
   return tmp;
 }
@@ -101,8 +101,8 @@ std::vector<typename Light<T>::properties> create_lights_from_array(const T ligh
     std::vector<T> diffuse = create_vector_from_array(light_props[i + 1]);
     std::vector<T> specular = create_vector_from_array(light_props[i + 2]);
 
-    typename Light<T>::properties props = create_light(i / NUM_PROPERTIES, position, diffuse, specular);
-    tmp.push_back(props);
+    typename Light<T>::properties props = create_light(i / NUM_PROPERTIES, std::move(position), std::move(diffuse), std::move(specular));
+    tmp.push_back(std::move(props));
   }
   return tmp;
 }

@@ -9,6 +9,7 @@
 #include <limits>
 #include <iterator>
 #include <tuple>
+#include <memory>
 #include "opengl.h"
 #include "Trackball.h"
 
@@ -118,7 +119,7 @@ void flipImage(T& image, const unsigned int width) {
   flipImage(std::begin(image), std::end(image), width);
 }
 
-std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f> > renderSceneIntoFBO() {
+std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<float> > renderSceneIntoFBO() {
     image_displayed = true;
     // render scene into first color attachment of FBO -> use as filter texture later on //
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -130,12 +131,12 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f> > rende
 
     renderScene();
 
-    // TODO problem: value of FBO textures ranges only from 0 to 1
     // read data from frame buffer
     // create opencv images
     cv::Mat_<cv::Vec3f> image(windowHeight, windowWidth);
     cv::Mat_<cv::Vec3f> normals(windowHeight, windowWidth);
     cv::Mat_<cv::Vec3f> position(windowHeight, windowWidth);
+    cv::Mat_<float> depth(windowHeight, windowWidth);
 
     // read each texture into an array
     glReadBuffer(GL_COLOR_ATTACHMENT0);
@@ -145,21 +146,20 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f> > rende
     glReadBuffer(GL_COLOR_ATTACHMENT2);
     glReadPixels(0, 0, windowWidth, windowHeight, GL_BGR, GL_FLOAT, position.data);
     glReadBuffer(GL_DEPTH_ATTACHMENT);
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_DEPTH_COMPONENT, GL_FLOAT, depth.data);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
+    
     // opencv images are upside down
     flipImage(image, windowWidth);
     flipImage(normals, windowWidth);
     flipImage(position, windowWidth);
+    flipImage(depth, windowWidth);
 
-    // convert normals from [0,1] to [-1,1]
-    normals = (normals*2) -1;
-
-    return std::make_tuple(image, normals, position);
+    return std::make_tuple(image, normals, position, depth);
 }
 
-std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f> > create_test_image() {
+decltype(renderSceneIntoFBO()) create_test_image() {
   auto tmp_lights = create_lights_from_array(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
   _meshobj->setLight(ambient, tmp_lights);
 
@@ -176,7 +176,10 @@ void calc_lights() {
   cv::Mat_<cv::Vec3f> image;
   cv::Mat_<cv::Vec3f> normals;
   cv::Mat_<cv::Vec3f> position;
-  std::tie(image, normals, position) = create_test_image();
+  cv::Mat_<float> depth;
+  std::tie(image, normals, position, depth) = create_test_image();
+  
+//  static if (true) std::cout << "static if!" << std::endl;
 
 #if false
     cv::imshow("fbo texture", image);
@@ -185,11 +188,17 @@ void calc_lights() {
     cv::waitKey(100);
 #else
 
-  GLfloat model_view_matrix[16];
-  glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix);
-  cv::Mat_<GLfloat> model_view_matrix_cv(4, 4, model_view_matrix, 0);
-
-  optimize_lights<float>(image, normals, position, model_view_matrix_cv, clear_color, ambient, lights);
+  GLfloat model_view_matrix_stack[16];
+  glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix_stack);
+  cv::Mat_<GLfloat> model_view_matrix(4, 4, model_view_matrix_stack);
+  flipImage(model_view_matrix, 4);
+  
+  GLfloat projection_matrix_stack[16];
+  glGetFloatv(GL_PROJECTION, projection_matrix_stack);
+  cv::Mat_<GLfloat> projection_matrix(4, 4, projection_matrix_stack);
+  flipImage(projection_matrix, 4);
+  
+  optimize_lights<float>(image, normals, position, model_view_matrix, projection_matrix, clear_color, ambient, lights);
 #endif
 }
 
@@ -276,11 +285,11 @@ void initFBO() {
   glGenTextures(3, fboTexture);
   for (unsigned int i = 0; i < 3; ++i) {
     glBindTexture(GL_TEXTURE_2D, fboTexture[i]);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, windowWidth, windowHeight, 0, GL_RGBA, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, windowWidth, windowHeight, 0, GL_RGBA, GL_FLOAT, nullptr);
   }
   // init depth texture //
   glGenTextures(1, &fboDepthTexture);

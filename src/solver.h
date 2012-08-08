@@ -72,7 +72,7 @@ void sample_linear_problem() {
 
 template<typename T>
 bool check_bounds_of_value(const T value, const std::string& valuename, const T min = 0.0f, const T max = 1.0f) {
-  bool ret_val = value >= min && value <= max;
+  bool ret_val = value >= min-std::numeric_limits<T>::min() && value <= max+std::numeric_limits<T>::max();
   if (!ret_val) {
     std::cout << valuename << " " << value << " too ";
     if (value < min)
@@ -103,6 +103,12 @@ template<typename X, int dim>
 std::pair<X, X> get_min_max(const cv::Mat_<cv::Vec<X, dim> >& mat) {
   cv::Mat_<X> one_dim(cv::Mat(mat).reshape(1));
   std::pair<cv::MatIterator_<X>, cv::MatIterator_<X> > tmp = std::minmax_element(std::begin(one_dim), std::end(one_dim));
+  return std::make_pair(*tmp.first, *tmp.second);
+}
+
+template<typename X>
+std::pair<X, X> get_min_max(const std::vector<X>& mat) {
+  auto tmp = std::minmax_element(std::begin(mat), std::end(mat));
   return std::make_pair(*tmp.first, *tmp.second);
 }
 
@@ -174,19 +180,19 @@ bool is_scalar(const cv::Mat_<T>& mat) {
 const float eps = 0.01;
 
 template<typename T>
-void optimize_lights(cv::Mat_<cv::Vec3f >& image, cv::Mat_<cv::Vec3f>& normals, cv::Mat_<cv::Vec3f>& position, cv::Mat_<GLfloat>& model_view_matrix, float clear_color, std::vector<T> &ambient, std::vector<typename Light<T>::properties>& lights, const int alpha = 50) {
+void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const cv::Mat_<GLfloat>& projection_matrix, const float clear_color, std::vector<T> &ambient, std::vector<typename Light<T>::properties>& lights, const int alpha = 50) {
   cv::imshow("target image", image);
 
 //  CV_32FC3  21
 
-  cv::imshow("normals", normals);
+//  cv::imshow("normals", normals);
 //  cv::imshow("position", position);
 
   print_lights(lights, ambient);
 
-  test_normals(normals);
+//  test_normals(normals);
 //  test_normals2(normals);
-  get_min_max_and_print(normals);
+  //get_min_max_and_print(normals);
 
   // do not take all points of the image
   // calculate this value somehow, maybe specify the number of samples and
@@ -218,14 +224,16 @@ void optimize_lights(cv::Mat_<cv::Vec3f >& image, cv::Mat_<cv::Vec3f>& normals, 
 
       // skip if no object
       // assume that a normal is (clear_color,clear_color,clear_color) where no object is
-      // TODO normalen nochmal testen
       cv::Vec<float, 3> normal = normals(y, x);
       if (fabs(normal[0] - clear_color) < eps && fabs(normal[1] - clear_color) < eps && fabs(normal[2] - clear_color) < eps)
         continue;
 
+      // skip if length is not 1
       if (!(fabs(cv::norm(normal) - 1) < eps))
         continue;
-//      assert(fabs(cv::norm(normal) - 1) < eps);
+      assert(fabs(cv::norm(normal) - 1) < eps);
+      assert(_x < image.cols);
+      assert(_y < image.rows);
 
       _x = x;
       _y = y;
@@ -234,9 +242,7 @@ void optimize_lights(cv::Mat_<cv::Vec3f >& image, cv::Mat_<cv::Vec3f>& normals, 
 
     // 2. set matrix parameter for pixel
     // set value of pixel in the image to the vector
-    assert(_x < image.cols);
-    assert(_y < image.rows);
-    const cv::Vec<float, colors_per_light> pixel = image(_y, _x);
+    const cv::Vec<float, colors_per_light>& pixel = image(_y, _x);
     check_pixel(pixel, "target", _x, _y);
     for (unsigned int i = 0; i < colors_per_light; i++) {
       gsl_vector_set(y, row + i, pixel[i]);
@@ -252,7 +258,6 @@ void optimize_lights(cv::Mat_<cv::Vec3f >& image, cv::Mat_<cv::Vec3f>& normals, 
 
     const cv::Mat_<float> pos_vec(position(_y, _x));
     const cv::Mat_<float> normal(normals(_y, _x), false);
-    assert(fabs(cv::norm(normal) - 1) < eps);
 
     for (unsigned int col = colors_per_light; col < cols; col+=components_per_light*colors_per_light) {
       typename Light<T>::properties& props = lights.at(col/components_per_light/colors_per_light);
@@ -341,7 +346,7 @@ void optimize_lights(cv::Mat_<cv::Vec3f >& image, cv::Mat_<cv::Vec3f>& normals, 
   gsl_vector_free(y);
   gsl_vector_free(c);
 
-  cv::imshow("used_pixels", used_pixels);
+//  cv::imshow("used_pixels", used_pixels);
   cv::waitKey(100);
 
   print_lights(lights, ambient);
