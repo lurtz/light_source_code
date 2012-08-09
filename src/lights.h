@@ -9,6 +9,12 @@
 #include <iostream>
 #include <sstream>
 #include <cmath>
+#include <cassert>
+#ifdef OPENCV_OLD_INCLUDES
+  #include <cv.h>
+#else
+  #include <opencv2/core/core.hpp>
+#endif
 
 // position, ambient, diffuse, specular in vec4
 // RGB format
@@ -17,6 +23,7 @@ const float light_properties[][4] = {
     { 4, 4, 2, 1}, {0.5, 0.0, 0.0, 0}, {1, 0, 0, 0}
     ,{-60,  1, 0, 1}, {0.0, 0.5, 0.0, 0}, {0, 1, 0, 0}
     ,{ 30,  0, 0, 1}, {0.0, 0.0, 0.5, 0}, {0, 0, 1, 0}
+    ,{ 0,  -10, 0, 1}, {0.5, 0.0, 0.5, 0}, {1, 0, 1, 0}
 };
 
 template<typename T>
@@ -83,6 +90,7 @@ std::vector<typename Light<T>::properties> create_light_sphere(float radius = 10
     position.at(1) = y          * radius;
     position.at(2) = sin(phi)*r * radius;
     position.at(3) = 1;
+    assert(abs(cv::norm(cv::Vec<T, 3>(position.at(0), position.at(1), position.at(2))) - radius) < std::numeric_limits<T>::epsilon());
     tmp.at(i) = create_light(i, std::move(position), default_light_property, default_light_property);
   }
   return tmp;
