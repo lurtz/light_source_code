@@ -16,6 +16,7 @@
 #include <gsl/gsl_multifit.h>
 #include <iomanip>
 #include <limits>
+#include <iterator>
 
 void print_gsl_matrix_row(const gsl_matrix& m, const unsigned int row) {
   for (unsigned int col = 0; col < m.size2 - 1; col++)
@@ -168,12 +169,53 @@ void show_rgb_image(std::string name, cv::Mat_<cv::Vec<T, 3>> image) {
 }
 
 template<typename T>
+cv::Mat_<float> transform(const cv::Mat_<GLfloat>& model_view_matrix, const std::vector<T>& light_pos_in_object_space_vector) {
+  const cv::Mat_<float> light_pos_in_object_space_mat(light_pos_in_object_space_vector, false);
+  // durch vierte komponente teilen
+  const cv::Mat_<float> light_pos_vec4(model_view_matrix * light_pos_in_object_space_mat);
+  const cv::Mat_<float> light_pos(light_pos_vec4 / light_pos_vec4(3), cv::Range(0, 3));
+  
+  return light_pos;
+}
+
+template<typename T>
+std::ostream& operator<<(std::ostream& stream, std::vector<T> vec) {
+  stream << "(";
+  std::copy(std::begin(vec), std::end(vec)-1, std::ostream_iterator<T>(stream, ", "));
+  stream << vec.back();
+  stream << ")";
+  return stream;
+}
+
+template<typename T>
+void test_modelview_matrix_and_light_positions(const cv::Mat_<GLfloat>& model_view_matrix, std::vector<typename Light<T>::properties>& lights) {
+  std::cout << "modelvielmatrix:\n" << model_view_matrix << std::endl;
+  
+  unsigned int i = 0;
+  for (const auto& light : lights) {
+    auto position_object_space = light.find(get_position_name(i))->second;
+    std::cout << "light source: " 
+      << i << ", "
+      << position_object_space
+      << std::endl;
+    auto position_world_space = transform(model_view_matrix, position_object_space);
+    std::cout << "light source: " 
+      << i << ", "
+      << position_world_space
+      << std::endl;
+    i++;
+  }
+}
+
+template<typename T>
 void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const cv::Mat_<GLfloat>& projection_matrix, const float clear_color, std::vector<T> &ambient, std::vector<typename Light<T>::properties>& lights, const int alpha = 50) {
   show_rgb_image("target image", image);
 //  cv::imshow("normals", normals);
 //  cv::imshow("position", position);
   
   //  order of images is: xyz, RGB
+  
+  test_modelview_matrix_and_light_positions<T>(model_view_matrix, lights);
 
   print_lights(lights, ambient);
   
@@ -249,18 +291,7 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
 
     for (unsigned int col = colors_per_light; col < cols; col+=components_per_light*colors_per_light) {
       typename Light<T>::properties& props = lights.at(col/components_per_light/colors_per_light);
-      const std::vector<T>& light_pos_in_world_space_vector = props[get_position_name(col/components_per_light/colors_per_light)];
-      const cv::Mat_<float> light_pos_in_world_space_mat(light_pos_in_world_space_vector, false);
-      // durch vierte komponente teilen
-      const cv::Mat_<float> light_pos_vec4(model_view_matrix * light_pos_in_world_space_mat);
-      const cv::Mat_<float> light_pos(light_pos_vec4 / light_pos_vec4(3), cv::Range(0, 3));
-      
-      std::cout << "light source: " 
-        << col/components_per_light/colors_per_light
-        << ", Position: (" << light_pos_vec4(0) << ", " << light_pos_vec4(1) << ", " << light_pos_vec4(2) << ", " << light_pos_vec4(3) << ")" << std::endl;
-      std::cout << "light source: " 
-        << col/components_per_light/colors_per_light
-        << ", Position: (" << light_pos(0) << ", " << light_pos(1) << ", " << light_pos(2) << ")" << std::endl;
+      const cv::Mat_<float> light_pos = transform(model_view_matrix, props[get_position_name(col/components_per_light/colors_per_light)]);
 
       const cv::Mat_<float> L_ = light_pos - pos_vec;
       cv::Mat_<float> L(L_.rows, L_.cols, L_.type());

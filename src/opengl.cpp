@@ -190,7 +190,7 @@ void calc_lights() {
   glGetFloatv(GL_PROJECTION, projection_matrix_stack);
   cv::Mat_<GLfloat> projection_matrix(4, 4, projection_matrix_stack);
   
-  optimize_lights<float>(image, normals, position, model_view_matrix, projection_matrix, clear_color, ambient, lights);
+  optimize_lights<float>(image, normals, position, model_view_matrix.t(), projection_matrix.t(), clear_color, ambient, lights);
 }
 
 void updateGL() {
