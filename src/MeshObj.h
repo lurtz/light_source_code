@@ -34,7 +34,7 @@ struct Vertex {
 
 class MeshObj {
   public:
-    MeshObj(std::vector<Light<float>::properties> const * const lights = 0, float const * const rotation = 0, float const * const translation = 0, const float scale = 1);
+    MeshObj(Lights<float> const * const lights = nullptr, float const * const rotation = nullptr, float const * const translation = nullptr, const float scale = 1);
     ~MeshObj();
     
     void setData(const std::vector<Vertex> &vertexData, const std::vector<unsigned int> &indexData);
@@ -49,7 +49,7 @@ class MeshObj {
     void rotate(float rotation[3]);
     void translate(float translation[3]);
     void scale(float scale);
-    void setLight(const std::vector<float> &ambient_color, const std::vector<Light<float>::properties> &lights);
+    void setLight(const Lights<float>& lights);
   private:
     std::vector<Vertex> mVertexData;
     std::vector<unsigned int> mIndexData;
@@ -70,8 +70,7 @@ class MeshObj {
     float _translation[3];
     float _scale;
 
-    std::vector<float> const *_ambient_color;
-    std::vector<Light<float>::properties> const *_lights;
+    Lights<float> const *_lights;
 };
 
 #endif

@@ -36,8 +36,7 @@ GLuint fboTexture[3];
 GLuint fboDepthTexture;
 GLuint fbo;
 
-std::vector<float> ambient;
-std::vector<Light<float>::properties> lights;
+Lights<float> lights;
 
 bool image_displayed = false;
 
@@ -161,12 +160,12 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Ma
 }
 
 decltype(renderSceneIntoFBO()) create_test_image() {
-  auto tmp_lights = create_lights_from_array(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
-  _meshobj->setLight(ambient, tmp_lights);
+  auto tmp_lights = Lights<float>(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
+  _meshobj->setLight(tmp_lights);
 
   auto tuple = renderSceneIntoFBO();
 
-  _meshobj->setLight(ambient, lights);
+  _meshobj->setLight(lights);
   return tuple;
 }
 
@@ -185,12 +184,7 @@ void calc_lights() {
   glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix_stack);
   cv::Mat_<GLfloat> model_view_matrix(4, 4, model_view_matrix_stack);
   
-  // do not need to be flipped
-  GLfloat projection_matrix_stack[16];
-  glGetFloatv(GL_PROJECTION, projection_matrix_stack);
-  cv::Mat_<GLfloat> projection_matrix(4, 4, projection_matrix_stack);
-  
-  optimize_lights<float>(image, normals, position, model_view_matrix.t(), projection_matrix.t(), clear_color, ambient, lights);
+  optimize_lights<float>(image, normals, position, model_view_matrix.t(), clear_color, lights);
 }
 
 void updateGL() {
@@ -221,7 +215,7 @@ void updateGL() {
 void run(const cv::Mat& original_image, MeshObj * const meshobj) {
   _original_image = &original_image;
   _meshobj = meshobj;
-  _meshobj->setLight(ambient, lights);
+  _meshobj->setLight(lights);
   glutMainLoop();
 //  glutMainLoopEvent();
 }
@@ -307,11 +301,8 @@ void initFBO() {
 }
 
 void initLights() {
-  ambient = create_ambient_color<float>();
-//  lights = create_lights_from_array(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
-  lights = create_light_sphere<float>(10, 20);
-  if (_meshobj != nullptr)
-	  _meshobj->setLight(ambient, lights);
+//  lights = Lights(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
+  lights = Lights<float>(10, 20);
 }
 
 void setupOpenGL(int * argc, char ** argv, const unsigned int width, const unsigned int height) {

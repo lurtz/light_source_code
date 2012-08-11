@@ -178,12 +178,12 @@ cv::Mat_<float> transform(const cv::Mat_<GLfloat>& model_view_matrix, const std:
 }
 
 template<typename T>
-void test_modelview_matrix_and_light_positions(const cv::Mat_<GLfloat>& model_view_matrix, std::vector<typename Light<T>::properties>& lights) {
-  std::cout << "modelvielmatrix:\n" << model_view_matrix << std::endl;
+void test_modelview_matrix_and_light_positions(const cv::Mat_<GLfloat>& model_view_matrix, const Lights<T>& lights) {
+  std::cout << "modelviewmatrix:\n" << model_view_matrix << std::endl;
   
   unsigned int i = 0;
-  for (const auto& light : lights) {
-    auto position_object_space = light.find(get_position_name(i))->second;
+  for (const auto& light : lights.lights) {
+    auto position_object_space = light.props.find(get_position_name(i))->second;
     std::cout << "light source: " 
       << i << ", "
       << position_object_space
@@ -198,7 +198,7 @@ void test_modelview_matrix_and_light_positions(const cv::Mat_<GLfloat>& model_vi
 }
 
 template<typename T>
-void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const cv::Mat_<GLfloat>& projection_matrix, const float clear_color, std::vector<T> &ambient, std::vector<typename Light<T>::properties>& lights, const int alpha = 50) {
+void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const int alpha = 50) {
   show_rgb_image("target image", image);
 //  cv::imshow("normals", normals);
 //  cv::imshow("position", position);
@@ -207,7 +207,7 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
   
   test_modelview_matrix_and_light_positions<T>(model_view_matrix, lights);
 
-  print_lights(lights, ambient);
+  lights.print();
   
 //  test_normals(normals);
   //get_min_max_and_print(normals);
@@ -220,7 +220,7 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
   const unsigned int colors_per_light = 3;
   const unsigned int rows = image.rows * image.cols / div * colors_per_light;
   const unsigned int components_per_light = 2;
-  const unsigned int cols = (1 + lights.size() * components_per_light) * colors_per_light;
+  const unsigned int cols = (1 + lights.lights.size() * components_per_light) * colors_per_light;
   gsl_matrix *x = gsl_matrix_alloc (rows, cols);
   gsl_matrix *cov = gsl_matrix_alloc(cols, cols);
   gsl_vector *y = gsl_vector_alloc(rows);
@@ -280,8 +280,8 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
     const cv::Mat_<float> normal(normals(_y, _x), false);
 
     for (unsigned int col = colors_per_light; col < cols; col+=components_per_light*colors_per_light) {
-      typename Light<T>::properties& props = lights.at(col/components_per_light/colors_per_light);
-      const cv::Mat_<float> light_pos = transform(model_view_matrix, props[get_position_name(col/components_per_light/colors_per_light)]);
+      const Light<T>& light = lights.lights.at(col/components_per_light/colors_per_light);
+      const cv::Mat_<float> light_pos = transform(model_view_matrix, light.get_position(col/components_per_light/colors_per_light));
 
       const cv::Mat_<float> L_ = light_pos - pos_vec;
       cv::Mat_<float> L(L_.rows, L_.cols, L_.type());
@@ -341,14 +341,14 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
 
   // ambient
   for (unsigned int col = 0; col < colors_per_light; col++) {
-    ambient.at(col) = gsl_vector_get(c, col);
+    lights.ambient.at(col) = gsl_vector_get(c, col);
   }
 
   // diffuse and specular
   for (unsigned int col = colors_per_light; col < cols; col+=components_per_light*colors_per_light) {
-    typename Light<T>::properties& props = lights.at(col/components_per_light/colors_per_light);
-    std::vector<T>& diff = props[get_diffuse_name(col/components_per_light/colors_per_light)];
-    std::vector<T>& spec = props[get_specular_name(col/components_per_light/colors_per_light)];
+    Light<T>& light = lights.lights.at(col/components_per_light/colors_per_light);
+    std::vector<T>& diff = light.get_diffuse(col/components_per_light/colors_per_light);
+    std::vector<T>& spec = light.get_specular(col/components_per_light/colors_per_light);
     for (unsigned int i = 0; i < colors_per_light; i++) {
       diff.at(i) = gsl_vector_get(c, col + i);
       spec.at(i) = gsl_vector_get(c, col + colors_per_light + i);
@@ -365,7 +365,7 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
 //  cv::imshow("used_pixels", used_pixels);
   cv::waitKey(100);
 
-  print_lights(lights, ambient);
+  lights.print();
 }
 
 #endif /* SOLVER_H_ */
