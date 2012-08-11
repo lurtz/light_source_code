@@ -48,7 +48,7 @@ std::vector<T> create_ambient_color(T r = 0.1, T g = 0.1, T b = 0.1, T a = 0.0) 
   return ret_val;
 }
 
-std::string get_name(const unsigned int number, std::string item);
+std::string get_name(const unsigned int number, const std::string& item);
 std::string get_position_name(const unsigned int number);
 std::string get_diffuse_name(const unsigned int number);
 std::string get_specular_name(const unsigned int number);
@@ -85,7 +85,7 @@ struct Light {
     return props[get_specular_name(number)];
   }
   
-  void setUniforms(GLuint programm_id) const {
+  void setUniforms(const GLuint programm_id) const {
     for (auto iter_properties : props) {
       GLint uniform_light_property = glGetUniformLocation(programm_id, iter_properties.first.c_str());
       auto value = iter_properties.second;
@@ -146,14 +146,14 @@ struct Lights {
   }
   
   template<int dim>
-  Lights(const T light_props[][dim], const unsigned int count, std::vector<T> ambient = create_ambient_color<T>()) : ambient(ambient), lights(count) {
+  Lights(const T light_props[][dim], const unsigned int count, const std::vector<T> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(count) {
     for (unsigned int i = 0; i < NUM_PROPERTIES * count; i += NUM_PROPERTIES) {
       const unsigned int pos = i / NUM_PROPERTIES;
       lights.at(pos) = Light<T>(pos, light_props[i + 0], light_props[i + 1], light_props[i + 2]);
     }
   }
   
-  void setUniforms(GLuint programm_id) const {
+  void setUniforms(const GLuint programm_id) const {
     GLint uniform_light_property = glGetUniformLocation(programm_id, "ambient_color");
     glUniform4f(uniform_light_property, ambient.at(0), ambient.at(1), ambient.at(2), ambient.at(3));
     if (uniform_light_property == -1)
@@ -166,7 +166,7 @@ struct Lights {
 };
 
 template<typename T>
-std::ostream& operator<<(std::ostream& out, Lights<T> lights) {
+std::ostream& operator<<(std::ostream& out, const Lights<T>& lights) {
   out << "ambient illumination: ";
   out << lights.ambient << std::endl;
   for (Light<T> iter : lights.lights)

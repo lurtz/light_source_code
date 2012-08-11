@@ -1,6 +1,6 @@
 #include "lights.h"
 
-std::string get_name(const unsigned int number, std::string item) {
+std::string get_name(const unsigned int number, const std::string& item) {
   std::stringstream name;
   name << "lights[" << number << "]." << item;
   return name.str();
