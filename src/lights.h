@@ -34,6 +34,11 @@ std::vector<T> create_vector_from_array(const T (&array)[dim]) {
 }
 
 template<typename T>
+void print(T t) {
+  std::cout << t << std::endl;
+}
+
+template<typename T>
 std::vector<T> create_ambient_color(T r = 0.1, T g = 0.1, T b = 0.1, T a = 0.0) {
   std::vector<T> ret_val;
   ret_val.push_back(r);
@@ -79,6 +84,16 @@ struct Light {
   std::vector<T>& get_specular(const unsigned int number) {
     return props[get_specular_name(number)];
   }
+  
+  void setUniforms(GLuint programm_id) const {
+    for (auto iter_properties : props) {
+      GLint uniform_light_property = glGetUniformLocation(programm_id, iter_properties.first.c_str());
+      auto value = iter_properties.second;
+      glUniform4f(uniform_light_property, value.at(0), value.at(1), value.at(2), value.at(3));
+      if (uniform_light_property == -1)
+        std::cout << "uniform handle is -1 with uniform name " << iter_properties.first << std::endl;
+    }
+  }
 };
 
 template<typename T>
@@ -109,6 +124,8 @@ struct Lights {
   std::vector<T> ambient;
   std::vector<Light<T> > lights;
   
+  // taken from
+  // http://www.xsi-blog.com/archives/115
   Lights(float radius = 10, unsigned int num_lights = 10, std::vector<T> ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
     std::vector<T> default_light_property(4);
     // distribute light sources uniformly on the sphere
@@ -136,8 +153,15 @@ struct Lights {
     }
   }
   
-  void print() {
-    std::cout << *this << std::endl;
+  void setUniforms(GLuint programm_id) const {
+    GLint uniform_light_property = glGetUniformLocation(programm_id, "ambient_color");
+    glUniform4f(uniform_light_property, ambient.at(0), ambient.at(1), ambient.at(2), ambient.at(3));
+    if (uniform_light_property == -1)
+      std::cout << "uniform handle is -1 with uniform name " << "ambient_color" << std::endl;
+    
+    for (auto iter : lights) {
+      iter.setUniforms(programm_id);
+    }
   }
 };
 
@@ -148,43 +172,6 @@ std::ostream& operator<<(std::ostream& out, Lights<T> lights) {
   for (Light<T> iter : lights.lights)
     out << iter;
   return out;
-}
-
-/*
- * http://www.xsi-blog.com/archives/115
-def pointsOnSphere(N):
-    N = float(N) # in case we got an int which we surely got
-    pts = []
-
-    inc = math.pi * (3 - math.sqrt(5))
-    off = 2 / N
-    for k in range(0, N):
-        y = k * off - 1 + (off / 2)
-        r = math.sqrt(1 - y*y)
-        phi = k * inc
-        pts.append([math.cos(phi)*r, y, math.sin(phi)*r])
-
-    return pts
-*/
-
-template<typename T>
-void setUniforms(GLuint programm_id, const Lights<T> &lights) {
-  GLint uniform_light_property = glGetUniformLocation(programm_id, "ambient_color");
-  const std::vector<T>& ambient_color = lights.ambient;
-  glUniform4f(uniform_light_property, ambient_color.at(0), ambient_color.at(1), ambient_color.at(2), ambient_color.at(3));
-  if (uniform_light_property == -1)
-    std::cout << "uniform handle is -1 with uniform name " << "ambient_color" << std::endl;
-
-  for (auto iter_lights : lights.lights) {
-    for (auto iter_properties : iter_lights.props) {
-      GLint uniform_light_property = glGetUniformLocation(programm_id, iter_properties.first.c_str());
-      auto value = iter_properties.second;
-      glUniform4f(uniform_light_property, value.at(0), value.at(1), value.at(2), value.at(3));
-
-      if (uniform_light_property == -1)
-        std::cout << "uniform handle is -1 with uniform name " << iter_properties.first << std::endl;
-    }
-  }
 }
 
 #endif /* LIGHTS_H_ */

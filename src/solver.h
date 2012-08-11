@@ -207,7 +207,7 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
   
   test_modelview_matrix_and_light_positions<T>(model_view_matrix, lights);
 
-  lights.print();
+  print(lights);
   
 //  test_normals(normals);
   //get_min_max_and_print(normals);
@@ -365,7 +365,7 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
 //  cv::imshow("used_pixels", used_pixels);
   cv::waitKey(100);
 
-  lights.print();
+  print(lights);
 }
 
 #endif /* SOLVER_H_ */

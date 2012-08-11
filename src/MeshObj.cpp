@@ -91,7 +91,7 @@ void MeshObj::render(void) {
     GLuint programm_id = mMaterial->getShaderProgram()->getProgramID();
 
     if (_lights != nullptr)
-      setUniforms<float>(programm_id, *_lights);
+      _lights->setUniforms(programm_id);
 
     GLint vertexLoc = glGetAttribLocation(programm_id, "vertex_OS");
     GLint normalLoc = glGetAttribLocation(programm_id, "normal_OS");
