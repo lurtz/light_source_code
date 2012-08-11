@@ -16,7 +16,6 @@
 #include <gsl/gsl_multifit.h>
 #include <iomanip>
 #include <limits>
-#include <iterator>
 
 void print_gsl_matrix_row(const gsl_matrix& m, const unsigned int row) {
   for (unsigned int col = 0; col < m.size2 - 1; col++)
@@ -176,15 +175,6 @@ cv::Mat_<float> transform(const cv::Mat_<GLfloat>& model_view_matrix, const std:
   const cv::Mat_<float> light_pos(light_pos_vec4 / light_pos_vec4(3), cv::Range(0, 3));
   
   return light_pos;
-}
-
-template<typename T>
-std::ostream& operator<<(std::ostream& stream, std::vector<T> vec) {
-  stream << "(";
-  std::copy(std::begin(vec), std::end(vec)-1, std::ostream_iterator<T>(stream, ", "));
-  stream << vec.back();
-  stream << ")";
-  return stream;
 }
 
 template<typename T>

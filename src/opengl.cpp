@@ -308,8 +308,8 @@ void initFBO() {
 
 void initLights() {
   ambient = create_ambient_color<float>();
-  lights = create_lights_from_array(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
-//  lights = create_light_sphere<float>(10, 20);
+//  lights = create_lights_from_array(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
+  lights = create_light_sphere<float>(10, 20);
   if (_meshobj != nullptr)
 	  _meshobj->setLight(ambient, lights);
 }
