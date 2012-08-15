@@ -57,17 +57,19 @@ template<typename T>
 struct Light {
   typedef std::map<std::string, std::vector<T> > properties;
   properties props;
+  unsigned int number;
   
   Light() {}
   
-  Light(const unsigned int number, const std::vector<T>& position, const std::vector<T>& diffuse, const std::vector<T>& specular) {
+  Light(const unsigned int number, const std::vector<T>& position, const std::vector<T>& diffuse, const std::vector<T>& specular)
+  : number(number) {
     props[get_position_name(number)] = position;
     props[get_diffuse_name(number)] = diffuse;
     props[get_specular_name(number)] = specular;
   }
   
   template<int D>
-  Light(const unsigned int number, const T (&position)[D], const T (&diffuse)[D], const T (&specular)[D]) {
+  Light(const unsigned int number, const T (&position)[D], const T (&diffuse)[D], const T (&specular)[D]) : number(number) {
     props[get_position_name(number)] = create_vector_from_array(position);
     props[get_diffuse_name(number)] = create_vector_from_array(diffuse);
     props[get_specular_name(number)] = create_vector_from_array(specular);
@@ -106,10 +108,15 @@ std::ostream& operator<<(std::ostream& stream, const std::vector<T>& vec) {
 }
 
 template<typename K, typename V>
+std::ostream& operator<<(std::ostream& out, const std::pair<K,V>& pair) {
+  out << pair.first << ", " << pair.second;
+  return out;
+}
+
+template<typename K, typename V>
 std::ostream& operator<<(std::ostream& out, const std::map<K,V>& map) {
-  for (auto iter : map) {
-    out << iter.first << ", " << iter.second << std::endl;
-  }
+  for (const auto& iter : map)
+    out << iter << std::endl;
   return out;
 }
 
@@ -117,6 +124,11 @@ template<typename T>
 std::ostream& operator<<(std::ostream& out, const Light<T>& light) {
   out << light.props;
   return out;
+}
+
+template<typename T, int D>
+T distFromPlane(cv::Vec<T, D> x, cv::Vec<T, D> normal, cv::Vec<T, D> point) {
+  return normal.dot(x-point);
 }
 
 template<typename T>
@@ -162,6 +174,21 @@ struct Lights {
     for (auto iter : lights) {
       iter.setUniforms(programm_id);
     }
+  }
+  
+  void cropByPlane(cv::Vec3f normal, cv::Vec3f point) {
+    // E : x = point + d1 * y + d2 * z
+    // E : normal * x = normal * point
+    // E : normal * (x-point) = 0
+    
+    // normal * (x + \lambda * normal) = normal * point
+    // normal * x + \lambda = normal * point
+    // \lambda = normal * (point-x)
+    decltype(lights) lights_to_delete;
+    for (const auto& light : lights)
+      if (distFromPlane( light.get_position(light.number), normal, point) < 0) // TODP verify
+        lights_to_delete.push_back(light);
+//    lights. TODO
   }
 };
 
