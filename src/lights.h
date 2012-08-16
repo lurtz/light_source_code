@@ -75,15 +75,25 @@ struct Light {
     props[get_specular_name(number)] = create_vector_from_array(specular);
   }
   
-  const std::vector<T>& get_position(const unsigned int number) const {
+  void set_Number(const unsigned int i) {
+    props[get_position_name(i)] = props[get_position_name(number)];
+//    props.erase(get_position_name(number));
+    props[get_diffuse_name(i)] = props[get_diffuse_name(number)];
+//    props.erase(get_diffuse_name(number));
+    props[get_specular_name(i)] = props[get_specular_name(number)];
+//    props.erase(get_specular_name(number));
+    number = i;
+  }
+  
+  const std::vector<T>& get_position() const {
     return props.find(get_position_name(number))->second;
   }
   
-  std::vector<T>& get_diffuse(const unsigned int number) {
+  std::vector<T>& get_diffuse() {
     return props[get_diffuse_name(number)];
   }
   
-  std::vector<T>& get_specular(const unsigned int number) {
+  std::vector<T>& get_specular() {
     return props[get_specular_name(number)];
   }
   
@@ -127,33 +137,71 @@ std::ostream& operator<<(std::ostream& out, const Light<T>& light) {
 }
 
 template<typename T, int D>
-T distFromPlane(cv::Vec<T, D> x, cv::Vec<T, D> normal, cv::Vec<T, D> point) {
+T distFromPlane(const cv::Vec<T, D>& x, const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
   return normal.dot(x-point);
 }
+
+template<typename T, int D>
+T distFromPlane(const std::vector<T>& x, const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
+  cv::Mat mat(x);
+  return distFromPlane(mat.at<cv::Vec<T,D>>(0), normal, point);
+}
+
+// taken from
+// http://www.xsi-blog.com/archives/115
+template<typename T>
+struct uniform_on_sphere_light_distributor {
+  const double inc = M_PI * (3 - sqrt(5));
+  const double off;
+  unsigned int i;
+  const float radius;
+  const unsigned int num_lights;
+  uniform_on_sphere_light_distributor(const float radius, const unsigned int num_lights) : off(2.0/num_lights), i(0), radius(radius), num_lights(num_lights) {
+  }
+  void reset(unsigned int c = 0) {
+    i = c;
+  }
+  std::vector<T> operator()() {
+    const double y = i*off - 1 + off/2;
+    const double r = sqrt(1 - y*y);
+    const double phi = i * inc;
+    std::vector<T> position(4);
+    position.at(0) = cos(phi)*r * radius;
+    position.at(1) = y          * radius;
+    position.at(2) = sin(phi)*r * radius;
+    position.at(3) = 1;
+    assert(abs(cv::norm(cv::Vec<T, 3>(position.at(0), position.at(1), position.at(2))) - radius) < std::numeric_limits<T>::epsilon());
+    i++;
+    return position;
+  }
+};
 
 template<typename T>
 struct Lights {
   std::vector<T> ambient;
   std::vector<Light<T> > lights;
   
-  // taken from
-  // http://www.xsi-blog.com/archives/115
   Lights(float radius = 10, unsigned int num_lights = 10, std::vector<T> ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
     std::vector<T> default_light_property(4);
     // distribute light sources uniformly on the sphere
-    const double inc = M_PI * (3 - sqrt(5));
-    const double off = 2.0/num_lights;
+    uniform_on_sphere_light_distributor<T> dist(radius, num_lights*10);
     for (unsigned int i = 0; i < num_lights; i++) {
-      const double y = i*off - 1 + off/2;
-      const double r = sqrt(1 - y*y);
-      const double phi = i * inc;
-      std::vector<T> position(4);
-      position.at(0) = cos(phi)*r * radius;
-      position.at(1) = y          * radius;
-      position.at(2) = sin(phi)*r * radius;
-      position.at(3) = 1;
-      assert(abs(cv::norm(cv::Vec<T, 3>(position.at(0), position.at(1), position.at(2))) - radius) < std::numeric_limits<T>::epsilon());
+      std::vector<T> position = dist();
       lights.at(i) = Light<T>(i, position, default_light_property, default_light_property);
+    }
+  }
+  
+  Lights(cv::Vec<T, 3> normal, cv::Vec<T, 3> point, float radius = 10, unsigned int num_lights = 10, std::vector<T> ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
+    std::vector<T> default_light_property(4);
+    // distribute light sources uniformly on the sphere
+    uniform_on_sphere_light_distributor<T> dist(radius, num_lights*10);
+    unsigned int i = 0;
+    while (lights.size() < num_lights) {
+      std::vector<T> position = dist();
+      if (distFromPlane(position, normal, point) < 0) {
+        lights.at(i) = Light<T>(i, position, default_light_property, default_light_property);
+        i++;
+      }
     }
   }
   
@@ -176,7 +224,8 @@ struct Lights {
     }
   }
   
-  void cropByPlane(cv::Vec3f normal, cv::Vec3f point) {
+  template<int D>
+  void cropByPlane(const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
     // E : x = point + d1 * y + d2 * z
     // E : normal * x = normal * point
     // E : normal * (x-point) = 0
@@ -184,11 +233,12 @@ struct Lights {
     // normal * (x + \lambda * normal) = normal * point
     // normal * x + \lambda = normal * point
     // \lambda = normal * (point-x)
-    decltype(lights) lights_to_delete;
-    for (const auto& light : lights)
-      if (distFromPlane( light.get_position(light.number), normal, point) < 0) // TODP verify
-        lights_to_delete.push_back(light);
-//    lights. TODO
+    auto end = std::remove_if(std::begin(lights), std::end(lights), [&](const Light<T>& light) {return distFromPlane(light.get_position(), normal, point) < 0;});
+    lights.erase(end, std::end(lights));
+    unsigned int i = 0;
+    for (auto& light : lights) {
+      light.set_Number(i++);
+    }
   }
 };
 

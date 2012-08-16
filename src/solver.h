@@ -72,8 +72,8 @@ void sample_linear_problem() {
 }
 
 template<typename T>
-bool check_bounds_of_value(const T value, const std::string& valuename, const T min = 0.0f, const T max = 1.0f) {
-  bool ret_val = value >= min-std::numeric_limits<T>::min() && value <= max+std::numeric_limits<T>::max();
+bool check_bounds_of_value(const T value, const std::string& valuename, const T min = 0, const T max = 1) {
+  bool ret_val = value >= min && value <= max;
   if (!ret_val) {
     std::cout << valuename << " " << value << " too ";
     if (value < min)
@@ -181,19 +181,17 @@ template<typename T>
 void test_modelview_matrix_and_light_positions(const cv::Mat_<GLfloat>& model_view_matrix, const Lights<T>& lights) {
   std::cout << "modelviewmatrix:\n" << model_view_matrix << std::endl;
   
-  unsigned int i = 0;
   for (const auto& light : lights.lights) {
-    auto position_object_space = light.props.find(get_position_name(i))->second;
+    auto position_object_space = light.get_position();
     std::cout << "light source: " 
-      << i << ", "
+      << light.number << ", "
       << position_object_space
       << std::endl;
     auto position_world_space = transform(model_view_matrix, position_object_space);
     std::cout << "light source: " 
-      << i << ", "
+      << light.number << ", "
       << position_world_space
       << std::endl;
-    i++;
   }
 }
 
@@ -281,7 +279,7 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
 
     for (unsigned int col = colors_per_light; col < cols; col+=components_per_light*colors_per_light) {
       const Light<T>& light = lights.lights.at(col/components_per_light/colors_per_light);
-      const cv::Mat_<float> light_pos = transform(model_view_matrix, light.get_position(col/components_per_light/colors_per_light));
+      const cv::Mat_<float> light_pos = transform(model_view_matrix, light.get_position());
 
       const cv::Mat_<float> L_ = light_pos - pos_vec;
       cv::Mat_<float> L(L_.rows, L_.cols, L_.type());
@@ -292,7 +290,7 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
       float diffuse = LN(0,0);
       if (diffuse < 0.0f)
         diffuse = 0.0f;
-      check_bounds_of_value(diffuse, "diffuse");
+      assert(check_bounds_of_value(diffuse, "diffuse"));
 
       float specular = 0.0f;
       if (diffuse > 0.0f) {
@@ -306,7 +304,7 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
         const float base = RE(0,0);
         assert(base <= 1.0f);
         specular = std::pow(base, alpha);
-        check_bounds_of_value(specular, "specular");
+        assert(check_bounds_of_value(specular, "specular"));
       }
 
       //   global  each light
@@ -347,8 +345,8 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
   // diffuse and specular
   for (unsigned int col = colors_per_light; col < cols; col+=components_per_light*colors_per_light) {
     Light<T>& light = lights.lights.at(col/components_per_light/colors_per_light);
-    std::vector<T>& diff = light.get_diffuse(col/components_per_light/colors_per_light);
-    std::vector<T>& spec = light.get_specular(col/components_per_light/colors_per_light);
+    std::vector<T>& diff = light.get_diffuse();
+    std::vector<T>& spec = light.get_specular();
     for (unsigned int i = 0; i < colors_per_light; i++) {
       diff.at(i) = gsl_vector_get(c, col + i);
       spec.at(i) = gsl_vector_get(c, col + colors_per_light + i);
