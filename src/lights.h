@@ -184,7 +184,7 @@ struct Lights {
   Lights(float radius = 10, unsigned int num_lights = 10, std::vector<T> ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
     std::vector<T> default_light_property(4);
     // distribute light sources uniformly on the sphere
-    uniform_on_sphere_light_distributor<T> dist(radius, num_lights*10);
+    uniform_on_sphere_light_distributor<T> dist(radius, num_lights);
     for (unsigned int i = 0; i < num_lights; i++) {
       std::vector<T> position = dist();
       lights.at(i) = Light<T>(i, position, default_light_property, default_light_property);
@@ -195,8 +195,8 @@ struct Lights {
     std::vector<T> default_light_property(4);
     // distribute light sources uniformly on the sphere
     uniform_on_sphere_light_distributor<T> dist(radius, num_lights*10);
-    unsigned int i = 0;
-    while (lights.size() < num_lights) {
+
+    for (unsigned int i = 0; i < num_lights;) {
       std::vector<T> position = dist();
       if (distFromPlane(position, normal, point) < 0) {
         lights.at(i) = Light<T>(i, position, default_light_property, default_light_property);
