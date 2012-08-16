@@ -150,13 +150,13 @@ T distFromPlane(const std::vector<T>& x, const cv::Vec<T, D>& normal, const cv::
 // taken from
 // http://www.xsi-blog.com/archives/115
 template<typename T>
-struct uniform_on_sphere_light_distributor {
+struct uniform_on_sphere_point_distributor {
   const double inc = M_PI * (3 - sqrt(5));
   const double off;
   unsigned int i;
   const float radius;
   const unsigned int num_lights;
-  uniform_on_sphere_light_distributor(const float radius, const unsigned int num_lights) : off(2.0/num_lights), i(0), radius(radius), num_lights(num_lights) {
+  uniform_on_sphere_point_distributor(const float radius, const unsigned int num_lights) : off(2.0/num_lights), i(0), radius(radius), num_lights(num_lights) {
   }
   void reset(unsigned int c = 0) {
     i = c;
@@ -176,29 +176,28 @@ struct uniform_on_sphere_light_distributor {
   }
 };
 
+template<typename T, int D>
+std::tuple<std::function<bool(std::vector<T>)>, double> plane_acceptor(const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
+  return std::make_tuple([&](const std::vector<T>& p){return distFromPlane(p, normal, point) > 0;}, 2.1);
+}
+
 template<typename T>
 struct Lights {
   std::vector<T> ambient;
   std::vector<Light<T> > lights;
   
-  Lights(float radius = 10, unsigned int num_lights = 10, std::vector<T> ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
+  Lights(float radius = 10, unsigned int num_lights = 10,
+      const std::tuple<std::function<bool(std::vector<T>)>, double> &point_acceptor = std::make_tuple([](const std::vector<T>& pos){return true;}, 1),
+      std::vector<T> ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
     std::vector<T> default_light_property(4);
+    std::function<bool(std::vector<T>)> func;
+    double num_discarded_points;
+    std::tie(func, num_discarded_points) = point_acceptor;
     // distribute light sources uniformly on the sphere
-    uniform_on_sphere_light_distributor<T> dist(radius, num_lights);
-    for (unsigned int i = 0; i < num_lights; i++) {
-      std::vector<T> position = dist();
-      lights.at(i) = Light<T>(i, position, default_light_property, default_light_property);
-    }
-  }
-  
-  Lights(cv::Vec<T, 3> normal, cv::Vec<T, 3> point, float radius = 10, unsigned int num_lights = 10, std::vector<T> ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
-    std::vector<T> default_light_property(4);
-    // distribute light sources uniformly on the sphere
-    uniform_on_sphere_light_distributor<T> dist(radius, num_lights*10);
-
+    uniform_on_sphere_point_distributor<T> dist(radius, num_lights*num_discarded_points);
     for (unsigned int i = 0; i < num_lights;) {
       std::vector<T> position = dist();
-      if (distFromPlane(position, normal, point) < 0) {
+      if (func(position)) {
         lights.at(i) = Light<T>(i, position, default_light_property, default_light_property);
         i++;
       }
@@ -221,23 +220,6 @@ struct Lights {
     
     for (auto iter : lights) {
       iter.setUniforms(programm_id);
-    }
-  }
-  
-  template<int D>
-  void cropByPlane(const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
-    // E : x = point + d1 * y + d2 * z
-    // E : normal * x = normal * point
-    // E : normal * (x-point) = 0
-    
-    // normal * (x + \lambda * normal) = normal * point
-    // normal * x + \lambda = normal * point
-    // \lambda = normal * (point-x)
-    auto end = std::remove_if(std::begin(lights), std::end(lights), [&](const Light<T>& light) {return distFromPlane(light.get_position(), normal, point) < 0;});
-    lights.erase(end, std::end(lights));
-    unsigned int i = 0;
-    for (auto& light : lights) {
-      light.set_Number(i++);
     }
   }
 };

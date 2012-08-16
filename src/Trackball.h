@@ -3,6 +3,7 @@
 
 #include <GL/glut.h>
 #include <cmath>
+#include <tuple>
 
 class Trackball {
   public:
@@ -20,6 +21,7 @@ class Trackball {
     void rotateView(void);
     
     void getCameraPosition(float &x, float &y, float &z);
+    std::tuple<float, float, float> getViewDirection();
     
   private:
     float mViewOffset[3];

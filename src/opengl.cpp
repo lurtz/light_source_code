@@ -302,8 +302,10 @@ void initFBO() {
 
 void initLights() {
 //  lights = Lights(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
-//  lights = Lights<float>(10, 20);
-  lights = Lights<float>(cv::Vec3f(0, 0, 1), cv::Vec3f(0, 0, 0), 10, 20);
+//  lights = Lights<float>(10, 140);
+  float x, y, z;
+  std::tie(x, y, z) = _ball.getViewDirection();
+  lights = Lights<float>(10, 140, plane_acceptor(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
 }
 
 void setupOpenGL(int * argc, char ** argv, const unsigned int width, const unsigned int height) {
