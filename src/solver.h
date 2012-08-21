@@ -195,6 +195,72 @@ void test_modelview_matrix_and_light_positions(const cv::Mat_<GLfloat>& model_vi
   }
 }
 
+std::tuple<unsigned int, unsigned int> get_sample_point(const cv::Mat_<cv::Vec3f>& normals, cv::Mat_<unsigned char>& used_pixels, const float clear_color) {
+  int _x = 0;
+  int _y = 0;
+  while (_x == 0 && _y == 0) {
+    const int x = normals.cols * drand48();
+    const int y = normals.rows * drand48();
+
+    // skip if already taken
+    if (used_pixels(y, x))
+      continue;
+
+    const float eps = std::numeric_limits<float>::epsilon();
+    
+    // skip if no object
+    // assume that a normal is (clear_color,clear_color,clear_color) where no object is
+    cv::Vec<float, 3> normal = normals(y, x);
+    if (fabs(normal[0] - clear_color) < eps && fabs(normal[1] - clear_color) < eps && fabs(normal[2] - clear_color) < eps)
+      continue;
+
+    // skip if length is not 1
+    if (!(fabs(cv::norm(normal) - 1) < eps))
+      continue;
+    assert(fabs(cv::norm(normal) - 1) < eps);
+    assert(_x < normals.cols);
+    assert(_y < normals.rows);
+
+    _x = x;
+    _y = y;
+    used_pixels(y,x) = std::numeric_limits<unsigned char>::max();
+  }
+  return std::make_tuple(_x, _y);
+}
+
+template<typename T>
+std::tuple<float, float> get_diffuse_specular(const cv::Mat_<float> &pos_vec, const cv::Mat_<float> &normal, const Light<T> &light, const cv::Mat_<GLfloat>& model_view_matrix, const int alpha) {
+  const cv::Mat_<float> light_pos = transform(model_view_matrix, light.get_position());
+
+  const cv::Mat_<float> L_ = light_pos - pos_vec;
+  cv::Mat_<float> L(L_.rows, L_.cols, L_.type());
+  cv::normalize(L_, L);
+  // should be a scalar
+  const cv::Mat_<float> LN = L.t() * normal;
+  assert(is_scalar(LN));
+  float diffuse = LN(0,0);
+  if (diffuse < 0.0f)
+    diffuse = 0.0f;
+  assert(check_bounds_of_value(diffuse, "diffuse"));
+
+  float specular = 0.0f;
+  if (diffuse > 0.0f) {
+    // R =  I - 2.0 * dot(N, I) * N
+    const cv::Mat_<float> R = reflect<float>(normal, -L);
+    cv::Mat_<float> E (pos_vec.rows, pos_vec.cols, pos_vec.type());
+    cv::normalize(-pos_vec, E);
+    // should be a scalar
+    const cv::Mat_<float> RE = R.t() * E;
+    assert(is_scalar(RE));
+    assert(RE(0,0) <= 1.0f + std::numeric_limits< float >::epsilon());
+    const float base = RE(0,0) > 1.0f ? 1.0f : RE(0,0);
+    specular = std::pow(base, alpha);
+    assert(check_bounds_of_value(specular, "specular"));
+  }
+  
+  return std::make_tuple(diffuse, specular);
+}
+
 template<typename T>
 void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const int alpha = 50) {
   show_rgb_image("target image", image);
@@ -230,33 +296,7 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
     // 1. find a good pixel
     int _x = 0;
     int _y = 0;
-    while (_x == 0 && _y == 0) {
-      const int x = image.cols * drand48();
-      const int y = image.rows * drand48();
-
-      // skip if already taken
-      if (used_pixels(y, x))
-        continue;
-
-      const float eps = std::numeric_limits<float>::epsilon();
-      
-      // skip if no object
-      // assume that a normal is (clear_color,clear_color,clear_color) where no object is
-      cv::Vec<float, 3> normal = normals(y, x);
-      if (fabs(normal[0] - clear_color) < eps && fabs(normal[1] - clear_color) < eps && fabs(normal[2] - clear_color) < eps)
-        continue;
-
-      // skip if length is not 1
-      if (!(fabs(cv::norm(normal) - 1) < eps))
-        continue;
-      assert(fabs(cv::norm(normal) - 1) < eps);
-      assert(_x < image.cols);
-      assert(_y < image.rows);
-
-      _x = x;
-      _y = y;
-      used_pixels(y,x) = std::numeric_limits<unsigned char>::max();
-    }
+    std::tie(_x, _y) = get_sample_point(normals, used_pixels, clear_color);
 
     // 2. set matrix parameter for pixel
     // set value of pixel in the image to the vector
@@ -279,33 +319,9 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
 
     for (unsigned int col = colors_per_light; col < cols; col+=components_per_light*colors_per_light) {
       const Light<T>& light = lights.lights.at(col/components_per_light/colors_per_light);
-      const cv::Mat_<float> light_pos = transform(model_view_matrix, light.get_position());
-
-      const cv::Mat_<float> L_ = light_pos - pos_vec;
-      cv::Mat_<float> L(L_.rows, L_.cols, L_.type());
-      cv::normalize(L_, L);
-      // should be a scalar
-      const cv::Mat_<float> LN = L.t() * normal;
-      assert(is_scalar(LN));
-      float diffuse = LN(0,0);
-      if (diffuse < 0.0f)
-        diffuse = 0.0f;
-      assert(check_bounds_of_value(diffuse, "diffuse"));
-
-      float specular = 0.0f;
-      if (diffuse > 0.0f) {
-        // R =  I - 2.0 * dot(N, I) * N
-        const cv::Mat_<float> R = reflect<float>(normal, -L);
-        cv::Mat_<float> E (pos_vec.rows, pos_vec.cols, pos_vec.type());
-        cv::normalize(-pos_vec, E);
-        // should be a scalar
-        const cv::Mat_<float> RE = R.t() * E;
-        assert(is_scalar(RE));
-        assert(RE(0,0) <= 1.0f + std::numeric_limits< float >::epsilon());
-        const float base = RE(0,0) > 1.0f ? 1.0f : RE(0,0);
-        specular = std::pow(base, alpha);
-        assert(check_bounds_of_value(specular, "specular"));
-      }
+      float diffuse;
+      float specular;
+      std::tie(diffuse, specular) = get_diffuse_specular(pos_vec, normal, light, model_view_matrix, alpha);
 
       //   global  each light
       //   amb     diff   spec
