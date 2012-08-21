@@ -319,7 +319,7 @@ void initLights() {
   std::tie(x, y, z) = _ball.getViewDirection();
 //  lights = Lights<float>(10, 30);
   lights = Lights<float>(10, 30, plane_acceptor(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
-//  lights = Lights<float>(true, 10, 30, plane_acceptor_tuple(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
+//  lights = Lights<float>("bla", 10, 30, plane_acceptor_tuple(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
 }
 
 void setupOpenGL(int * argc, char ** argv, const unsigned int width, const unsigned int height) {

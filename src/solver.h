@@ -301,8 +301,8 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
         // should be a scalar
         const cv::Mat_<float> RE = R.t() * E;
         assert(is_scalar(RE));
-        const float base = RE(0,0);
-        assert(base <= 1.0f);
+        assert(RE(0,0) <= 1.0f + std::numeric_limits< float >::epsilon());
+        const float base = RE(0,0) > 1.0f ? 1.0f : RE(0,0);
         specular = std::pow(base, alpha);
         assert(check_bounds_of_value(specular, "specular"));
       }

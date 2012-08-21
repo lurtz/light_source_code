@@ -198,10 +198,10 @@ struct uniform_on_sphere_point_distributor_without_limit {
   uniform_on_sphere_point_distributor_without_limit(const T radius) : radius(radius), seq1(3, 1), z_dist(0.0, 360.0), t_dist(0.0, M_PI/2), sign(false) {
   }
   std::vector<T> operator()() {
-//    T theta = z_dist(engine);
-//    T phi = t_dist(engine);
-    T theta = 360*seq1();
-    T phi = M_PI/2*seq2();
+    T theta = z_dist(engine);
+    T phi = t_dist(engine);
+//    T theta = 360*seq1();
+//    T phi = M_PI/2*seq2();
     std::vector<T> tmp(4);
     tmp.at(0) = cos(sqrt(phi)) * cos(theta) * radius;
     tmp.at(1) = cos(sqrt(phi)) * sin(theta) * radius;
@@ -244,7 +244,7 @@ struct Lights {
     }
   }
   
-  Lights(bool bla, float radius = 10, unsigned int num_lights = 10,
+  Lights(std::string bla, float radius = 10, unsigned int num_lights = 10,
       const std::tuple<std::function<bool(std::vector<T>)>, double> &point_acceptor = std::make_tuple([](const std::vector<T>& pos){return true;}, 1),
       std::vector<T> ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
     std::vector<T> default_light_property(4);
