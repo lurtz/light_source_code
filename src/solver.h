@@ -431,19 +431,21 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
   print(lights);
 }
 
-typedef struct multi_dim_min {
-  gsl_multimin_fminimizer * problem;
-  multi_dim_min(const gsl_multimin_fminimizer_type * T, size_t n) : problem(gsl_multimin_fminimizer_alloc(T, n)) {
-    if (!problem) {
-      throw;
+namespace gsl {
+  typedef struct minimizer {
+    gsl_multimin_fminimizer * problem;
+    minimizer(const gsl_multimin_fminimizer_type * T, size_t n) : problem(gsl_multimin_fminimizer_alloc(T, n)) {
+      if (!problem) {
+        throw;
+      }
     }
-  }
-  multi_dim_min(const multi_dim_min&) = delete;
-  multi_dim_min operator=(const multi_dim_min&) = delete;
-  ~multi_dim_min() {
-    gsl_multimin_fminimizer_free(problem);
-  }
-} multi_dim_min;
+    minimizer(const minimizer&) = delete;
+    minimizer operator=(const minimizer&) = delete;
+    ~minimizer() {
+      gsl_multimin_fminimizer_free(problem);
+    }
+  } minimizer;
+}
 
 template<typename T>
 void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const int alpha = 50) {
