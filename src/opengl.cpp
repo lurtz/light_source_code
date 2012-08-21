@@ -84,8 +84,20 @@ void reshape(int width, int height) {
     glutPostRedisplay();
 }
 
+void visualize_lights() {
+  for (const auto& light : lights.lights) {
+    glPushMatrix();
+    std::vector<float> pos = light.get_position();
+    glTranslatef(pos.at(0), pos.at(1), pos.at(2));
+    glutSolidSphere(.10, 4, 4);
+    glPopMatrix();
+  }
+}
+
 void renderScene() {
     _meshobj->render();
+    if (image_displayed)
+      visualize_lights();
 
     if (false)
     for (int x = -1; x < 2; x+=2)
@@ -172,7 +184,6 @@ decltype(renderSceneIntoFBO()) create_test_image() {
 void calc_lights() {
   if (image_displayed)
     return;
-  image_displayed = true;
 
   cv::Mat_<cv::Vec3f> image;
   cv::Mat_<cv::Vec3f> normals;
@@ -185,6 +196,7 @@ void calc_lights() {
   cv::Mat_<GLfloat> model_view_matrix(4, 4, model_view_matrix_stack);
   
   optimize_lights<float>(image, normals, position, model_view_matrix.t(), clear_color, lights);
+  image_displayed = true;
 }
 
 void updateGL() {
@@ -305,7 +317,9 @@ void initLights() {
 //  lights = Lights<float>(10, 140);
   float x, y, z;
   std::tie(x, y, z) = _ball.getViewDirection();
-  lights = Lights<float>(10, 140, plane_acceptor(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
+//  lights = Lights<float>(10, 30);
+  lights = Lights<float>(10, 30, plane_acceptor(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
+//  lights = Lights<float>(true, 10, 30, plane_acceptor_tuple(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
 }
 
 void setupOpenGL(int * argc, char ** argv, const unsigned int width, const unsigned int height) {
