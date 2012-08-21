@@ -230,7 +230,9 @@ struct Lights {
   std::vector<T> ambient;
   std::vector<Light<T> > lights;
   
-  Lights(const T radius = 10, const unsigned int num_lights = 10,
+  Lights() {}
+  
+  Lights(const T radius, const unsigned int num_lights = 10,
       const std::function<bool(std::vector<T>)> &point_acceptor = [](const std::vector<T>& pos){return true;},
       const std::vector<T> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
     std::vector<T> default_light_property(4);
