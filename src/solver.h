@@ -262,56 +262,58 @@ std::tuple<float, float> get_diffuse_specular(const cv::Mat_<float> &pos_vec, co
   return std::make_tuple(diffuse, specular);
 }
 
-typedef struct least_squares_fitting_matrix {
-  gsl_matrix * m;
-  least_squares_fitting_matrix(const unsigned int rows, const unsigned int cols) : m(gsl_matrix_alloc(rows, cols)) {
-    if (!m)
-      throw;
-  }
-  least_squares_fitting_matrix(const least_squares_fitting_matrix&) = delete;
-  least_squares_fitting_matrix operator=(const least_squares_fitting_matrix&) = delete;
-  ~least_squares_fitting_matrix() {
-    gsl_matrix_free(m);
-  }
-  void set(const size_t i, const size_t j, const double x) {
-    gsl_matrix_set(m, i, j, x);
-  }
-} least_squares_fitting_matrix;
+namespace gsl {
+  typedef struct matrix {
+    gsl_matrix * m;
+    matrix(const unsigned int rows, const unsigned int cols) : m(gsl_matrix_alloc(rows, cols)) {
+      if (!m)
+	throw;
+    }
+    matrix(const gsl::matrix&) = delete;
+    matrix operator=(const matrix&) = delete;
+    ~matrix() {
+      gsl_matrix_free(m);
+    }
+    void set(const size_t i, const size_t j, const double x) {
+      gsl_matrix_set(m, i, j, x);
+    }
+  } matrix;
 
-typedef struct least_squares_fitting_vector {
-  gsl_vector * v;
-  least_squares_fitting_vector(const unsigned int rows) : v(gsl_vector_alloc(rows)) {
-    if (!v)
-      throw;
-  }
-  least_squares_fitting_vector(const least_squares_fitting_vector&) = delete;
-  least_squares_fitting_vector operator=(const least_squares_fitting_vector&) = delete;
-  ~least_squares_fitting_vector() {
-    gsl_vector_free(v);
-  }
-  void set(const size_t i, const double x) {
-    gsl_vector_set(v, i, x);
-  }
-  double get(const size_t i) {
-    return gsl_vector_get(v, i);
-  }
-} least_squares_fitting_vector;
+  typedef struct vector {
+    gsl_vector * v;
+    vector(const unsigned int rows) : v(gsl_vector_alloc(rows)) {
+      if (!v)
+	throw;
+    }
+    vector(const vector&) = delete;
+    vector operator=(const vector&) = delete;
+    ~vector() {
+      gsl_vector_free(v);
+    }
+    void set(const size_t i, const double x) {
+      gsl_vector_set(v, i, x);
+    }
+    double get(const size_t i) {
+      return gsl_vector_get(v, i);
+    }
+  } vector;
 
-typedef struct least_squares_fitting_workspace {
-  gsl_multifit_linear_workspace * w;
-  least_squares_fitting_workspace(size_t rows, size_t cols) : w(gsl_multifit_linear_alloc(rows, cols)) {
-    if (!w)
-      throw;
-  }
-  least_squares_fitting_workspace(const least_squares_fitting_workspace&) = delete;
-  least_squares_fitting_workspace operator=(const least_squares_fitting_workspace&) = delete;
-  ~least_squares_fitting_workspace() {
-    gsl_multifit_linear_free(w);
-  }
-  int solve(const least_squares_fitting_matrix& x, const least_squares_fitting_vector& y, least_squares_fitting_vector& c, least_squares_fitting_matrix &cov, double &chisq) {
-    return gsl_multifit_linear (x.m, y.v, c.v, cov.m, &chisq, w);
-  }
-} least_squares_fitting_workspace;
+  typedef struct workspace {
+    gsl_multifit_linear_workspace * w;
+    workspace(size_t rows, size_t cols) : w(gsl_multifit_linear_alloc(rows, cols)) {
+      if (!w)
+	throw;
+    }
+    workspace(const workspace&) = delete;
+    workspace operator=(const workspace&) = delete;
+    ~workspace() {
+      gsl_multifit_linear_free(w);
+    }
+    int solve(const matrix& x, const vector& y, vector& c, matrix &cov, double &chisq) {
+      return gsl_multifit_linear (x.m, y.v, c.v, cov.m, &chisq, w);
+    }
+  } workspace;
+}
 
 template<typename T>
 void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const int alpha = 50) {
@@ -338,8 +340,8 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
   const unsigned int components_per_light = 2;
   const unsigned int cols = (1 + lights.lights.size() * components_per_light) * colors_per_light;
   
-  least_squares_fitting_matrix x(rows, cols);
-  least_squares_fitting_vector y(rows);
+  gsl::matrix x(rows, cols);
+  gsl::vector y(rows);
 
   cv::Mat_<unsigned char> used_pixels(cv::Mat(image.rows, image.cols, CV_8U, cv::Scalar(0)));
 
@@ -399,10 +401,10 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
   }
 
   // get solution
-  least_squares_fitting_matrix cov(cols, cols);
-  least_squares_fitting_vector c(cols);
+  gsl::matrix cov(cols, cols);
+  gsl::vector c(cols);
   double chisq;
-  least_squares_fitting_workspace problem(rows, cols);
+  gsl::workspace problem(rows, cols);
   problem.solve(x, y, c, cov, chisq);
 
   // ambient
