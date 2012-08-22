@@ -18,6 +18,7 @@
 #include <gsl/gsl_blas.h>
 #include <iomanip>
 #include <limits>
+#include <memory>
 
 void print_gsl_matrix_row(const gsl_matrix& m, const unsigned int row) {
   for (unsigned int col = 0; col < m.size2 - 1; col++)
@@ -265,40 +266,18 @@ std::tuple<float, float> get_diffuse_specular(const cv::Mat_<float> &pos_vec, co
 
 namespace gsl {
   typedef struct matrix {
-    gsl_matrix * m;
+    std::unique_ptr<gsl_matrix, void (*)(gsl_matrix *)> m;
 
-    matrix() : m(0) {
+    matrix() : m(0, gsl_matrix_free) {
     }
     
-    matrix(const unsigned int rows, const unsigned int cols) : m(gsl_matrix_alloc(rows, cols)) {
+    matrix(const unsigned int rows, const unsigned int cols) : m(gsl_matrix_alloc(rows, cols), gsl_matrix_free) {
       if (!m)
         throw;
     }
     
-    matrix(matrix&& rhs) {
-      *this = std::move(rhs);
-    }
-
-    matrix& operator=(matrix&& rhs) {
-      if (this != &rhs) {
-        gsl_matrix * tmp = m;
-        m = rhs.m;
-        rhs.m = tmp;
-      }
-      return *this;
-    }
-    
-    matrix(const gsl::matrix&) = delete;
-    matrix& operator=(const matrix&) = delete;
-    
-    ~matrix() {
-      if (m)
-        gsl_matrix_free(m);
-      m = 0;
-    }
-    
     void set(const size_t i, const size_t j, const double x) {
-      gsl_matrix_set(m, i, j, x);
+      gsl_matrix_set(m.get(), i, j, x);
     }
 
     //   global  each light
@@ -340,49 +319,35 @@ namespace gsl {
   } matrix;
 
   typedef struct vector {
-    gsl_vector * v;
+    std::unique_ptr<gsl_vector, void (*)(gsl_vector *)> v;
     
-    vector() : v(0) {}
+    vector() : v(0, gsl_vector_free) {}
     
-    vector(const unsigned int rows) : v(gsl_vector_alloc(rows)) {
+    vector(const unsigned int rows) : v(gsl_vector_alloc(rows), gsl_vector_free) {
       if (!v)
         throw;
     }
     
-    vector(vector&& rhs) : v(rhs.v) {
-      rhs.v = 0;
-    }
-    
-    vector(const vector& rhs) : v(0) {
+    vector(const vector& rhs) : v(0, gsl_vector_free) {
       *this = rhs;
     }
     
     vector& operator=(const vector& rhs) {
       if (this != &rhs) {
-        if (v) {
-          gsl_vector_free(v);
-          v = 0;
-        }
-        v = gsl_vector_alloc(rhs.v->size);
+        v = std::unique_ptr<gsl_vector, void (*)(gsl_vector *)>(gsl_vector_alloc(rhs.v->size), gsl_vector_free);
         if (!v)
           throw;
-        gsl_vector_memcpy(v, rhs.v);
+        gsl_vector_memcpy(v.get(), rhs.v.get());
       }
       return *this;
     };
     
-    ~vector() {
-      if (v)
-        gsl_vector_free(v);
-      v = 0;
-    }
-    
     void set(const size_t i, const double x) {
-      gsl_vector_set(v, i, x);
+      gsl_vector_set(v.get(), i, x);
     }
     
     double get(const size_t i) const {
-      return gsl_vector_get(v, i);
+      return gsl_vector_get(v.get(), i);
     }
     
     template<int colors_per_light>
@@ -395,20 +360,13 @@ namespace gsl {
   } vector;
 
   typedef struct workspace {
-    gsl_multifit_linear_workspace * w;
-    workspace(size_t rows, size_t cols) : w(gsl_multifit_linear_alloc(rows, cols)) {
+    std::unique_ptr<gsl_multifit_linear_workspace, void (*)(gsl_multifit_linear_workspace*)> w;
+    workspace(size_t rows, size_t cols) : w(gsl_multifit_linear_alloc(rows, cols), gsl_multifit_linear_free) {
       if (!w)
         throw;
     }
-    workspace(const workspace&) = delete;
-    workspace& operator=(const workspace&) = delete;
-    ~workspace() {
-      if (w)
-        gsl_multifit_linear_free(w);
-      w = 0;
-    }
     int solve(const matrix& x, const vector& y, vector& c, matrix &cov, double &chisq) {
-      return gsl_multifit_linear (x.m, y.v, c.v, cov.m, &chisq, w);
+      return gsl_multifit_linear (x.m.get(), y.v.get(), c.v.get(), cov.m.get(), &chisq, w.get());
     }
   } workspace;
 }
@@ -529,7 +487,7 @@ namespace gsl {
   } minimizer;
 
   int matrix_vector_mult(double alpha, const matrix& A, const vector& X, double beta, vector& Y) {
-    return gsl_blas_dgemv(CblasNoTrans, alpha, A.m, X.v, beta, Y.v);
+    return gsl_blas_dgemv(CblasNoTrans, alpha, A.m.get(), X.v.get(), beta, Y.v.get());
   }
 }
 
