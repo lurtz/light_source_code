@@ -15,6 +15,7 @@
 #include <vector>
 #include <gsl/gsl_multifit.h>
 #include <gsl/gsl_multimin.h>
+#include <gsl/gsl_blas.h>
 #include <iomanip>
 #include <limits>
 
@@ -265,49 +266,146 @@ std::tuple<float, float> get_diffuse_specular(const cv::Mat_<float> &pos_vec, co
 namespace gsl {
   typedef struct matrix {
     gsl_matrix * m;
+
+    matrix() : m(0) {
+    }
+    
     matrix(const unsigned int rows, const unsigned int cols) : m(gsl_matrix_alloc(rows, cols)) {
       if (!m)
-	throw;
+        throw;
     }
+    
+    matrix(matrix&& rhs) {
+      *this = std::move(rhs);
+    }
+
+    matrix& operator=(matrix&& rhs) {
+      if (this != &rhs) {
+        gsl_matrix * tmp = m;
+        m = rhs.m;
+        rhs.m = tmp;
+      }
+      return *this;
+    }
+    
     matrix(const gsl::matrix&) = delete;
-    matrix operator=(const matrix&) = delete;
+    matrix& operator=(const matrix&) = delete;
+    
     ~matrix() {
-      gsl_matrix_free(m);
+      if (m)
+        gsl_matrix_free(m);
+      m = 0;
     }
+    
     void set(const size_t i, const size_t j, const double x) {
       gsl_matrix_set(m, i, j, x);
+    }
+
+    //   global  each light
+    //   amb     diff   spec
+    //   r g b   r g b  r g b
+    // r 1 0 0   1 0 0  1 0 0
+    // g 0 1 0   0 1 0  0 1 0
+    // b 0 0 1   0 0 1  0 0 1
+    template<int colors_per_light>
+    void set_ambient(const unsigned int row) {
+      for (unsigned int i = 0; i < colors_per_light; i++)
+        for (unsigned int j = 0; j < colors_per_light; j++)
+          if (i == j)
+            set(row + i, j, 1);
+          else
+            set(row + i, j, 0);
+    }
+
+    template<int colors_per_light>
+    void set_diffuse_specular(const unsigned int row, const unsigned int col, const std::tuple<float, float>& vals) {
+      float diffuse, specular;
+      std::tie(diffuse, specular) = vals;
+      for (unsigned int i = 0; i < colors_per_light; i++) {
+        for (unsigned int j = 0; j < colors_per_light; j++) {
+          if (i == j) {
+            // diffuse
+            set(row+i, col+j, diffuse);
+            // specular
+            set(row+i, col+colors_per_light+j, specular);
+          } else {
+            // diffuse
+            set(row+i, col+j, 0);
+            // specular
+            set(row+i, col+colors_per_light+j, 0);
+          }
+        }
+      }
     }
   } matrix;
 
   typedef struct vector {
     gsl_vector * v;
+    
+    vector() : v(0) {}
+    
     vector(const unsigned int rows) : v(gsl_vector_alloc(rows)) {
       if (!v)
-	throw;
+        throw;
     }
-    vector(const vector&) = delete;
-    vector operator=(const vector&) = delete;
+    
+    vector(vector&& rhs) : v(rhs.v) {
+      rhs.v = 0;
+    }
+    
+    vector(const vector& rhs) : v(0) {
+      *this = rhs;
+    }
+    
+    vector& operator=(const vector& rhs) {
+      if (this != &rhs) {
+        if (v) {
+          gsl_vector_free(v);
+          v = 0;
+        }
+        v = gsl_vector_alloc(rhs.v->size);
+        if (!v)
+          throw;
+        gsl_vector_memcpy(v, rhs.v);
+      }
+      return *this;
+    };
+    
     ~vector() {
-      gsl_vector_free(v);
+      if (v)
+        gsl_vector_free(v);
+      v = 0;
     }
+    
     void set(const size_t i, const double x) {
       gsl_vector_set(v, i, x);
     }
-    double get(const size_t i) {
+    
+    double get(const size_t i) const {
       return gsl_vector_get(v, i);
     }
+    
+    template<int colors_per_light>
+    void set_image_value(const cv::Vec<float, colors_per_light>& pixel, const unsigned int row) {
+      for (unsigned int i = 0; i < colors_per_light; i++) {
+        set(row + i, pixel[i]);
+      }
+    }
+    
   } vector;
 
   typedef struct workspace {
     gsl_multifit_linear_workspace * w;
     workspace(size_t rows, size_t cols) : w(gsl_multifit_linear_alloc(rows, cols)) {
       if (!w)
-	throw;
+        throw;
     }
     workspace(const workspace&) = delete;
-    workspace operator=(const workspace&) = delete;
+    workspace& operator=(const workspace&) = delete;
     ~workspace() {
-      gsl_multifit_linear_free(w);
+      if (w)
+        gsl_multifit_linear_free(w);
+      w = 0;
     }
     int solve(const matrix& x, const vector& y, vector& c, matrix &cov, double &chisq) {
       return gsl_multifit_linear (x.m, y.v, c.v, cov.m, &chisq, w);
@@ -315,34 +413,17 @@ namespace gsl {
   } workspace;
 }
 
-template<typename T>
-void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const int alpha = 50) {
-  show_rgb_image("target image", image);
-//  cv::imshow("normals", normals);
-//  cv::imshow("position", position);
-  
-  //  order of images is: xyz, RGB
-  
-  test_modelview_matrix_and_light_positions<T>(model_view_matrix, lights);
+template<typename T, unsigned int colors_per_light = 3, unsigned int components_per_light = 2, unsigned int div = 100>
+std::tuple<gsl::matrix, gsl::vector> create_linear_system(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, const Lights<T>& lights, const int alpha = 50) {
+  const unsigned int rows = image.rows * image.cols / div * colors_per_light;
+  const unsigned int cols = (1 + lights.lights.size() * components_per_light) * colors_per_light;
 
-  print(lights);
-
-//  test_normals(normals);
-  //get_min_max_and_print(normals);
+  gsl::matrix x(rows, cols);
+  gsl::vector y(rows);
 
   // do not take all points of the image
   // calculate this value somehow, maybe specify the number of samples and
   // distribute them over the mesh in the image
-
-  const unsigned int div = 100;
-  const unsigned int colors_per_light = 3;
-  const unsigned int rows = image.rows * image.cols / div * colors_per_light;
-  const unsigned int components_per_light = 2;
-  const unsigned int cols = (1 + lights.lights.size() * components_per_light) * colors_per_light;
-  
-  gsl::matrix x(rows, cols);
-  gsl::vector y(rows);
-
   cv::Mat_<unsigned char> used_pixels(cv::Mat(image.rows, image.cols, CV_8U, cv::Scalar(0)));
 
   for (unsigned int row = 0; row < rows; row+=colors_per_light) {
@@ -354,51 +435,55 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
     // 2. set matrix parameter for pixel
     // set value of pixel in the image to the vector
     const cv::Vec<float, colors_per_light>& pixel = image(_y, _x);
-    check_pixel(pixel, "target", _x, _y);
-    for (unsigned int i = 0; i < colors_per_light; i++) {
-      y.set(row + i, pixel[i]);
-    }
+    assert(check_pixel(pixel, "target", _x, _y));
+    y.set_image_value(pixel, row);
     // set shading parameter for a pixel in the matrix
     // ambient term
-    for (unsigned int i = 0; i < colors_per_light; i++)
-      for (unsigned int j = 0; j < colors_per_light; j++)
-        if (i == j)
-	  x.set(row + i, j, 1);
-        else
-	  x.set(row + i, j, 0);
+
+    x.set_ambient<colors_per_light>(row);
 
     const cv::Mat_<float> pos_vec(position(_y, _x));
     const cv::Mat_<float> normal(normals(_y, _x), false);
 
     for (unsigned int col = colors_per_light; col < cols; col+=components_per_light*colors_per_light) {
       const Light<T>& light = lights.lights.at(col/components_per_light/colors_per_light);
-      float diffuse;
-      float specular;
-      std::tie(diffuse, specular) = get_diffuse_specular(pos_vec, normal, light, model_view_matrix, alpha);
-
-      //   global  each light
-      //   amb     diff   spec
-      //   r g b   r g b  r g b
-      // r 1 0 0   1 0 0  1 0 0
-      // g 0 1 0   0 1 0  0 1 0
-      // b 0 0 1   0 0 1  0 0 1
-      for (unsigned int i = 0; i < colors_per_light; i++) {
-        for (unsigned int j = 0; j < colors_per_light; j++) {
-          if (i == j) {
-            // diffuse
-            x.set(row+i, col+j, diffuse);
-            // specular
-	    x.set(row+i, col+colors_per_light+j, specular);
-          } else {
-            // diffuse
-	    x.set(row+i, col+j, 0);
-            // specular
-	    x.set(row+i, col+colors_per_light+j, 0);
-          }
-        }
-      }
+      x.set_diffuse_specular<colors_per_light>(row, col, get_diffuse_specular(pos_vec, normal, light, model_view_matrix, alpha));
     }
   }
+
+  return std::make_tuple(std::move(x), std::move(y));
+}
+
+template<typename T>
+void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const int alpha = 50) {
+  show_rgb_image("target image", image);
+//  cv::imshow("normals", normals);
+//  cv::imshow("position", position);
+  
+  //  order of images is: xyz, RGB
+  
+//  test_modelview_matrix_and_light_positions<T>(model_view_matrix, lights);
+
+  print(lights);
+
+//  test_normals(normals);
+  //get_min_max_and_print(normals);
+
+  // do not take all points of the image
+  // calculate this value somehow, maybe specify the number of samples and
+  // distribute them over the mesh in the image
+  
+  gsl::matrix x;
+  gsl::vector y;
+  
+  const unsigned int div = 100;
+  const unsigned int colors_per_light = 3;
+  const unsigned int components_per_light = 2;
+
+  std::tie(x, y) = create_linear_system<T, colors_per_light, components_per_light, div>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
+
+  const unsigned int rows = image.rows * image.cols / div * colors_per_light;
+  const unsigned int cols = (1 + lights.lights.size() * components_per_light) * colors_per_light;
 
   // get solution
   gsl::matrix cov(cols, cols);
@@ -423,9 +508,6 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
     }
   }
 
-//  print_gsl_linear_system(*x, *c, *y);
-
-//  cv::imshow("used_pixels", used_pixels);
   cv::waitKey(100);
 
   print(lights);
@@ -445,6 +527,10 @@ namespace gsl {
       gsl_multimin_fminimizer_free(problem);
     }
   } minimizer;
+
+  int matrix_vector_mult(double alpha, const matrix& A, const vector& X, double beta, vector& Y) {
+    return gsl_blas_dgemv(CblasNoTrans, alpha, A.m, X.v, beta, Y.v);
+  }
 }
 
 template<typename T>
