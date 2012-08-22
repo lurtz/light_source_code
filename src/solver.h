@@ -291,12 +291,12 @@ namespace gsl {
       for (unsigned int i = 0; i < colors_per_light; i++)
         for (unsigned int j = 0; j < colors_per_light; j++)
           if (i == j)
-            set(row + i, j, 1);
+            set(colors_per_light * row + i, j, 1);
           else
-            set(row + i, j, 0);
+            set(colors_per_light * row + i, j, 0);
     }
 
-    template<int colors_per_light>
+    template<int colors_per_light, int components_per_light>
     void set_diffuse_specular(const unsigned int row, const unsigned int col, const std::tuple<float, float>& vals) {
       float diffuse, specular;
       std::tie(diffuse, specular) = vals;
@@ -304,14 +304,14 @@ namespace gsl {
         for (unsigned int j = 0; j < colors_per_light; j++) {
           if (i == j) {
             // diffuse
-            set(row+i, col+j, diffuse);
+            set(colors_per_light * row+i, colors_per_light + colors_per_light * components_per_light * col+j, diffuse);
             // specular
-            set(row+i, col+colors_per_light+j, specular);
+            set(colors_per_light * row+i, colors_per_light + colors_per_light * components_per_light * col+colors_per_light+j, specular);
           } else {
             // diffuse
-            set(row+i, col+j, 0);
+            set(colors_per_light * row+i, colors_per_light + colors_per_light * components_per_light * col+j, 0);
             // specular
-            set(row+i, col+colors_per_light+j, 0);
+            set(colors_per_light * row+i, colors_per_light + colors_per_light * components_per_light * col+colors_per_light+j, 0);
           }
         }
       }
@@ -319,6 +319,8 @@ namespace gsl {
   } matrix;
 
   typedef struct vector {
+    enum {AMBIENT = 0, DIFFUSE, SPECULAR};
+    
     std::unique_ptr<gsl_vector, void (*)(gsl_vector *)> v;
     
     vector() : v(0, gsl_vector_free) {}
@@ -361,23 +363,23 @@ namespace gsl {
     
     template<typename T, int colors_per_light, int components_per_light>
     std::vector<T> get_ambient() const {
-      return get<T, colors_per_light, components_per_light>(0, 0);
+      return get<T, colors_per_light, components_per_light>(0, AMBIENT);
     }
     
     template<typename T, int colors_per_light, int components_per_light>
     std::vector<T> get_diffuse(const size_t i) const {
-      return get<T, colors_per_light, components_per_light>(i, 1);
+      return get<T, colors_per_light, components_per_light>(i, DIFFUSE);
     }
     
     template<typename T, int colors_per_light, int components_per_light>
     std::vector<T> get_specular(const size_t i) const {
-      return get<T, colors_per_light, components_per_light>(i, 2);
+      return get<T, colors_per_light, components_per_light>(i, SPECULAR);
     }
     
     template<int colors_per_light>
     void set(const unsigned int row, const cv::Vec<float, colors_per_light>& pixel) {
       for (unsigned int i = 0; i < colors_per_light; i++) {
-        set(row + i, pixel[i]);
+        set(colors_per_light*row + i, pixel[i]);
       }
     }
     
@@ -408,7 +410,7 @@ std::tuple<gsl::matrix, gsl::vector, unsigned int, unsigned int> create_linear_s
   // distribute them over the mesh in the image
   cv::Mat_<unsigned char> used_pixels(cv::Mat(image.rows, image.cols, CV_8U, cv::Scalar(0)));
 
-  for (unsigned int row = 0; row < rows; row+=colors_per_light) {
+  for (unsigned int row = 0; row < rows/colors_per_light; row++) {
     // 1. find a good pixel
     int _x = 0;
     int _y = 0;
@@ -427,9 +429,9 @@ std::tuple<gsl::matrix, gsl::vector, unsigned int, unsigned int> create_linear_s
     const cv::Mat_<float> pos_vec(position(_y, _x));
     const cv::Mat_<float> normal(normals(_y, _x), false);
 
-    for (unsigned int col = colors_per_light; col < cols; col+=components_per_light*colors_per_light) {
-      const Light<T>& light = lights.lights.at(col/components_per_light/colors_per_light);
-      x.set_diffuse_specular<colors_per_light>(row, col, get_diffuse_specular(pos_vec, normal, light, model_view_matrix, alpha));
+    for (unsigned int col = 0; col < cols/components_per_light/colors_per_light; col++) {
+      const Light<T>& light = lights.lights.at(col);
+      x.set_diffuse_specular<colors_per_light, components_per_light>(row, col, get_diffuse_specular(pos_vec, normal, light, model_view_matrix, alpha));
     }
   }
 
