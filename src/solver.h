@@ -398,7 +398,7 @@ namespace gsl {
 }
 
 template<typename T, unsigned int colors_per_light = 3, unsigned int components_per_light = 2, unsigned int div = 100>
-std::tuple<gsl::matrix, gsl::vector, unsigned int, unsigned int> create_linear_system(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, const Lights<T>& lights, const int alpha = 50) {
+std::tuple<gsl::matrix, gsl::vector> create_linear_system(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, const Lights<T>& lights, const int alpha = 50) {
   const unsigned int rows = image.rows * image.cols / div * colors_per_light;
   const unsigned int cols = (1 + lights.lights.size() * components_per_light) * colors_per_light;
 
@@ -429,13 +429,13 @@ std::tuple<gsl::matrix, gsl::vector, unsigned int, unsigned int> create_linear_s
     const cv::Mat_<float> pos_vec(position(_y, _x));
     const cv::Mat_<float> normal(normals(_y, _x), false);
 
-    for (unsigned int col = 0; col < cols/components_per_light/colors_per_light; col++) {
+    for (unsigned int col = 0; col < lights.lights.size(); col++) {
       const Light<T>& light = lights.lights.at(col);
       x.set_diffuse_specular<colors_per_light, components_per_light>(row, col, get_diffuse_specular(pos_vec, normal, light, model_view_matrix, alpha));
     }
   }
 
-  return std::make_tuple(std::move(x), std::move(y), rows, cols);
+  return std::make_tuple(std::move(x), std::move(y));
 }
 
 template<typename T>
@@ -459,19 +459,19 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
   
   gsl::matrix x;
   gsl::vector y;
-  unsigned int rows, cols;
   
   const unsigned int div = 100;
   const unsigned int colors_per_light = 3;
   const unsigned int components_per_light = 2;
 
-  std::tie(x, y, rows, cols) = create_linear_system<T, colors_per_light, components_per_light, div>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
+  std::tie(x, y) = create_linear_system<T, colors_per_light, components_per_light, div>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
 
   // get solution
-  gsl::matrix cov(cols, cols);
-  gsl::vector c(cols);
+  
+  gsl::matrix cov(x.m.get()->size2, x.m.get()->size2);
+  gsl::vector c(x.m.get()->size2);
   double chisq;
-  gsl::workspace problem(rows, cols);
+  gsl::workspace problem(x.m.get()->size1, x.m.get()->size2);
   problem.solve(x, y, c, cov, chisq);
 
   // ambient
