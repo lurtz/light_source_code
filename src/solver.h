@@ -353,7 +353,7 @@ namespace gsl {
     }
     
     template<typename T, int colors_per_light, int components_per_light>
-    std::vector<T> get(const size_t i, int offset) const {
+    std::vector<T> get(const size_t i, const int offset) const {
       std::vector<T> tmp(colors_per_light+1);
       for (unsigned j = 0; j < colors_per_light; j++)
         tmp.at(j) = get(offset*colors_per_light + i*colors_per_light*components_per_light + j);
@@ -510,8 +510,7 @@ template<typename T>
 void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const int alpha = 50) {
   gsl::matrix x;
   gsl::vector y;
-  unsigned int rows, cols;
-  std::tie(x, y, rows, cols) = create_linear_system<T>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
+  std::tie(x, y) = create_linear_system<T>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
 }
 
 #endif /* SOLVER_H_ */
