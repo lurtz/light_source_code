@@ -557,7 +557,7 @@ namespace gsl {
       gsl::vector<colors_per_light, components_per_light> step_size_(f.n, 1.0);
       if (!problem)
         throw;
-      set(f, start_point_, step_size_);
+      set(f, std::move(start_point_), std::move(step_size_));
     }
     
     minimizer(const gsl_multimin_fminimizer_type * T, gsl_multimin_function& f, const gsl::vector<colors_per_light, components_per_light> start_point, const gsl::vector<colors_per_light, components_per_light> step_size)
