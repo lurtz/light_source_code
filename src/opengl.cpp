@@ -195,7 +195,10 @@ void calc_lights() {
   glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix_stack);
   cv::Mat_<GLfloat> model_view_matrix(4, 4, model_view_matrix_stack);
   
-  optimize_lights<float>(image, normals, position, model_view_matrix.t(), clear_color, lights);
+//  optimize_lights<float>(image, normals, position, model_view_matrix.t(), clear_color, lights);
+  
+  optimize_lights_multi_dim_fit<float>(image, normals, position, model_view_matrix.t(), clear_color, lights);
+  
   image_displayed = true;
 }
 
