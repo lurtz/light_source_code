@@ -633,13 +633,24 @@ double cost(const gsl_vector *v, void *params) {
   for (unsigned int i = 0; i < v->size; i++) {
     double val = gsl_vector_get(v, i);
     if (val < 0.0) {
-      cost += std::exp2(std::ceil(-val));
+//      cost += std::exp2(std::ceil(-val));
+//      cost += std::exp(std::exp2(std::ceil(-val)));
     }
     if (val > 1.0) {
-      cost += std::exp2(std::ceil(val-1.0));
+//      cost += std::exp2(std::ceil(val-1.0));
+//      cost += std::exp(std::exp2(std::ceil(val-1.0)));
     }
   }
   return cost;
+}
+
+template<int colors_per_light, int components_per_light>
+bool check_solution(const gsl::vector<colors_per_light, components_per_light> &sol, double min = 0.0, double max = 1.0) {
+  bool ret_val = true;
+  for (unsigned int i = 0; i < sol.size(); i++) {
+    ret_val &= check_bounds_of_value(sol.get(i), "light solution", min, max);
+  }
+  return ret_val;
 }
 
 template<typename T>
@@ -657,12 +668,15 @@ void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::
 //  gsl::vector<colors_per_light, components_per_light> ss(f.n, 1.0);
   
   int status = GSL_CONTINUE;
-  for (size_t iter = 0; iter < 10000 && status == GSL_CONTINUE; iter++) {
+  for (size_t iter = 0; status == GSL_CONTINUE; iter++) {
     status = minimizer.iterate();
-    std::cout << "step " << iter << ", " << minimizer.get_function_value() << std::endl;
+    std::cout << iter <<  ", " << minimizer.get_function_value() << "\r";
   }
+  std::cout << std::endl;
   
-  set_solution<float>(minimizer.get_solution(), lights);
+  gsl::vector<colors_per_light, components_per_light> solution = minimizer.get_solution();
+  check_solution(solution);
+  set_solution<float>(solution, lights);
   print(lights);
   
   cv::waitKey(100);
