@@ -378,7 +378,6 @@ namespace gsl {
     }
     
     vector& operator=(vector&& rhs) {
-      std::cout << "operator=(vector&&)" << std::endl;
       if (this != &rhs)
         v = std::move(rhs.v);
       return *this;
@@ -610,7 +609,7 @@ namespace gsl {
   }
 }
 
-template<int colors_per_light, int components_per_light>
+template<int colors_per_light, int components_per_light, bool free_variables = true>
 double cost(const gsl_vector *v, void *params) {
   if (v == nullptr) {
     std::cerr << "cost(const gsl_vector*, void*): const gsl_vector* parameter is nullptr" << std::endl;
@@ -630,15 +629,17 @@ double cost(const gsl_vector *v, void *params) {
   for (unsigned int i = 0; i < y_copy.size(); i++) {
     cost += fabs(y_copy.get(i));
   }
-  for (unsigned int i = 0; i < v->size; i++) {
-    double val = gsl_vector_get(v, i);
-    if (val < 0.0) {
-//      cost += std::exp2(std::ceil(-val));
-//      cost += std::exp(std::exp2(std::ceil(-val)));
-    }
-    if (val > 1.0) {
-//      cost += std::exp2(std::ceil(val-1.0));
-//      cost += std::exp(std::exp2(std::ceil(val-1.0)));
+  if (!free_variables) {
+    for (unsigned int i = 0; i < v->size; i++) {
+      double val = gsl_vector_get(v, i);
+      if (val < 0.0) {
+//        cost += std::exp2(std::ceil(-val));
+        cost += std::exp2(std::exp2(std::ceil(-val)));
+      }
+      if (val > 1.0) {
+//        cost += std::exp2(std::ceil(val-1.0));
+        cost += std::exp2(std::exp2(std::ceil(val-1.0)));
+      }
     }
   }
   return cost;
@@ -670,11 +671,22 @@ void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::
   int status = GSL_CONTINUE;
   for (size_t iter = 0; status == GSL_CONTINUE; iter++) {
     status = minimizer.iterate();
-    std::cout << iter <<  ", " << minimizer.get_function_value() << "\r";
+    std::cout << "first stage " << iter <<  ", " << minimizer.get_function_value() << "\r";
   }
   std::cout << std::endl;
   
   gsl::vector<colors_per_light, components_per_light> solution = minimizer.get_solution();
+  gsl::vector<colors_per_light, components_per_light> step_size(solution.size(), 1.0);
+  gsl_multimin_function f2{&cost<colors_per_light, components_per_light, false>, f.n, f.params};
+  gsl::minimizer<colors_per_light, components_per_light> minimizer2(gsl_multimin_fminimizer_nmsimplex2, f2, solution, step_size);
+  status = GSL_CONTINUE;
+  for (size_t iter = 0; status == GSL_CONTINUE; iter++) {
+    status = minimizer2.iterate();
+    std::cout << "second stage " << iter <<  ", " << minimizer2.get_function_value() << "\r";
+  }
+  std::cout << std::endl;
+  
+  solution = minimizer2.get_solution();
   check_solution(solution);
   set_solution<float>(solution, lights);
   print(lights);
