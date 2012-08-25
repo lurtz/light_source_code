@@ -373,6 +373,17 @@ namespace gsl {
       return *this;
     };
     
+    vector(vector&& rhs) : v(0, gsl_vector_free) {
+      *this = std::move(rhs);
+    }
+    
+    vector& operator=(vector&& rhs) {
+      std::cout << "operator=(vector&&)" << std::endl;
+      if (this != &rhs)
+        v = std::move(rhs.v);
+      return *this;
+    }
+    
     void set_raw(const size_t i, const double x) {
       gsl_vector_set(v.get(), i, x);
     }
