@@ -551,18 +551,20 @@ namespace gsl {
     
     public:
       
-    minimizer(const gsl_multimin_fminimizer_type * T, gsl_multimin_function& f) : problem(gsl_multimin_fminimizer_alloc(T, f.n), gsl_multimin_fminimizer_free), start_point(f.n, 0.0), step_size(f.n, 1.0) {
+    minimizer(const gsl_multimin_fminimizer_type * T, gsl_multimin_function& f) 
+    : problem(gsl_multimin_fminimizer_alloc(T, f.n), gsl_multimin_fminimizer_free) {
+      gsl::vector<colors_per_light, components_per_light> start_point_(f.n, 0.0);
+      gsl::vector<colors_per_light, components_per_light> step_size_(f.n, 1.0);
       if (!problem)
         throw;
-      set(f, start_point, step_size);
+      set(f, start_point_, step_size_);
     }
     
-    minimizer(const gsl_multimin_fminimizer_type * T, gsl_multimin_function& f, gsl::vector<colors_per_light, components_per_light> start_point, gsl::vector<colors_per_light, components_per_light> step_size)
-    : problem(gsl_multimin_fminimizer_alloc(T, f.n), gsl_multimin_fminimizer_free), start_point(std::move(start_point)), step_size(std::move(step_size)) {
-      if (!problem) {
+    minimizer(const gsl_multimin_fminimizer_type * T, gsl_multimin_function& f, const gsl::vector<colors_per_light, components_per_light> start_point, const gsl::vector<colors_per_light, components_per_light> step_size)
+    : problem(gsl_multimin_fminimizer_alloc(T, f.n), gsl_multimin_fminimizer_free) {
+      if (!problem)
         throw;
-      }
-      set(f, this->start_point, this->step_size);
+      set(f, std::move(start_point), std::move(step_size));
     }
     
     gsl::vector<colors_per_light, components_per_light> get_solution() const {
@@ -573,8 +575,10 @@ namespace gsl {
       return problem.get()->fval;
     }
     
-    void set(gsl_multimin_function& f, const gsl::vector<colors_per_light, components_per_light>& x, const gsl::vector<colors_per_light, components_per_light>& step_size) {
-      if (gsl_multimin_fminimizer_set(problem.get(), &f, x.get(), step_size.get()))
+    void set(gsl_multimin_function& f, const gsl::vector<colors_per_light, components_per_light> x, const gsl::vector<colors_per_light, components_per_light> ss) {
+      start_point = std::move(x);
+      step_size = std::move(ss);
+      if (gsl_multimin_fminimizer_set(problem.get(), &f, start_point.get(), step_size.get()))
         throw;
     }
     
