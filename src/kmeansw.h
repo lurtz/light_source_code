@@ -14,7 +14,8 @@ namespace cv {
 double kmeansw( InputArray _data, int K,
                    InputOutputArray _bestLabels,
                    TermCriteria criteria, int attempts,
-                   int flags, OutputArray _centers );
+                   int flags, OutputArray _centers,
+                   InputArray weights, OutputArray clusters );
 }
 
 #endif /* __CV_KMEANS_W__ */

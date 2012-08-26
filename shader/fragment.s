@@ -14,7 +14,7 @@ struct Light_properties {
 
 // without solving equations I can get up to 140 lights with a Radeon HD6850 and Mesa
 // my thinkpad seems not to like huge values, 30 is max
-#define MAX_LIGHTS 140
+#define MAX_LIGHTS 30
 uniform Light_properties lights[MAX_LIGHTS];
 
 void main () {

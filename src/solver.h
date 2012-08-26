@@ -674,8 +674,9 @@ void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::
   
   auto linear_system = create_linear_system<T, colors_per_light, components_per_light, div>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
 
-  gsl_multimin_function f{&cost<colors_per_light, components_per_light, false>, std::get<0>(linear_system).get_cols(), &linear_system};
-  gsl::minimizer<colors_per_light, components_per_light> minimizer(gsl_multimin_fminimizer_nmsimplex2, f, gsl::vector<colors_per_light, components_per_light>(f.n, 0.5), gsl::vector<colors_per_light, components_per_light>(f.n, 0.5));
+  gsl_multimin_function f{&cost<colors_per_light, components_per_light>, std::get<0>(linear_system).get_cols(), &linear_system};
+  gsl::minimizer<colors_per_light, components_per_light> minimizer(gsl_multimin_fminimizer_nmsimplex2, f);
+//  gsl::minimizer<colors_per_light, components_per_light> minimizer(gsl_multimin_fminimizer_nmsimplex2, f, gsl::vector<colors_per_light, components_per_light>(f.n, 0.5), gsl::vector<colors_per_light, components_per_light>(f.n, 0.5));
   
   for (size_t iter = 0, status = GSL_CONTINUE; status == GSL_CONTINUE; iter++) {
     status = minimizer.iterate();
