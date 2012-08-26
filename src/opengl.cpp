@@ -10,6 +10,7 @@
 #include <iterator>
 #include <tuple>
 #include <memory>
+#include <chrono>
 #include "opengl.h"
 #include "Trackball.h"
 
@@ -181,14 +182,23 @@ decltype(renderSceneIntoFBO()) create_test_image() {
   return tuple;
 }
 
+template<class Rep, class Period>
+std::ostream& operator<<(std::ostream& out, const std::chrono::duration<Rep, Period>& tp) {
+  out << std::chrono::duration_cast<std::chrono::seconds>(tp).count() << "s";
+  return out;
+}
+
 void calc_lights() {
   if (image_displayed)
     return;
 
+  const auto start_time = std::chrono::steady_clock::now();
+  
   cv::Mat_<cv::Vec3f> image;
   cv::Mat_<cv::Vec3f> normals;
   cv::Mat_<cv::Vec3f> position;
   std::tie(image, normals, position, std::ignore) = create_test_image();
+  const auto test_creation_time = std::chrono::steady_clock::now();
   
   // do not need to be flipped
   GLfloat model_view_matrix_stack[16];
@@ -198,6 +208,11 @@ void calc_lights() {
 //  optimize_lights<float>(image, normals, position, model_view_matrix.t(), clear_color, lights);
   
   optimize_lights_multi_dim_fit<float>(image, normals, position, model_view_matrix.t(), clear_color, lights);
+  const auto finish_time = std::chrono::steady_clock::now();
+
+  std::cout << "complete run:" << finish_time - start_time << std::endl;
+  std::cout << "  test creation:" << test_creation_time - start_time << std::endl;
+  std::cout << "  light estimation:" << finish_time - test_creation_time << std::endl;
   
   image_displayed = true;
 }
@@ -322,7 +337,7 @@ void initLights() {
   std::tie(x, y, z) = _ball.getViewDirection();
 //  lights = Lights<float>(10, 30);
 //  lights = Lights<float>(10, 30, plane_acceptor(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
-  lights = Lights<float>("bla", 10, 140, plane_acceptor_tuple(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
+  lights = Lights<float>("bla", 10, 30, plane_acceptor_tuple(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
 }
 
 void setupOpenGL(int * argc, char ** argv, const unsigned int width, const unsigned int height) {
