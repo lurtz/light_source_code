@@ -556,25 +556,26 @@ namespace gsl {
   template<int colors_per_light, int components_per_light>
   class minimizer {
     std::unique_ptr<gsl_multimin_fminimizer, void (*)(gsl_multimin_fminimizer*)> problem;
+    gsl_multimin_function function;
     gsl::vector<colors_per_light, components_per_light> start_point;
     gsl::vector<colors_per_light, components_per_light> step_size;
     
     public:
       
-    minimizer(const gsl_multimin_fminimizer_type * T, gsl_multimin_function& f) 
-    : problem(gsl_multimin_fminimizer_alloc(T, f.n), gsl_multimin_fminimizer_free) {
-      gsl::vector<colors_per_light, components_per_light> start_point_(f.n, 0.0);
-      gsl::vector<colors_per_light, components_per_light> step_size_(f.n, 1.0);
+    minimizer(const gsl_multimin_fminimizer_type * T, gsl_multimin_function f)
+    : problem(gsl_multimin_fminimizer_alloc(T, f.n), gsl_multimin_fminimizer_free), function(std::move(f)) {
       if (!problem)
         throw;
-      set(f, std::move(start_point_), std::move(step_size_));
+      start_point = gsl::vector<colors_per_light, components_per_light>(f.n, 0.0);
+      step_size = gsl::vector<colors_per_light, components_per_light>(f.n, 1.0);
+      reset();
     }
     
-    minimizer(const gsl_multimin_fminimizer_type * T, gsl_multimin_function& f, const gsl::vector<colors_per_light, components_per_light> start_point, const gsl::vector<colors_per_light, components_per_light> step_size)
-    : problem(gsl_multimin_fminimizer_alloc(T, f.n), gsl_multimin_fminimizer_free) {
+    minimizer(const gsl_multimin_fminimizer_type * T, gsl_multimin_function f, const gsl::vector<colors_per_light, components_per_light> start_point, const gsl::vector<colors_per_light, components_per_light> step_size)
+    : problem(gsl_multimin_fminimizer_alloc(T, f.n), gsl_multimin_fminimizer_free), function(std::move(f)), start_point(std::move(start_point)), step_size(std::move(step_size)) {
       if (!problem)
         throw;
-      set(f, std::move(start_point), std::move(step_size));
+      reset();
     }
     
     gsl::vector<colors_per_light, components_per_light> get_solution() const {
@@ -585,18 +586,29 @@ namespace gsl {
       return problem.get()->fval;
     }
     
-    void set(gsl_multimin_function& f, const gsl::vector<colors_per_light, components_per_light> x, const gsl::vector<colors_per_light, components_per_light> ss) {
+    void set(gsl_multimin_function f, const gsl::vector<colors_per_light, components_per_light> x, const gsl::vector<colors_per_light, components_per_light> ss) {
+      function = std::move(f);
       start_point = std::move(x);
       step_size = std::move(ss);
-      if (gsl_multimin_fminimizer_set(problem.get(), &f, start_point.get(), step_size.get()))
+      reset();
+    }
+
+    void set_function_and_start_point(gsl_multimin_function f, const gsl::vector<colors_per_light, components_per_light> pos) {
+      function = std::move(f);
+      start_point = std::move(pos);
+      reset();
+    } 
+
+    void reset() {
+      if (gsl_multimin_fminimizer_set(problem.get(), &function, start_point.get(), step_size.get()))
         throw;
     }
     
-    int iterate() {
+    int iterate(double epsabs = 1e-2) {
       if (gsl_multimin_fminimizer_iterate(problem.get()))
         throw;
-      double size = gsl_multimin_fminimizer_size (problem.get());
-      int status = gsl_multimin_test_size (size, 1e-2);
+      double size = gsl_multimin_fminimizer_size(problem.get());
+      int status = gsl_multimin_test_size(size, epsabs);
       return status;
     }
     
@@ -665,28 +677,22 @@ void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::
 
   gsl_multimin_function f{&cost<colors_per_light, components_per_light>, std::get<0>(linear_system).get_cols(), &linear_system};
   gsl::minimizer<colors_per_light, components_per_light> minimizer(gsl_multimin_fminimizer_nmsimplex2, f);
-//  gsl::vector<colors_per_light, components_per_light> v(f.n);
-//  gsl::vector<colors_per_light, components_per_light> ss(f.n, 1.0);
   
-  int status = GSL_CONTINUE;
-  for (size_t iter = 0; status == GSL_CONTINUE; iter++) {
+  for (size_t iter = 0, status = GSL_CONTINUE; status == GSL_CONTINUE; iter++) {
     status = minimizer.iterate();
     std::cout << "first stage " << iter <<  ", " << minimizer.get_function_value() << "\r";
   }
   std::cout << std::endl;
   
-  gsl::vector<colors_per_light, components_per_light> solution = minimizer.get_solution();
-  gsl::vector<colors_per_light, components_per_light> step_size(solution.size(), 1.0);
-  gsl_multimin_function f2{&cost<colors_per_light, components_per_light, false>, f.n, f.params};
-  gsl::minimizer<colors_per_light, components_per_light> minimizer2(gsl_multimin_fminimizer_nmsimplex2, f2, solution, step_size);
-  status = GSL_CONTINUE;
-  for (size_t iter = 0; status == GSL_CONTINUE; iter++) {
-    status = minimizer2.iterate();
-    std::cout << "second stage " << iter <<  ", " << minimizer2.get_function_value() << "\r";
+  f.f = &cost<colors_per_light, components_per_light, false>;
+  minimizer.set_function_and_start_point(f, minimizer.get_solution());
+  for (size_t iter = 0, status = GSL_CONTINUE; status == GSL_CONTINUE; iter++) {
+    status = minimizer.iterate();
+    std::cout << "second stage " << iter <<  ", " << minimizer.get_function_value() << "\r";
   }
   std::cout << std::endl;
   
-  solution = minimizer2.get_solution();
+  auto solution = minimizer.get_solution();
   check_solution(solution);
   set_solution<float>(solution, lights);
   print(lights);
