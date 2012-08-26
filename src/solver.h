@@ -644,13 +644,12 @@ double cost(const gsl_vector *v, void *params) {
   if (!free_variables) {
     for (unsigned int i = 0; i < v->size; i++) {
       double val = gsl_vector_get(v, i);
-      if (val < 0.0) {
-//        cost += std::exp2(std::ceil(-val));
-        cost += std::exp2(std::exp2(std::ceil(-val)));
-      }
-      if (val > 1.0) {
-//        cost += std::exp2(std::ceil(val-1.0));
-        cost += std::exp2(std::exp2(std::ceil(val-1.0)));
+      if (val < 0.0 || val > 1.0) {
+        if (val < 0.0)
+          val = -val;
+        else
+          val = val-1.0;
+        cost += std::exp2(std::exp2(5*val));
       }
     }
   }
@@ -675,8 +674,8 @@ void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::
   
   auto linear_system = create_linear_system<T, colors_per_light, components_per_light, div>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
 
-  gsl_multimin_function f{&cost<colors_per_light, components_per_light>, std::get<0>(linear_system).get_cols(), &linear_system};
-  gsl::minimizer<colors_per_light, components_per_light> minimizer(gsl_multimin_fminimizer_nmsimplex2, f);
+  gsl_multimin_function f{&cost<colors_per_light, components_per_light, false>, std::get<0>(linear_system).get_cols(), &linear_system};
+  gsl::minimizer<colors_per_light, components_per_light> minimizer(gsl_multimin_fminimizer_nmsimplex2, f, gsl::vector<colors_per_light, components_per_light>(f.n, 0.5), gsl::vector<colors_per_light, components_per_light>(f.n, 0.5));
   
   for (size_t iter = 0, status = GSL_CONTINUE; status == GSL_CONTINUE; iter++) {
     status = minimizer.iterate();
@@ -698,6 +697,7 @@ void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::
   print(lights);
   
   cv::waitKey(100);
+
   
 }
 

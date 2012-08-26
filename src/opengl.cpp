@@ -210,9 +210,9 @@ void calc_lights() {
   optimize_lights_multi_dim_fit<float>(image, normals, position, model_view_matrix.t(), clear_color, lights);
   const auto finish_time = std::chrono::steady_clock::now();
 
-  std::cout << "complete run:" << finish_time - start_time << std::endl;
-  std::cout << "  test creation:" << test_creation_time - start_time << std::endl;
-  std::cout << "  light estimation:" << finish_time - test_creation_time << std::endl;
+  std::cout << "complete run: " << finish_time - start_time << std::endl;
+  std::cout << "  test creation: " << test_creation_time - start_time << std::endl;
+  std::cout << "  light estimation: " << finish_time - test_creation_time << std::endl;
   
   image_displayed = true;
 }
@@ -337,7 +337,7 @@ void initLights() {
   std::tie(x, y, z) = _ball.getViewDirection();
 //  lights = Lights<float>(10, 30);
 //  lights = Lights<float>(10, 30, plane_acceptor(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
-  lights = Lights<float>("bla", 10, 30, plane_acceptor_tuple(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
+  lights = Lights<float>("bla", 10, 140, plane_acceptor_tuple(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
 }
 
 void setupOpenGL(int * argc, char ** argv, const unsigned int width, const unsigned int height) {

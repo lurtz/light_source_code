@@ -11,7 +11,7 @@ SET(Exercise10_SRC
 )
 
 #The rule to build the executable program 
-ADD_EXECUTABLE(light_sources main.cpp opengl.cpp lights.cpp ${Exercise10_SRC})
+ADD_EXECUTABLE(light_sources main.cpp opengl.cpp lights.cpp kmeansw.cpp ${Exercise10_SRC})
 TARGET_LINK_LIBRARIES(light_sources
   ${OpenCV_LIBS}
   ${OpenGL_LIBRARIES}
