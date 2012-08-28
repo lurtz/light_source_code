@@ -241,7 +241,6 @@ Lights<T> reduce_lights(const Lights<T>& lights, const unsigned int k) {
 
   cv::Mat_<cv::Vec<T, dim>> centers_templ(k, 1);
   for (int i = 0; i < centers.rows; i++) {
-    std::cout << centers.at<cv::Vec<T, dim>>(i) << std::endl;
     centers_templ(i) = centers.at<cv::Vec<T, dim>>(i);
   }
   

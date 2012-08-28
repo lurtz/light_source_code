@@ -668,7 +668,7 @@ bool check_solution(const gsl::vector<colors_per_light, components_per_light> &s
 }
 
 template<typename T>
-void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const int alpha = 50) {
+void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const size_t max_iter = 0, const int alpha = 50) {
   show_rgb_image("target image", image);
   // TODO eliminate div, replace by a function which calculates the maximum number of lights
   //      need to have more pixel samples than light source parameters (more rows, than cols)
@@ -684,7 +684,6 @@ void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::
   gsl::minimizer<colors_per_light, components_per_light> minimizer(gsl_multimin_fminimizer_nmsimplex2, f);
 //  gsl::minimizer<colors_per_light, components_per_light> minimizer(gsl_multimin_fminimizer_nmsimplex2, f, gsl::vector<colors_per_light, components_per_light>(f.n, 0.5), gsl::vector<colors_per_light, components_per_light>(f.n, 0.5));
 
-  const size_t max_iter = 1000;
   std::cout << "starting" << std::endl;
   int status = GSL_CONTINUE;
   for (size_t iter = 0; status == GSL_CONTINUE && (max_iter == 0 || iter < max_iter)  ; iter++) {

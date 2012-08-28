@@ -48,66 +48,70 @@ std::vector<T> create_ambient_color(T r = 0.1, T g = 0.1, T b = 0.1, T a = 0.0) 
   return ret_val;
 }
 
-std::string get_name(const unsigned int number, const std::string& item);
-std::string get_position_name(const unsigned int number);
-std::string get_diffuse_name(const unsigned int number);
-std::string get_specular_name(const unsigned int number);
-
+const std::string position_name = "position";
+const std::string diffuse_name = "diffuse";
+const std::string specular_name = "specular";
+  
 template<typename T>
 struct Light {
-  typedef std::map<std::string, std::vector<T> > properties;
+  typedef std::map<std::string, std::vector<T> > properties; // position, diffuse, specuar
   properties props;
-  unsigned int number;
   
   Light() {}
   
-  Light(const unsigned int number, const std::vector<T>& position, const std::vector<T>& diffuse, const std::vector<T>& specular)
-  : number(number) {
-    props[get_position_name(number)] = position;
-    props[get_diffuse_name(number)] = diffuse;
-    props[get_specular_name(number)] = specular;
+  Light(const std::vector<T>& position, const std::vector<T>& diffuse, const std::vector<T>& specular) {
+    props[position_name] = position;
+    props[diffuse_name] = diffuse;
+    props[specular_name] = specular;
   }
   
   template<int D>
-  Light(const unsigned int number, const T (&position)[D], const T (&diffuse)[D], const T (&specular)[D]) : number(number) {
-    props[get_position_name(number)] = create_vector_from_array(position);
-    props[get_diffuse_name(number)] = create_vector_from_array(diffuse);
-    props[get_specular_name(number)] = create_vector_from_array(specular);
+  Light(const T (&position)[D], const T (&diffuse)[D], const T (&specular)[D]) {
+    props[position_name] = create_vector_from_array(position);
+    props[diffuse_name] = create_vector_from_array(diffuse);
+    props[specular_name] = create_vector_from_array(specular);
   }
 
   template<int D>
-  Light(const unsigned int number, const cv::Vec<T, D>& pos, const std::vector<T>& diffuse, const std::vector<T>& specular) : number(number)  {
+  Light(const cv::Vec<T, D>& pos, const std::vector<T>& diffuse, const std::vector<T>& specular) {
     std::vector<T> tmp_pos(D);
     for (unsigned int i = 0; i < D; i++)
       tmp_pos.at(i) = pos[i];
-    props[get_position_name(number)] = tmp_pos;
-    props[get_diffuse_name(number)] = diffuse;
-    props[get_specular_name(number)] = specular;
+    props[position_name] = tmp_pos;
+    props[diffuse_name] = diffuse;
+    props[specular_name] = specular;
   }
   
   const std::vector<T>& get_position() const {
-    return props.find(get_position_name(number))->second;
+    return props.find(position_name)->second;
   }
 
   std::vector<T>& get_diffuse() {
-    return props[get_diffuse_name(number)];
+    return props[diffuse_name];
   }
 
   const std::vector<T>& get_diffuse() const {
-    return props.find(get_diffuse_name(number))->second;
+    return props.find(diffuse_name)->second;
   }
 
   std::vector<T>& get_specular() {
-    return props[get_specular_name(number)];
+    return props[specular_name];
   }
 
   const std::vector<T>& get_specular() const {
-    return props.find(get_specular_name(number))->second;
+    return props.find(specular_name)->second;
+  }
+
+  std::string get_shader_name(const unsigned int number, const std::string& property) const {
+    std::stringstream name;
+    name << "lights[" << number << "]." << property;
+    return name.str();
   }
   
-  void setUniforms(const GLuint programm_id) const {
+  void setUniforms(const GLuint programm_id, const unsigned int i) const {
     for (auto iter_properties : props) {
-      GLint uniform_light_property = glGetUniformLocation(programm_id, iter_properties.first.c_str());
+      std::string property_name = iter_properties.first; // position, diffuse, specuar
+      GLint uniform_light_property = glGetUniformLocation(programm_id, get_shader_name(i, property_name).c_str());
       auto value = iter_properties.second;
       glUniform4f(uniform_light_property, value.at(0), value.at(1), value.at(2), value.at(3));
       if (uniform_light_property == -1)
@@ -248,7 +252,7 @@ struct Lights {
     for (unsigned int i = 0; i < num_lights;) {
       std::vector<T> position = dist();
       if (point_acceptor(position)) {
-        lights.at(i) = Light<T>(i, position, default_light_property, default_light_property);
+        lights.at(i) = Light<T>(position, default_light_property, default_light_property);
         i++;
       }
     }
@@ -266,7 +270,7 @@ struct Lights {
     for (unsigned int i = 0; i < num_lights;) {
       std::vector<T> position = dist();
       if (func(position)) {
-        lights.at(i) = Light<T>(i, position, default_light_property, default_light_property);
+        lights.at(i) = Light<T>(position, default_light_property, default_light_property);
         i++;
       }
     }
@@ -276,16 +280,16 @@ struct Lights {
   Lights(const T light_props[][dim], const unsigned int count, const std::vector<T> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(count) {
     for (unsigned int i = 0; i < NUM_PROPERTIES * count; i += NUM_PROPERTIES) {
       const unsigned int pos = i / NUM_PROPERTIES;
-      lights.at(pos) = Light<T>(pos, light_props[i + 0], light_props[i + 1], light_props[i + 2]);
+      lights.at(pos) = Light<T>(light_props[i + 0], light_props[i + 1], light_props[i + 2]);
     }
   }
 
   template<int dim>
   Lights(const cv::Mat_<cv::Vec<T, dim>>& positions, const std::vector<T> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(positions.rows) {
-    unsigned int i = 0;
     std::vector<T> default_light_property(4);
+    unsigned int i = 0;
     for (const auto& pos : positions) {
-      lights.at(i) = Light<T>(i, pos, default_light_property, default_light_property);
+      lights.at(i) = Light<T>(pos, default_light_property, default_light_property);
       i++;
     }
   }
@@ -295,9 +299,10 @@ struct Lights {
     glUniform4f(uniform_light_property, ambient.at(0), ambient.at(1), ambient.at(2), ambient.at(3));
     if (uniform_light_property == -1)
       std::cout << "uniform handle is -1 with uniform name " << "ambient_color" << std::endl;
-    
+
+    unsigned int i = 0;
     for (auto iter : lights) {
-      iter.setUniforms(programm_id);
+      iter.setUniforms(programm_id, i++);
     }
   }
 };
@@ -306,8 +311,9 @@ template<typename T>
 std::ostream& operator<<(std::ostream& out, const Lights<T>& lights) {
   out << "ambient illumination: ";
   out << lights.ambient << std::endl;
+  unsigned int i = 0;
   for (Light<T> iter : lights.lights)
-    out << iter;
+    out << "Light " << i++ << ": " << iter;
   return out;
 }
 
