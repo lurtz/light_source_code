@@ -455,6 +455,7 @@ namespace gsl {
 
 template<typename T, unsigned int colors_per_light, unsigned int components_per_light, unsigned int div>
 std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, const Lights<T>& lights, const int alpha = 50) {
+  std::cout << "creating linear system" << std::endl;
   const unsigned int rows = image.rows * image.cols / div * colors_per_light;
   const unsigned int cols = (1 + lights.lights.size() * components_per_light) * colors_per_light;
 
@@ -467,6 +468,7 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
   cv::Mat_<unsigned char> used_pixels(cv::Mat(image.rows, image.cols, CV_8U, cv::Scalar(0)));
 
   for (unsigned int row = 0; row < rows/colors_per_light; row++) {
+    std::cout << "at row " << row << "/" << rows/colors_per_light << "\r";
     // 1. find a good pixel
     int _x = 0;
     int _y = 0;
@@ -668,18 +670,24 @@ bool check_solution(const gsl::vector<colors_per_light, components_per_light> &s
 template<typename T>
 void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const int alpha = 50) {
   show_rgb_image("target image", image);
+  // TODO eliminate div, replace by a function which calculates the maximum number of lights
+  //      need to have more pixel samples than light source parameters (more rows, than cols)
   const unsigned int div = 100;
   const unsigned int colors_per_light = 3;
   const unsigned int components_per_light = 2;
-  
-  auto linear_system = create_linear_system<T, colors_per_light, components_per_light, div>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
 
+  auto linear_system = create_linear_system<T, colors_per_light, components_per_light, div>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
+  assert(std::get<0>(linear_system).get_rows() > std::get<0>(linear_system).get_cols());
+
+  std::cout << "creating problem to minimize" << std::endl;
   gsl_multimin_function f{&cost<colors_per_light, components_per_light>, std::get<0>(linear_system).get_cols(), &linear_system};
   gsl::minimizer<colors_per_light, components_per_light> minimizer(gsl_multimin_fminimizer_nmsimplex2, f);
 //  gsl::minimizer<colors_per_light, components_per_light> minimizer(gsl_multimin_fminimizer_nmsimplex2, f, gsl::vector<colors_per_light, components_per_light>(f.n, 0.5), gsl::vector<colors_per_light, components_per_light>(f.n, 0.5));
 
+  const size_t max_iter = 1000;
+  std::cout << "starting" << std::endl;
   int status = GSL_CONTINUE;
-  for (size_t iter = 0; status == GSL_CONTINUE; iter++) {
+  for (size_t iter = 0; status == GSL_CONTINUE && (max_iter == 0 || iter < max_iter)  ; iter++) {
     status = minimizer.iterate();
     std::cout << "first stage " << iter <<  ", " << minimizer.get_function_value() << "\r";
   }
@@ -688,7 +696,7 @@ void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::
   f.f = &cost<colors_per_light, components_per_light, false>;
   minimizer.set_function_and_start_point(f, minimizer.get_solution());
   status = GSL_CONTINUE;
-  for (size_t iter = 0; status == GSL_CONTINUE; iter++) {
+  for (size_t iter = 0; status == GSL_CONTINUE && (max_iter == 0 || iter < max_iter); iter++) {
     status = minimizer.iterate();
     std::cout << "second stage " << iter <<  ", " << minimizer.get_function_value() << "\r";
   }

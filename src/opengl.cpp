@@ -190,8 +190,34 @@ std::ostream& operator<<(std::ostream& out, const std::chrono::duration<Rep, Per
 }
 
 template<typename T>
-double sum(const T v) {
-  return std::accumulate(std::begin(v), std::end(v), 0);
+double sum(const T& v) {
+  double sum = std::accumulate(std::begin(v), std::end(v), 0.0);
+  return sum;
+}
+
+bool test_sum() {
+  bool ret_val = true;
+  float numbers[] = {1,2,3,4};
+  double numbers_sum = sum(numbers);
+  ret_val &= numbers_sum == 10.0f;
+  std::vector<float> vec;
+  vec.push_back(10);
+  vec.push_back(20);
+  vec.push_back(30);
+  vec.push_back(40);
+  vec.push_back(50);
+  numbers_sum = sum(vec);
+  ret_val &= numbers_sum == 150;
+  
+  vec = std::vector<float>();
+  vec.push_back(0.1);
+  vec.push_back(0.3);
+  vec.push_back(0.5);
+  vec.push_back(0.7);
+  vec.push_back(-0.1);
+  numbers_sum = sum(vec);
+  ret_val &= numbers_sum == 1.5;
+  return ret_val;
 }
 
 template<int dim, typename T>
@@ -205,6 +231,8 @@ Lights<T> reduce_lights(const Lights<T>& lights, const unsigned int k) {
       pos[j] = light.get_position().at(j);
     positions(i) = pos;
     weight.at(i) = sum(light.get_diffuse()) + sum(light.get_specular());
+
+    std::cout << "light position: " << pos << ", weight: " << weight.at(i) << std::endl;
   }
   cv::Mat labels;
   cv::TermCriteria termcrit(cv::TermCriteria::EPS, 1000, 0.01);
@@ -223,6 +251,9 @@ Lights<T> reduce_lights(const Lights<T>& lights, const unsigned int k) {
 void calc_lights() {
   if (image_displayed)
     return;
+  
+  assert(test_sum());
+//  testkmeansw();
 
   const auto start_time = std::chrono::steady_clock::now();
   
@@ -231,28 +262,41 @@ void calc_lights() {
   cv::Mat_<cv::Vec3f> position;
   std::tie(image, normals, position, std::ignore) = create_test_image();
   const auto test_creation_time = std::chrono::steady_clock::now();
+  std::cout << "test created" << std::endl;
   
   // do not need to be flipped
   GLfloat model_view_matrix_stack[16];
   glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix_stack);
   cv::Mat_<GLfloat> model_view_matrix(4, 4, model_view_matrix_stack);
 
+  const unsigned int huge_num_lights = 20;
+  const unsigned int small_num_lights = 10;
   float x, y, z;
   std::tie(x, y, z) = _ball.getViewDirection();
-  Lights<float> a_lot_of_lights("bla", 10, 1000, std::make_tuple([](const std::vector<float>& pos){return true;}, 1));
+  Lights<float> a_lot_of_lights("bla", 10, huge_num_lights, std::make_tuple([](const std::vector<float>& pos){return true;}, 1));
+  const auto time_after_huge_lights_creation = std::chrono::steady_clock::now();
+  std::cout << "a lot of lights created" << std::endl;
   
 //  optimize_lights<float>(image, normals, position, model_view_matrix.t(), clear_color, lights);
   optimize_lights_multi_dim_fit<float>(image, normals, position, model_view_matrix.t(), clear_color, a_lot_of_lights);
+  const auto time_after_huge_lights_run = std::chrono::steady_clock::now();
+  std::cout << "a lot of lights optimized" << std::endl;
   
-  lights = reduce_lights<4>(a_lot_of_lights, 30);
+  lights = reduce_lights<4>(a_lot_of_lights, small_num_lights);
+  const auto time_after_reducing_lights = std::chrono::steady_clock::now();
+  std::cout << "a lot of lights reduced" << std::endl;
   
   optimize_lights_multi_dim_fit<float>(image, normals, position, model_view_matrix.t(), clear_color, lights);
+  std::cout << "small number of lights reduced" << std::endl;
   
   const auto finish_time = std::chrono::steady_clock::now();
 
   std::cout << "complete run: " << finish_time - start_time << std::endl;
   std::cout << "  test creation: " << test_creation_time - start_time << std::endl;
-  std::cout << "  light estimation: " << finish_time - test_creation_time << std::endl;
+  std::cout << "  huge light number creation: " << time_after_huge_lights_creation - test_creation_time << std::endl;
+  std::cout << "  light estimation huge light number: " << time_after_huge_lights_run - time_after_huge_lights_creation << std::endl;
+  std::cout << "  reducing lights: " << time_after_reducing_lights - time_after_huge_lights_run << std::endl;
+  std::cout << "  light estimation: " << finish_time - time_after_reducing_lights << std::endl;
   
   image_displayed = true;
 }
