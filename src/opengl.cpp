@@ -23,6 +23,7 @@
 #endif
 
 #include "solver.h"
+#include "kmeansw.h"
 
 MeshObj * _meshobj = nullptr;
 cv::Mat const * _original_image = nullptr;
@@ -188,6 +189,37 @@ std::ostream& operator<<(std::ostream& out, const std::chrono::duration<Rep, Per
   return out;
 }
 
+template<typename T>
+double sum(const T v) {
+  return std::accumulate(std::begin(v), std::end(v), 0);
+}
+
+template<int dim, typename T>
+Lights<T> reduce_lights(const Lights<T>& lights, const unsigned int k) {
+  cv::Mat_<cv::Vec<T, dim>> positions(lights.lights.size(), 1);
+  std::vector<double> weight(positions.rows);
+  for (int i = 0; i < positions.rows; i++) {
+    const Light<T>& light = lights.lights.at(i);
+    cv::Vec<T, dim> pos;
+    for (unsigned int j = 0; j < dim; j++)
+      pos[j] = light.get_position().at(j);
+    positions(i) = pos;
+    weight.at(i) = sum(light.get_diffuse()) + sum(light.get_specular());
+  }
+  cv::Mat labels;
+  cv::TermCriteria termcrit(cv::TermCriteria::EPS, 1000, 0.01);
+  cv::Mat centers;
+  cv::kmeansw(positions, k, labels, termcrit, 1, cv::KMEANS_RANDOM_CENTERS, centers, weight);
+
+  cv::Mat_<cv::Vec<T, dim>> centers_templ(k, 1);
+  for (int i = 0; i < centers.rows; i++) {
+    std::cout << centers.at<cv::Vec<T, dim>>(i) << std::endl;
+    centers_templ(i) = centers.at<cv::Vec<T, dim>>(i);
+  }
+  
+  return Lights<T>(centers_templ);
+}
+
 void calc_lights() {
   if (image_displayed)
     return;
@@ -204,10 +236,18 @@ void calc_lights() {
   GLfloat model_view_matrix_stack[16];
   glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix_stack);
   cv::Mat_<GLfloat> model_view_matrix(4, 4, model_view_matrix_stack);
+
+  float x, y, z;
+  std::tie(x, y, z) = _ball.getViewDirection();
+  Lights<float> a_lot_of_lights("bla", 10, 1000, std::make_tuple([](const std::vector<float>& pos){return true;}, 1));
   
 //  optimize_lights<float>(image, normals, position, model_view_matrix.t(), clear_color, lights);
+  optimize_lights_multi_dim_fit<float>(image, normals, position, model_view_matrix.t(), clear_color, a_lot_of_lights);
+  
+  lights = reduce_lights<4>(a_lot_of_lights, 30);
   
   optimize_lights_multi_dim_fit<float>(image, normals, position, model_view_matrix.t(), clear_color, lights);
+  
   const auto finish_time = std::chrono::steady_clock::now();
 
   std::cout << "complete run: " << finish_time - start_time << std::endl;

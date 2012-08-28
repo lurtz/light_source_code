@@ -74,27 +74,35 @@ struct Light {
     props[get_diffuse_name(number)] = create_vector_from_array(diffuse);
     props[get_specular_name(number)] = create_vector_from_array(specular);
   }
-  
-  void set_Number(const unsigned int i) {
-    props[get_position_name(i)] = props[get_position_name(number)];
-//    props.erase(get_position_name(number));
-    props[get_diffuse_name(i)] = props[get_diffuse_name(number)];
-//    props.erase(get_diffuse_name(number));
-    props[get_specular_name(i)] = props[get_specular_name(number)];
-//    props.erase(get_specular_name(number));
-    number = i;
+
+  template<int D>
+  Light(const unsigned int number, const cv::Vec<T, D>& pos, const std::vector<T>& diffuse, const std::vector<T>& specular) : number(number)  {
+    std::vector<T> tmp_pos(D);
+    for (unsigned int i = 0; i < D; i++)
+      tmp_pos.at(i) = pos[i];
+    props[get_position_name(number)] = tmp_pos;
+    props[get_diffuse_name(number)] = diffuse;
+    props[get_specular_name(number)] = specular;
   }
   
   const std::vector<T>& get_position() const {
     return props.find(get_position_name(number))->second;
   }
-  
+
   std::vector<T>& get_diffuse() {
     return props[get_diffuse_name(number)];
   }
-  
+
+  const std::vector<T>& get_diffuse() const {
+    return props.find(get_diffuse_name(number))->second;
+  }
+
   std::vector<T>& get_specular() {
     return props[get_specular_name(number)];
+  }
+
+  const std::vector<T>& get_specular() const {
+    return props.find(get_specular_name(number))->second;
   }
   
   void setUniforms(const GLuint programm_id) const {
@@ -240,8 +248,8 @@ struct Lights {
     for (unsigned int i = 0; i < num_lights;) {
       std::vector<T> position = dist();
       if (point_acceptor(position)) {
-	lights.at(i) = Light<T>(i, position, default_light_property, default_light_property);
-	i++;
+        lights.at(i) = Light<T>(i, position, default_light_property, default_light_property);
+        i++;
       }
     }
   }
@@ -269,6 +277,16 @@ struct Lights {
     for (unsigned int i = 0; i < NUM_PROPERTIES * count; i += NUM_PROPERTIES) {
       const unsigned int pos = i / NUM_PROPERTIES;
       lights.at(pos) = Light<T>(pos, light_props[i + 0], light_props[i + 1], light_props[i + 2]);
+    }
+  }
+
+  template<int dim>
+  Lights(const cv::Mat_<cv::Vec<T, dim>>& positions, const std::vector<T> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(positions.rows) {
+    unsigned int i = 0;
+    std::vector<T> default_light_property(4);
+    for (const auto& pos : positions) {
+      lights.at(i) = Light<T>(i, pos, default_light_property, default_light_property);
+      i++;
     }
   }
   

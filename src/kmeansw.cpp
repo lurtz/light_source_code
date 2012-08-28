@@ -1,5 +1,6 @@
 #include "kmeansw.h"
 #include <opencv2/core/operations.hpp>
+#include <iostream>
 
 #define CV_KMEANS_USE_INITIAL_LABELS    1
 
@@ -127,7 +128,7 @@ double kmeansw( InputArray _data, int K,
                    InputOutputArray _bestLabels,
                    TermCriteria criteria, int attempts,
                    int flags, OutputArray _centers,
-                   InputArray weights, OutputArray clusters )
+                   const vector<double>& weights)
 {
     const int SPP_TRIALS = 3;
     Mat data = _data.getMat();
@@ -142,6 +143,7 @@ double kmeansw( InputArray _data, int K,
 
     _bestLabels.create(N, 1, CV_32S, -1, true);
 
+    // TODO these I want to calculate the lightning of the resulting cluster, or run algorithm again?
     Mat _labels, best_labels = _bestLabels.getMat();
     if( flags & CV_KMEANS_USE_INITIAL_LABELS )
     {
@@ -163,6 +165,7 @@ double kmeansw( InputArray _data, int K,
     int* labels = _labels.ptr<int>();
 
     Mat centers(K, dims, type), old_centers(K, dims, type), temp(1, dims, type);
+    vector<double> sum_of_weight_per_cluster;
     vector<int> counters(K);
     vector<Vec2f> _box(dims);
     Vec2f* box = &_box[0];
@@ -208,6 +211,8 @@ double kmeansw( InputArray _data, int K,
         double max_center_shift = DBL_MAX;
         for( iter = 0;; )
         {
+            // reset weights
+            sum_of_weight_per_cluster = vector<double>(K, 0.0);
             swap(centers, old_centers);
 
             if( iter == 0 && (a > 0 || !(flags & KMEANS_USE_INITIAL_LABELS)) )
@@ -256,8 +261,9 @@ double kmeansw( InputArray _data, int K,
                     }
                     #endif
                     for( ; j < dims; j++ )
-                        center[j] += sample[j];
+                        center[j] += sample[j]*weights.at(i);
                     counters[k]++;
+                    sum_of_weight_per_cluster.at(k) += weights.at(i);
                 }
 
                 if( iter > 0 )
@@ -304,13 +310,15 @@ double kmeansw( InputArray _data, int K,
 
                     counters[max_k]--;
                     counters[k]++;
+                    sum_of_weight_per_cluster.at(max_k) -= weights.at(farthest_i);
+                    sum_of_weight_per_cluster.at(k) += weights.at(farthest_i);
                     labels[farthest_i] = k;
                     sample = data.ptr<float>(farthest_i);
 
                     for( j = 0; j < dims; j++ )
                     {
-                        old_center[j] -= sample[j];
-                        new_center[j] += sample[j];
+                        old_center[j] -= sample[j]*weights.at(farthest_i);
+                        new_center[j] += sample[j]*weights.at(farthest_i);
                     }
                 }
 
@@ -319,7 +327,7 @@ double kmeansw( InputArray _data, int K,
                     float* center = centers.ptr<float>(k);
                     CV_Assert( counters[k] != 0 );
 
-                    float scale = 1.f/counters[k];
+                    float scale = 1.f/sum_of_weight_per_cluster.at(k);
                     for( j = 0; j < dims; j++ )
                         center[j] *= scale;
 
@@ -363,7 +371,7 @@ double kmeansw( InputArray _data, int K,
                 compactness += min_dist;
                 labels[i] = k_best;
             }
-        }
+        } // monsterschleifen ende
 
         if( compactness < best_compactness )
         {
@@ -376,4 +384,27 @@ double kmeansw( InputArray _data, int K,
 
     return best_compactness;
 }
+}
+
+void testkmeansw() {
+  cv::Mat_<cv::Vec3f> points(8,1);
+  points << cv::Vec3f(0,0,0), cv::Vec3f(0,0,1), cv::Vec3f(0,1,1), cv::Vec3f(0,1,0),
+            cv::Vec3f(1,1,0), cv::Vec3f(1,0,0), cv::Vec3f(1,0,1), cv::Vec3f(1,1,1);
+  const int k = 4;
+  cv::Mat_<int> labels(points.rows, points.cols);
+  for (int i = 0; i < points.rows; i++)
+    labels << i%k;
+  cv::TermCriteria termcrit(cv::TermCriteria::EPS, 1000, 0.01);
+  cv::Mat centers;
+  std::vector<double> weights(points.rows);
+  for (unsigned int i = 0; i < weights.size(); i++)
+    weights.at(i) = i+1;
+  weights.back() = 10000;
+
+  cv::kmeansw(points, k, labels, termcrit, 1, cv::KMEANS_RANDOM_CENTERS, centers, weights);
+//  cv::kmeans(points, k, labels, termcrit, 1, cv::KMEANS_RANDOM_CENTERS, centers);
+
+  std::cout << "got " << centers.rows << " centers" << std::endl;
+  for (int i = 0; i < centers.rows; i++)
+    std::cout << centers.at<cv::Vec3f>(i) << std::endl;
 }

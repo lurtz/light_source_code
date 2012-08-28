@@ -677,8 +677,9 @@ void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::
   gsl_multimin_function f{&cost<colors_per_light, components_per_light>, std::get<0>(linear_system).get_cols(), &linear_system};
   gsl::minimizer<colors_per_light, components_per_light> minimizer(gsl_multimin_fminimizer_nmsimplex2, f);
 //  gsl::minimizer<colors_per_light, components_per_light> minimizer(gsl_multimin_fminimizer_nmsimplex2, f, gsl::vector<colors_per_light, components_per_light>(f.n, 0.5), gsl::vector<colors_per_light, components_per_light>(f.n, 0.5));
-  
-  for (size_t iter = 0, status = GSL_CONTINUE; status == GSL_CONTINUE; iter++) {
+
+  int status = GSL_CONTINUE;
+  for (size_t iter = 0; status == GSL_CONTINUE; iter++) {
     status = minimizer.iterate();
     std::cout << "first stage " << iter <<  ", " << minimizer.get_function_value() << "\r";
   }
@@ -686,7 +687,8 @@ void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::
   
   f.f = &cost<colors_per_light, components_per_light, false>;
   minimizer.set_function_and_start_point(f, minimizer.get_solution());
-  for (size_t iter = 0, status = GSL_CONTINUE; status == GSL_CONTINUE; iter++) {
+  status = GSL_CONTINUE;
+  for (size_t iter = 0; status == GSL_CONTINUE; iter++) {
     status = minimizer.iterate();
     std::cout << "second stage " << iter <<  ", " << minimizer.get_function_value() << "\r";
   }
@@ -698,7 +700,6 @@ void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::
   print(lights);
   
   cv::waitKey(100);
-
   
 }
 
