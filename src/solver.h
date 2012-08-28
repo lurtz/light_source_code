@@ -199,38 +199,89 @@ void test_modelview_matrix_and_light_positions(const cv::Mat_<GLfloat>& model_vi
   }
 }
 
-std::tuple<unsigned int, unsigned int> get_sample_point(const cv::Mat_<cv::Vec3f>& normals, cv::Mat_<unsigned char>& used_pixels, const float clear_color) {
-  int _x = 0;
-  int _y = 0;
-  while (_x == 0 && _y == 0) {
-    const int x = normals.cols * drand48();
-    const int y = normals.rows * drand48();
-
-    // skip if already taken
-    if (used_pixels(y, x))
-      continue;
-
-    const float eps = std::numeric_limits<float>::epsilon();
-    
-    // skip if no object
-    // assume that a normal is (clear_color,clear_color,clear_color) where no object is
-    cv::Vec<float, 3> normal = normals(y, x);
-    if (fabs(normal[0] - clear_color) < eps && fabs(normal[1] - clear_color) < eps && fabs(normal[2] - clear_color) < eps)
-      continue;
-
-    // skip if length is not 1
-    if (!(fabs(cv::norm(normal) - 1) < eps))
-      continue;
-    assert(fabs(cv::norm(normal) - 1) < eps);
-    assert(_x < normals.cols);
-    assert(_y < normals.rows);
-
-    _x = x;
-    _y = y;
-    used_pixels(y,x) = std::numeric_limits<unsigned char>::max();
-  }
-  return std::make_tuple(_x, _y);
+template<typename T, int dim>
+bool is_sample_point(const cv::Vec<T, dim>& normal, const T clear_color, const T eps = std::numeric_limits<T>::epsilon()) {
+  bool ret_val = true;
+  ret_val &= !(fabs(normal[0] - clear_color) < eps && fabs(normal[1] - clear_color) < eps && fabs(normal[2] - clear_color) < eps);
+  // skip if length is not 1
+  ret_val &= fabs(cv::norm(normal) - 1) < eps;
+  return ret_val;
 }
+
+template<typename T, int dim>
+unsigned int get_maximum_number_of_sample_points(const cv::Mat_<cv::Vec<T, dim>>& normals, const T clear_color) {
+  unsigned int sum = 0;
+  for (const auto& normal: normals)
+    sum += is_sample_point(normal, clear_color);
+  return sum;
+}
+
+template<typename T, int dim>
+struct sample_point_deterministic {
+  typename cv::Mat_<cv::Vec<T, dim>>::const_iterator pos;
+  const typename cv::Mat_<cv::Vec<T, dim>>::const_iterator end;
+  const T clear_color;
+  const double step_size;
+  double points_to_skip;
+  sample_point_deterministic(const cv::Mat_<cv::Vec<T, dim>>& normals, const unsigned int points_to_deliver, const T clear_color) : pos(std::begin(normals)), end(std::end(normals)), clear_color(clear_color), step_size(static_cast<double>(get_maximum_number_of_sample_points(normals, clear_color))/points_to_deliver), points_to_skip(0) {
+    assert(step_size >= 1.0);
+  }
+  std::tuple<unsigned int, unsigned int> operator()() {
+    bool loop = true;
+    while (loop) {
+      loop = false;
+      while (!is_sample_point(*pos), clear_color)
+        pos++;
+      if (points_to_skip > 1.0) {
+        pos++;
+        points_to_skip -= 1;
+        loop = true;
+      }
+    }
+    assert(is_sample_point(*pos, clear_color));
+    points_to_skip += step_size;
+    cv::Point p = pos.pos();
+    return std::make_tuple(p.y, p.x);
+  }
+};
+
+template<typename T, int dim>
+struct sample_point_random {
+  const cv::Mat_<cv::Vec<T, dim>>& normals;
+  cv::Mat_<unsigned char> used_pixels;
+  const T clear_color;
+  sample_point_random(const cv::Mat_<cv::Vec<T, dim>>& normals, const unsigned int points_to_deliver, const T clear_color) : normals(normals), used_pixels(normals.rows, normals.cols), clear_color(clear_color) {
+  }
+  std::tuple<unsigned int, unsigned int> operator()() {
+    int _x = 0;
+    int _y = 0;
+    while (_x == 0 && _y == 0) {
+      const int x = normals.cols * drand48();
+      const int y = normals.rows * drand48();
+
+      // skip if already taken
+      if (used_pixels(y, x))
+        continue;
+
+      const float eps = std::numeric_limits<float>::epsilon();
+
+      // skip if no object
+      // assume that a normal is (clear_color,clear_color,clear_color) where no object is
+      cv::Vec<T, dim> normal = normals(y, x);
+      if (!is_sample_point(normal, clear_color))
+        continue;
+
+      assert(fabs(cv::norm(normal) - 1) < eps);
+      assert(_x < normals.cols);
+      assert(_y < normals.rows);
+
+      _x = x;
+      _y = y;
+      used_pixels(y,x) = std::numeric_limits<unsigned char>::max();
+    }
+    return std::make_tuple(_x, _y);
+  }
+};
 
 template<typename T>
 std::tuple<float, float> get_diffuse_specular(const cv::Mat_<float> &pos_vec, const cv::Mat_<float> &normal, const Light<T> &light, const cv::Mat_<GLfloat>& model_view_matrix, const int alpha) {
@@ -448,13 +499,13 @@ namespace gsl {
     template<int colors_per_light, int components_per_light>
     void solve(const matrix<colors_per_light, components_per_light>& x, const vector<colors_per_light, components_per_light>& y, vector<colors_per_light, components_per_light>& c, matrix<colors_per_light, components_per_light> &cov, double &chisq) {
       if (gsl_multifit_linear(x.get(), y.get(), c.get(), cov.get(), &chisq, w.get()))
-	throw;
+        throw;
     }
   } workspace;
 }
 
-template<typename T, unsigned int colors_per_light, unsigned int components_per_light, unsigned int div>
-std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, const Lights<T>& lights, const int alpha = 50) {
+template<unsigned int colors_per_light, unsigned int components_per_light, unsigned int div, template <typename, int> class point_selector, typename T, typename T1, int dim>
+std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const cv::Mat_<cv::Vec<T, dim>>& image, const cv::Mat_<cv::Vec<T, dim>>& normals, const cv::Mat_<cv::Vec<T, dim>>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, const Lights<T1>& lights, const int alpha = 50) {
   std::cout << "creating linear system" << std::endl;
   const unsigned int rows = image.rows * image.cols / div * colors_per_light;
   const unsigned int cols = (1 + lights.lights.size() * components_per_light) * colors_per_light;
@@ -465,14 +516,15 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
   // do not take all points of the image
   // calculate this value somehow, maybe specify the number of samples and
   // distribute them over the mesh in the image
-  cv::Mat_<unsigned char> used_pixels(cv::Mat(image.rows, image.cols, CV_8U, cv::Scalar(0)));
+  point_selector<T, dim> ps(normals, rows/colors_per_light, clear_color);
+//  sample_point_random<T, dim> ps(normals, rows/colors_per_light, clear_color);
 
   for (unsigned int row = 0; row < rows/colors_per_light; row++) {
     std::cout << "at row " << row << "/" << rows/colors_per_light << "\r";
     // 1. find a good pixel
     int _x = 0;
     int _y = 0;
-    std::tie(_x, _y) = get_sample_point(normals, used_pixels, clear_color);
+    std::tie(_x, _y) = ps();
 
     // 2. set matrix parameter for pixel
     // set value of pixel in the image to the vector
@@ -537,7 +589,7 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
   gsl::matrix<colors_per_light, components_per_light> x;
   gsl::vector<colors_per_light, components_per_light> y;
 
-  std::tie(x, y) = create_linear_system<T, colors_per_light, components_per_light, div>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
+  std::tie(x, y) = create_linear_system<colors_per_light, components_per_light, div, sample_point_random>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
 
   // get solution
   
@@ -640,12 +692,17 @@ double cost(const gsl_vector *v, void *params) {
   gsl::vector<colors_per_light, components_per_light> y_copy = y;
   gsl::matrix_vector_mult(1, x, v, -1, y_copy);
   double cost = 0;
+  // how good we got the picture
   for (unsigned int i = 0; i < y_copy.size(); i++) {
     cost += fabs(y_copy.get(i));
   }
-  if (!free_variables) {
-    for (unsigned int i = 0; i < v->size; i++) {
-      double val = gsl_vector_get(v, i);
+  for (unsigned int i = 0; i < v->size; i++) {
+    double val = gsl_vector_get(v, i);
+    // lights we don't see should stay at zero, hopefully clustering works then
+    if (val > 0)
+      cost += val;
+    // values for lights properties only range from 0 to 1
+    if (!free_variables) {
       if (val < 0.0 || val > 1.0) {
         if (val < 0.0)
           val = -val;
@@ -676,7 +733,7 @@ void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::
   const unsigned int colors_per_light = 3;
   const unsigned int components_per_light = 2;
 
-  auto linear_system = create_linear_system<T, colors_per_light, components_per_light, div>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
+  auto linear_system = create_linear_system<colors_per_light, components_per_light, div, sample_point_random>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
   assert(std::get<0>(linear_system).get_rows() > std::get<0>(linear_system).get_cols());
 
   std::cout << "creating problem to minimize" << std::endl;

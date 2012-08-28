@@ -313,7 +313,7 @@ std::ostream& operator<<(std::ostream& out, const Lights<T>& lights) {
   out << lights.ambient << std::endl;
   unsigned int i = 0;
   for (Light<T> iter : lights.lights)
-    out << "Light " << i++ << ": " << iter;
+    out << "Light\n" << i++ << ": " << iter;
   return out;
 }
 

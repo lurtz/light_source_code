@@ -232,7 +232,7 @@ Lights<T> reduce_lights(const Lights<T>& lights, const unsigned int k) {
     positions(i) = pos;
     weight.at(i) = sum(light.get_diffuse()) + sum(light.get_specular());
 
-    std::cout << "light position: " << pos << ", weight: " << weight.at(i) << std::endl;
+//    std::cout << "light position: " << pos << ", weight: " << weight.at(i) << std::endl;
   }
   cv::Mat labels;
   cv::TermCriteria termcrit(cv::TermCriteria::EPS, 1000, 0.01);
@@ -272,12 +272,12 @@ void calc_lights() {
   const unsigned int small_num_lights = 10;
   float x, y, z;
   std::tie(x, y, z) = _ball.getViewDirection();
-  Lights<float> a_lot_of_lights("bla", 10, huge_num_lights, std::make_tuple([](const std::vector<float>& pos){return true;}, 1));
+  Lights<float> a_lot_of_lights("bla", 10, huge_num_lights, plane_acceptor_tuple(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
   const auto time_after_huge_lights_creation = std::chrono::steady_clock::now();
   std::cout << "a lot of lights created" << std::endl;
   
-//  optimize_lights<float>(image, normals, position, model_view_matrix.t(), clear_color, lights);
-  optimize_lights_multi_dim_fit<float>(image, normals, position, model_view_matrix.t(), clear_color, a_lot_of_lights);
+//  optimize_lights(image, normals, position, model_view_matrix.t(), clear_color, lights);
+  optimize_lights_multi_dim_fit(image, normals, position, model_view_matrix.t(), clear_color, a_lot_of_lights);
   const auto time_after_huge_lights_run = std::chrono::steady_clock::now();
   std::cout << "a lot of lights optimized" << std::endl;
   
@@ -285,7 +285,7 @@ void calc_lights() {
   const auto time_after_reducing_lights = std::chrono::steady_clock::now();
   std::cout << "a lot of lights reduced" << std::endl;
   
-  optimize_lights_multi_dim_fit<float>(image, normals, position, model_view_matrix.t(), clear_color, lights);
+  optimize_lights_multi_dim_fit(image, normals, position, model_view_matrix.t(), clear_color, lights);
   std::cout << "small number of lights reduced" << std::endl;
   
   const auto finish_time = std::chrono::steady_clock::now();
