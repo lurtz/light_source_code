@@ -1,0 +1,4 @@
+bild/gleichungen normalisieren um übergewichtung heller bereiche zu vermeiden
+test ob lichtquelle nutzbar + entfernen der lichtquelle
+jedes licht besteht aus mehreren gerichteten lichtquellen
+lichtquellen auf objekten um indirekte beleuchtung zu simulieren

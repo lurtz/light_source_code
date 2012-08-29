@@ -504,11 +504,19 @@ namespace gsl {
   } workspace;
 }
 
-template<unsigned int colors_per_light, unsigned int components_per_light, unsigned int div, template <typename, int> class point_selector, typename T, typename T1, int dim>
-std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const cv::Mat_<cv::Vec<T, dim>>& image, const cv::Mat_<cv::Vec<T, dim>>& normals, const cv::Mat_<cv::Vec<T, dim>>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, const Lights<T1>& lights, const int alpha = 50) {
+template<unsigned int colors_per_light, unsigned int components_per_light, template <typename, int> class point_selector, typename T, typename T1, int dim>
+std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const cv::Mat_<cv::Vec<T, dim>>& image, const cv::Mat_<cv::Vec<T, dim>>& normals, const cv::Mat_<cv::Vec<T, dim>>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, const Lights<T1>& lights, const int alpha) {
   std::cout << "creating linear system" << std::endl;
-  const unsigned int rows = image.rows * image.cols / div * colors_per_light;
+
+  const unsigned int sample_max = get_maximum_number_of_sample_points(normals, clear_color);
+  assert(sample_max >= lights.lights.size());
+  const double fraction_of_points_to_take = std::log2((static_cast<double>(lights.lights.size())*components_per_light / sample_max) + 1);
+  const double min_fraction_of_points_to_take = 0.1;
+  
+  const unsigned int rows = sample_max * std::max(fraction_of_points_to_take, min_fraction_of_points_to_take) * colors_per_light;
   const unsigned int cols = (1 + lights.lights.size() * components_per_light) * colors_per_light;
+
+  std::cout << "linear_system will have " << rows << " rows and " << cols << " columns" << std::endl;
 
   gsl::matrix<colors_per_light, components_per_light> x(rows, cols);
   gsl::vector<colors_per_light, components_per_light> y(rows);
@@ -520,7 +528,7 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
 //  sample_point_random<T, dim> ps(normals, rows/colors_per_light, clear_color);
 
   for (unsigned int row = 0; row < rows/colors_per_light; row++) {
-    std::cout << "at row " << row << "/" << rows/colors_per_light << "\r";
+    std::cout << "at row " << row*colors_per_light << "/" << rows << "\r";
     // 1. find a good pixel
     int _x = 0;
     int _y = 0;
@@ -581,15 +589,14 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
   // do not take all points of the image
   // calculate this value somehow, maybe specify the number of samples and
   // distribute them over the mesh in the image
-  
-  const unsigned int div = 100;
+
   const unsigned int colors_per_light = 3;
   const unsigned int components_per_light = 2;
 
   gsl::matrix<colors_per_light, components_per_light> x;
   gsl::vector<colors_per_light, components_per_light> y;
 
-  std::tie(x, y) = create_linear_system<colors_per_light, components_per_light, div, sample_point_random>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
+  std::tie(x, y) = create_linear_system<colors_per_light, components_per_light, sample_point_random>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
 
   // get solution
   
@@ -699,6 +706,7 @@ double cost(const gsl_vector *v, void *params) {
   for (unsigned int i = 0; i < v->size; i++) {
     double val = gsl_vector_get(v, i);
     // lights we don't see should stay at zero, hopefully clustering works then
+    // when sphere cut by plane: visible changes are: less specular reflection, darker image, no better solution
     if (val > 0)
       cost += val;
     // values for lights properties only range from 0 to 1
@@ -727,13 +735,10 @@ bool check_solution(const gsl::vector<colors_per_light, components_per_light> &s
 template<typename T>
 void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const size_t max_iter = 0, const int alpha = 50) {
   show_rgb_image("target image", image);
-  // TODO eliminate div, replace by a function which calculates the maximum number of lights
-  //      need to have more pixel samples than light source parameters (more rows, than cols)
-  const unsigned int div = 100;
   const unsigned int colors_per_light = 3;
   const unsigned int components_per_light = 2;
 
-  auto linear_system = create_linear_system<colors_per_light, components_per_light, div, sample_point_random>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
+  auto linear_system = create_linear_system<colors_per_light, components_per_light, sample_point_random>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
   assert(std::get<0>(linear_system).get_rows() > std::get<0>(linear_system).get_cols());
 
   std::cout << "creating problem to minimize" << std::endl;
@@ -759,9 +764,9 @@ void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::
   std::cout << std::endl;
   
   auto solution = minimizer.get_solution();
-  check_solution(solution);
+//  check_solution(solution);
   set_solution<float>(solution, lights);
-  print(lights);
+//  print(lights);
   
   cv::waitKey(100);
   
