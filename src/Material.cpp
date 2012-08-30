@@ -36,10 +36,10 @@ void Material::setMaterialComponent(unsigned int comp, GLfloat r, GLfloat g, GLf
   }
 }
 
-void Material::setMaterialComponentUniformNames(unsigned int comp, const char *uniformLocationName, const char *uniformIsEnabledName) {
+void Material::setMaterialComponentUniformNames(unsigned int comp, const std::string &uniformLocationName, const std::string &uniformIsEnabledName) {
   if (comp < MATERIAL_COMPONENT_COUNT) {
-    mMaterialComponent[comp].uniformLocationName = std::string(uniformLocationName);
-    mMaterialComponent[comp].uniformIsEnabledName = std::string(uniformIsEnabledName);
+    mMaterialComponent[comp].uniformLocationName = uniformLocationName;
+    mMaterialComponent[comp].uniformIsEnabledName = uniformIsEnabledName;
     if (mMaterialComponent[comp].uniformIsEnabledName.size() == 0) {
       std::stringstream sstr;
       sstr << mMaterialComponent[comp].uniformLocationName << "Enabled";
@@ -49,7 +49,7 @@ void Material::setMaterialComponentUniformNames(unsigned int comp, const char *u
   }
 }
     
-void Material::setMaterialTexture(unsigned int layer, const char *textureFile) {
+void Material::setMaterialTexture(unsigned int layer, const std::string &textureFile) {
   if (layer < TEX_LAYER_COUNT) {
     if (loadTextureData(textureFile, mTexture[layer])) {
       if (layer < NORMAL_TEX) {
@@ -60,10 +60,10 @@ void Material::setMaterialTexture(unsigned int layer, const char *textureFile) {
   }
 }
 
-void Material::setMaterialTextureUniformNames(unsigned int layer, const char *uniformLocationName, const char *uniformIsEnabledName) {
+void Material::setMaterialTextureUniformNames(unsigned int layer, const std::string &uniformLocationName, const std::string &uniformIsEnabledName) {
   if (layer < TEX_LAYER_COUNT) {
-    mTexture[layer].uniformLocationName = std::string(uniformLocationName);
-    mTexture[layer].uniformIsEnabledName = std::string(uniformIsEnabledName);
+    mTexture[layer].uniformLocationName = uniformLocationName;
+    mTexture[layer].uniformIsEnabledName = uniformIsEnabledName;
     if (mTexture[layer].uniformIsEnabledName.size() == 0) {
       std::stringstream sstr;
       sstr << mTexture[layer].uniformLocationName << "Enabled";
@@ -89,19 +89,19 @@ void Material::setSpecularColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
   setMaterialComponent(SPECULAR_COMP, r, g, b, a);
 }
 
-void Material::setDiffuseTexture(const char *filename) {
+void Material::setDiffuseTexture(const std::string &filename) {
   setMaterialTexture(DIFFUSE_TEX, filename);
 }
 
-void Material::setSpecularTexture(const char *filename) {
+void Material::setSpecularTexture(const std::string &filename) {
   setMaterialTexture(SPECULAR_TEX, filename);
 }
 
-void Material::setEmissiveTexture(const char *filename) {
+void Material::setEmissiveTexture(const std::string &filename) {
   setMaterialTexture(EMISSIVE_TEX, filename);
 }
 
-void Material::setNormalTexture(const char *filename) {
+void Material::setNormalTexture(const std::string &filename) {
   setMaterialTexture(NORMAL_TEX, filename);
 }
 
@@ -110,18 +110,15 @@ void Material::setShaderProgram(Shader *shaderProgram) {
   mShaderProgram = shaderProgram;
   std::cerr << "(Material::setShaderProgram) - Set new shaderprogram (ID: " << mShaderProgram->getProgramID() << ")" << std::endl;
   
-  /*
-   * TODO maybe needed
   // init default uniform locations //
-  setMaterialComponentUniformNames(AMBIENT_COMP, "ambientColor");
-  setMaterialComponentUniformNames(DIFFUSE_COMP, "diffuseColor");
-  setMaterialComponentUniformNames(SPECULAR_COMP, "specularColor");
-  setMaterialComponentUniformNames(EMISSIVE_COMP, "emissiveColor");
+//  setMaterialComponentUniformNames(AMBIENT_COMP, "ambientColor");
+//  setMaterialComponentUniformNames(DIFFUSE_COMP, "diffuseColor");
+//  setMaterialComponentUniformNames(SPECULAR_COMP, "specularColor");
+//  setMaterialComponentUniformNames(EMISSIVE_COMP, "emissiveColor");
   setMaterialTextureUniformNames(DIFFUSE_TEX, "diffuseTex");
-  setMaterialTextureUniformNames(SPECULAR_TEX, "specularTex");
-  setMaterialTextureUniformNames(EMISSIVE_TEX, "emissiveTex");
-  setMaterialTextureUniformNames(NORMAL_TEX, "normalTex");
-  */
+//  setMaterialTextureUniformNames(SPECULAR_TEX, "specularTex");
+//  setMaterialTextureUniformNames(EMISSIVE_TEX, "emissiveTex");
+//  setMaterialTextureUniformNames(NORMAL_TEX, "normalTex");
 }
 
 Shader *Material::getShaderProgram() {
@@ -219,8 +216,8 @@ void Material::disable() {
   }
 }
 
-bool Material::loadTextureData(const char *textureFile, Texture &texture) {
-  IplImage *image = cvLoadImage(textureFile, CV_LOAD_IMAGE_COLOR);
+bool Material::loadTextureData(const std::string &textureFile, Texture &texture) {
+  IplImage *image = cvLoadImage(textureFile.c_str(), CV_LOAD_IMAGE_COLOR);
   if (image != nullptr) {
     texture.width = image->width;
     texture.height = image->height;

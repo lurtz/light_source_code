@@ -69,20 +69,20 @@ class Material {
     
     void disableMaterialComponent(unsigned int comp);
     void setMaterialComponent(unsigned int comp, GLfloat r = -1, GLfloat g = 0, GLfloat b = 0, GLfloat a = 1);
-    void setMaterialComponentUniformNames(unsigned int comp, const char *uniformLocationName, const char *uniformIsEnabledName = "");
+    void setMaterialComponentUniformNames(unsigned int comp, const std::string &uniformLocationName, const std::string &uniformIsEnabledName = "");
     
-    void setMaterialTexture(unsigned int layer, const char *textureFile);
-    void setMaterialTextureUniformNames(unsigned int layer, const char *uniformLocationName, const char *uniformIsEnabledName = "");
+    void setMaterialTexture(unsigned int layer, const std::string &textureFile);
+    void setMaterialTextureUniformNames(unsigned int layer, const std::string &uniformLocationName, const std::string &uniformIsEnabledName = "");
     
     void setAmbientColor(GLfloat r = -1, GLfloat g = 0, GLfloat b = 0);
     void setDiffuseColor(GLfloat r = -1, GLfloat g = 0, GLfloat b = 0);
     void setEmissiveColor(GLfloat r = -1, GLfloat g = 0, GLfloat b = 0);
     void setSpecularColor(GLfloat r = -1, GLfloat g = 0, GLfloat b = 0, GLfloat a = 0);
     
-    void setDiffuseTexture(const char *filename);
-    void setSpecularTexture(const char *filename);
-    void setEmissiveTexture(const char *filename);
-    void setNormalTexture(const char *filename);
+    void setDiffuseTexture(const std::string &filename);
+    void setSpecularTexture(const std::string &filename);
+    void setEmissiveTexture(const std::string &filename);
+    void setNormalTexture(const std::string &filename);
         
     void setShaderProgram(Shader *shader);
     Shader *getShaderProgram();
@@ -91,7 +91,7 @@ class Material {
     void disable();
     
   private:
-    bool loadTextureData(const char *textureFile, Texture &texture);
+    bool loadTextureData(const std::string &textureFile, Texture &texture);
     void initUniforms();
     bool mUniformsInitialized;
     

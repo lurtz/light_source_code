@@ -1,5 +1,7 @@
 #mesh-name testscenes/unitsphere.obj
-mesh-name testscenes/teapot.obj
-image-name testscenes/unitsphere_1_color.png
+#image-name testscenes/unitsphere_1_color.png
+#mesh-name testscenes/teapot.obj
+mesh-name testscenes/barney.obj
+texture-name testscenes/barney.ppm
 translation 0/0/0
 #scale 0.91

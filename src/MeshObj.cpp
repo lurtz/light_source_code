@@ -95,11 +95,14 @@ void MeshObj::render(void) {
 
     GLint vertexLoc = glGetAttribLocation(programm_id, "vertex_OS");
     GLint normalLoc = glGetAttribLocation(programm_id, "normal_OS");
+    GLint texCoordLoc = glGetAttribLocation(programm_id, "texCoord_OS");
 
     glEnableVertexAttribArray(vertexLoc);
-    glVertexAttribPointer(vertexLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(0));
+    glVertexAttribPointer(vertexLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(0 * sizeof(GLfloat)));
     glEnableVertexAttribArray(normalLoc);
-    glVertexAttribPointer(normalLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(12));
+    glVertexAttribPointer(normalLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(3 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(texCoordLoc);
+    glVertexAttribPointer(texCoordLoc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET(6 * sizeof(GLfloat)));
 
     // bind the index buffer object mIBO here //
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO);

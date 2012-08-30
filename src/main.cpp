@@ -39,17 +39,19 @@ std::vector<std::string> split(const std::string &s, char delim) {
 
 typedef struct arguments {
   std::string mesh_filename;
+  std::string texture_filename;
   std::string image_filename;
   float scale;
   float rotation[3];
   float translation[3];
-  arguments() : mesh_filename(""), image_filename(""), scale(1), rotation{0}, translation{0} {}
+  arguments() : mesh_filename(""), texture_filename(""), image_filename(""), scale(1), rotation{0}, translation{0} {}
 } arguments;
 
-const char * opt_string = "m:i:s:r:t:hc:";
+const char * opt_string = "m:x:i:s:r:t:hc:";
 
 const struct option long_opts[] = {
   { "mesh-name", required_argument, nullptr, 'm'},
+  { "texture-name", required_argument, nullptr, 't'},
   { "image-name", required_argument, nullptr, 'i'},
   { "scale", required_argument, nullptr, 's'},
   { "rotation", required_argument, nullptr, 'r'},
@@ -70,6 +72,7 @@ std::string print_coords(const T (&coords)[N]) {
 
 void print_arguments(const arguments& args) {
   std::cout << "mesh filename: " << args.mesh_filename << '\n'
+    << "texture filename: " << args.texture_filename << '\n'
     << "image filename: " << args.image_filename << '\n'
     << "scale: " << args.scale << '\n'
     << "rotation: " << print_coords(args.rotation) << '\n'
@@ -79,6 +82,7 @@ void print_arguments(const arguments& args) {
 
 void print_help() {
   std::cout << "-m|--mesh-name as filename of the 3d mesh inside the image\n"
+    << "-x|--texture-filename as filename of the texture of the mesh\n"
     << "-i|--image-name as filename of the image for which lighting shall be estimated\n"
     << "-h|--help print this message and exit\n"
     << "-s|--scale scale factor to be applied to the mesh. format: s\n"
@@ -112,6 +116,10 @@ void read_config_file(const std::string filename, arguments &args) {
       std::string tmp_filename;
       myfile >> tmp_filename;
       args.mesh_filename = prefix + tmp_filename;
+    } else if (token == "texture-name") {
+      std::string tmp_filename;
+      myfile >> tmp_filename;
+      args.texture_filename = prefix + tmp_filename;
     } else if (token == "image-name") {
       std::string tmp_filename;
       myfile >> tmp_filename;
@@ -143,6 +151,8 @@ arguments parse_options(const int& argc, char * const argv[]) {
       case 'm':
         args.mesh_filename = std::string(optarg);
         break;
+      case 'x':
+        args.texture_filename = std::string(optarg);
       case 'i':
         args.image_filename = std::string(optarg);
         break;
@@ -189,6 +199,8 @@ int main(int argc, char * argv[]) {
     Material * mat = new Material();
     mesh->setMaterial(mat);
     mat->setShaderProgram(new Shader("shader/vertex.s", "shader/fragment.s"));
+    if (args.texture_filename != std::string(""))
+      mat->setDiffuseTexture(args.texture_filename);
     run(image, mesh);
   }
 

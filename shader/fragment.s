@@ -17,6 +17,9 @@ struct Light_properties {
 #define MAX_LIGHTS 30
 uniform Light_properties lights[MAX_LIGHTS];
 
+uniform bool diffuseTexEnabled;
+uniform sampler2D diffuseTex;
+
 void main () {
     // normalize everything necessary //
     vec3 N = normalize(vert_norm_dir);

@@ -114,8 +114,8 @@ struct Light {
       GLint uniform_light_property = glGetUniformLocation(programm_id, get_shader_name(i, property_name).c_str());
       auto value = iter_properties.second;
       glUniform4f(uniform_light_property, value.at(0), value.at(1), value.at(2), value.at(3));
-      if (uniform_light_property == -1)
-        std::cout << "uniform handle is -1 with uniform name " << iter_properties.first << std::endl;
+//      if (uniform_light_property == -1)
+//        std::cout << "uniform handle is -1 with uniform name " << iter_properties.first << std::endl;
     }
   }
 };
@@ -297,8 +297,8 @@ struct Lights {
   void setUniforms(const GLuint programm_id) const {
     GLint uniform_light_property = glGetUniformLocation(programm_id, "ambient_color");
     glUniform4f(uniform_light_property, ambient.at(0), ambient.at(1), ambient.at(2), ambient.at(3));
-    if (uniform_light_property == -1)
-      std::cout << "uniform handle is -1 with uniform name " << "ambient_color" << std::endl;
+//    if (uniform_light_property == -1)
+//      std::cout << "uniform handle is -1 with uniform name " << "ambient_color" << std::endl;
 
     unsigned int i = 0;
     for (auto iter : lights) {
