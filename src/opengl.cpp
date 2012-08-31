@@ -255,13 +255,13 @@ void calc_lights() {
   assert(test_sum());
 //  testkmeansw();
 
-  const auto start_time = std::chrono::steady_clock::now();
+  const auto start_time = std::chrono::high_resolution_clock::now();
   
   cv::Mat_<cv::Vec3f> image;
   cv::Mat_<cv::Vec3f> normals;
   cv::Mat_<cv::Vec3f> position;
   std::tie(image, normals, position, std::ignore) = create_test_image();
-  const auto test_creation_time = std::chrono::steady_clock::now();
+  const auto test_creation_time = std::chrono::high_resolution_clock::now();
   std::cout << "test created" << std::endl;
   
   // do not need to be flipped
@@ -274,22 +274,22 @@ void calc_lights() {
   float x, y, z;
   std::tie(x, y, z) = _ball.getViewDirection();
   Lights<float> a_lot_of_lights("bla", 10, huge_num_lights, plane_acceptor_tuple(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
-  const auto time_after_huge_lights_creation = std::chrono::steady_clock::now();
+  const auto time_after_huge_lights_creation = std::chrono::high_resolution_clock::now();
   std::cout << "a lot of lights created" << std::endl;
   
 //  optimize_lights(image, normals, position, model_view_matrix.t(), clear_color, lights);
   optimize_lights_multi_dim_fit(image, normals, position, model_view_matrix.t(), clear_color, a_lot_of_lights);
-  const auto time_after_huge_lights_run = std::chrono::steady_clock::now();
+  const auto time_after_huge_lights_run = std::chrono::high_resolution_clock::now();
   std::cout << "a lot of lights optimized" << std::endl;
   
   lights = reduce_lights<4>(a_lot_of_lights, small_num_lights);
-  const auto time_after_reducing_lights = std::chrono::steady_clock::now();
+  const auto time_after_reducing_lights = std::chrono::high_resolution_clock::now();
   std::cout << "a lot of lights reduced" << std::endl;
   
   optimize_lights_multi_dim_fit(image, normals, position, model_view_matrix.t(), clear_color, lights);
   std::cout << "small number of lights reduced" << std::endl;
   
-  const auto finish_time = std::chrono::steady_clock::now();
+  const auto finish_time = std::chrono::high_resolution_clock::now();
 
   std::cout << "complete run: " << finish_time - start_time << std::endl;
   std::cout << "  test creation: " << test_creation_time - start_time << std::endl;
