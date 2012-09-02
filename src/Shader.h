@@ -12,13 +12,13 @@
 
 class Shader {
   public:
-    Shader(const char* vertShaderFile, const char* fragShaderFile);
+    Shader(const std::string &vertShaderFile, const std::string &fragShaderFile);
     ~Shader();
     
-    bool loadVertShader(const char* shaderFile);
-    bool loadFragShader(const char* shaderFile);
+    bool loadVertShader(const std::string &shaderFile);
+    bool loadFragShader(const std::string &shaderFile);
     
-    GLuint loadShaderCode(const char* fileName, GLenum shaderType);
+    GLuint loadShaderCode(const std::string &fileName, GLenum shaderType);
     
     void link();
     bool ready();
@@ -28,10 +28,10 @@ class Shader {
     void disable();
     
     GLuint getProgramID();
-    GLint getUniformLocation(const char *uniformName);
+    GLint getUniformLocation(const std::string &uniformName);
 
   private:
-    char* loadShaderSource(const char* fileName);
+    char* loadShaderSource(const std::string &fileName);
     bool mEnabled;
     
     GLuint mVertShaderID;

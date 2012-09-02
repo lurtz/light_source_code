@@ -22,7 +22,7 @@ struct Texture {
   
   ~Texture() {
     if (data != nullptr) {
-      delete data;
+      delete [] data;
     }
   };
   

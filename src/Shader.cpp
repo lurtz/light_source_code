@@ -1,6 +1,6 @@
 #include "Shader.h"
 
-Shader::Shader(const char* vertShaderFile, const char* fragShaderFile) {
+Shader::Shader(const std::string &vertShaderFile, const std::string &fragShaderFile) {
   mVertShaderID = 0;
   mFragShaderID = 0;
   mShaderProgramID = 0;
@@ -20,7 +20,7 @@ Shader::~Shader() {
   glDeleteProgram(mShaderProgramID);
 }
 
-bool Shader::loadVertShader(const char* shaderFile) {
+bool Shader::loadVertShader(const std::string &shaderFile) {
   mVertShaderID = loadShaderCode(shaderFile, GL_VERTEX_SHADER);
   if (mVertShaderID == 0) {
     std::cout << "(initShader) - Could not create vertex shader." << std::endl;
@@ -28,7 +28,7 @@ bool Shader::loadVertShader(const char* shaderFile) {
   return mVertShaderID != 0;
 }
 
-bool Shader::loadFragShader(const char* shaderFile) {
+bool Shader::loadFragShader(const std::string &shaderFile) {
   mFragShaderID = loadShaderCode(shaderFile, GL_FRAGMENT_SHADER);
   if (mFragShaderID == 0) {
     std::cout << "(initShader) - Could not create vertex shader." << std::endl;
@@ -36,7 +36,7 @@ bool Shader::loadFragShader(const char* shaderFile) {
   return mFragShaderID != 0;
 }
 
-GLuint Shader::loadShaderCode(const char* fileName, GLenum shaderType) {
+GLuint Shader::loadShaderCode(const std::string &fileName, GLenum shaderType) {
   GLuint shader = glCreateShader(shaderType);
   if (shader == 0) {
     return 0;
@@ -60,7 +60,7 @@ GLuint Shader::loadShaderCode(const char* fileName, GLenum shaderType) {
   return shader;
 }
 
-char* Shader::loadShaderSource(const char* fileName) {
+char* Shader::loadShaderSource(const std::string& fileName) {
   std::ifstream file(fileName, std::ios::in);
   if (file.good()) {
     unsigned long srcLength = 0;
@@ -144,7 +144,7 @@ GLuint Shader::getProgramID() {
   return mShaderProgramID;
 }
 
-GLint Shader::getUniformLocation(const char *uniformName) {
+GLint Shader::getUniformLocation(const std::string &uniformName) {
   //std::cerr << "(Shader::getUniformLocation) - UniformLocation for \"" << uniformName << "\": " << glGetUniformLocation(mShaderProgramID, uniformName) << std::endl;
-  return glGetUniformLocation(mShaderProgramID, uniformName);
+  return glGetUniformLocation(mShaderProgramID, uniformName.c_str());
 }
