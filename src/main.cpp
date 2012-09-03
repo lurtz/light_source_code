@@ -196,11 +196,14 @@ int main(int argc, char * argv[]) {
     mesh->translate(args.translation);
     mesh->rotate(args.rotation);
     mesh->scale(args.scale);
-    Material * mat = new Material();
-    mesh->setMaterial(mat);
-    mat->setShaderProgram(new Shader("shader/vertex.s", "shader/fragment.s"));
-    if (args.texture_filename != std::string(""))
-      mat->setDiffuseTexture(args.texture_filename);
+    Material mat;
+    mesh->setMaterial(&mat);
+    Shader shader("shader/vertex.s", "shader/fragment.s");
+    mat.setShaderProgram(&shader);
+    if (args.texture_filename != std::string("")) {
+      mat.setDiffuseTexture(args.texture_filename);
+      mat.setSpecularTexture(args.texture_filename);
+    }
     run(image, mesh);
   }
 

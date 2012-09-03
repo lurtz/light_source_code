@@ -116,7 +116,7 @@ void Material::setShaderProgram(Shader *shaderProgram) {
 //  setMaterialComponentUniformNames(SPECULAR_COMP, "specularColor");
 //  setMaterialComponentUniformNames(EMISSIVE_COMP, "emissiveColor");
   setMaterialTextureUniformNames(DIFFUSE_TEX, "diffuseTex");
-//  setMaterialTextureUniformNames(SPECULAR_TEX, "specularTex");
+  setMaterialTextureUniformNames(SPECULAR_TEX, "specularTex");
 //  setMaterialTextureUniformNames(EMISSIVE_TEX, "emissiveTex");
 //  setMaterialTextureUniformNames(NORMAL_TEX, "normalTex");
 }

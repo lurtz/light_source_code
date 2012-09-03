@@ -5,7 +5,7 @@ varying vec3 vert_norm_dir;
 varying vec3 eyeVec;
 
 float alpha = 50;
-uniform vec4 ambient_color;
+uniform vec4 ambient_light;
 struct Light_properties {
   vec4 position;
   vec4 diffuse;
@@ -19,47 +19,40 @@ uniform Light_properties lights[MAX_LIGHTS];
 
 uniform bool diffuseTexEnabled;
 uniform sampler2D diffuseTex;
+uniform bool specularTexEnabled;
+uniform sampler2D specularTex;
 
 void main () {
     // normalize everything necessary //
     vec3 N = normalize(vert_norm_dir);
     vec3 E = normalize(eyeVec);
-    
-    bool bla = diffuseTexEnabled;
 
-    // ambient component
-    vec4 color = ambient_color;
-
+    vec4 diffuse_light = vec4(0);
+    vec4 specular_light = vec4(0);
     for (int i = 0; i < MAX_LIGHTS; i++) {
       // diffuse component
       vec3 L = normalize((gl_ModelViewMatrix * lights[i].position).xyz + eyeVec);
       float NdotL = max(0.0, dot(N, L));
-      color += lights[i].diffuse * NdotL;
+      diffuse_light += lights[i].diffuse * NdotL;
 
       // specular component
       if (NdotL > 0.0) {
         vec3 R = reflect(-L, N);
         float RdotE = max(0.0, dot(R, E));
-        color += lights[i].specular * pow(RdotE, alpha);
+        specular_light += lights[i].specular * pow(RdotE, alpha);
       }
-      
-      if (NdotL > 3 )
-        color += vec4(bla);
     }
 
-    // clamp components
-    if (color.x > 1.0)
-      color.x = 1.0;
-    if (color.y > 1.0)
-      color.y = 1.0;
-    if (color.z > 1.0)
-      color.z = 1.0;
-    if (color.x < 0.0)
-      color.x = 0.0;
-    if (color.y < 0.0)
-      color.y = 0.0;
-    if (color.z < 0.0)
-      color.z = 0.0;
+    vec4 color = ambient_light;
+    if (diffuseTexEnabled)
+      color += texture2D(diffuseTex, gl_TexCoord[0].st).rgba * diffuse_light;
+    else
+      color += diffuse_light;
+
+    if (specularTexEnabled)
+      color += texture2D(specularTex, gl_TexCoord[0].st).rgba * specular_light;
+    else
+      color += specular_light;
 
     gl_FragData[0] = color;
     gl_FragData[1] = vec4(N, 0.0);

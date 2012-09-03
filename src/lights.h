@@ -295,7 +295,7 @@ struct Lights {
   }
   
   void setUniforms(const GLuint programm_id) const {
-    GLint uniform_light_property = glGetUniformLocation(programm_id, "ambient_color");
+    GLint uniform_light_property = glGetUniformLocation(programm_id, "ambient_light");
     glUniform4f(uniform_light_property, ambient.at(0), ambient.at(1), ambient.at(2), ambient.at(3));
 //    if (uniform_light_property == -1)
 //      std::cout << "uniform handle is -1 with uniform name " << "ambient_color" << std::endl;
