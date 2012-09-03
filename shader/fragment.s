@@ -24,6 +24,8 @@ void main () {
     // normalize everything necessary //
     vec3 N = normalize(vert_norm_dir);
     vec3 E = normalize(eyeVec);
+    
+    bool bla = diffuseTexEnabled;
 
     // ambient component
     vec4 color = ambient_color;
@@ -40,6 +42,9 @@ void main () {
         float RdotE = max(0.0, dot(R, E));
         color += lights[i].specular * pow(RdotE, alpha);
       }
+      
+      if (NdotL > 3 )
+        color += vec4(bla);
     }
 
     // clamp components
