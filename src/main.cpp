@@ -37,16 +37,6 @@ std::vector<std::string> split(const std::string &s, char delim) {
   return split(s, delim, elems);
 }
 
-typedef struct arguments {
-  std::string mesh_filename;
-  std::string texture_filename;
-  std::string image_filename;
-  float scale;
-  float rotation[3];
-  float translation[3];
-  arguments() : mesh_filename(""), texture_filename(""), image_filename(""), scale(1), rotation{0}, translation{0} {}
-} arguments;
-
 const char * opt_string = "m:x:i:s:r:t:hc:";
 
 const struct option long_opts[] = {
@@ -183,14 +173,8 @@ arguments parse_options(const int& argc, char * const argv[]) {
 
 int main(int argc, char * argv[]) {
   arguments args = parse_options(argc, argv);
-  cv::Mat image;
-  if (args.image_filename != "") {
-    image = cv::imread(args.image_filename);
-//    cv::imshow("test", image);
-//    cv::waitKey(0);
-  }
-  setupOpenGL(&argc, argv, image.cols, image.rows);
   if (args.mesh_filename != "") {
+    setupOpenGL(&argc, argv, args);
     ObjLoader objl;
     MeshObj * mesh = objl.loadObjFile(args.mesh_filename, args.mesh_filename);
     mesh->translate(args.translation);
@@ -204,7 +188,7 @@ int main(int argc, char * argv[]) {
       mat.setDiffuseTexture(args.texture_filename);
       mat.setSpecularTexture(args.texture_filename);
     }
-    run(image, mesh);
+    run(mesh);
   }
 
   std::cout << "OK" << std::endl;

@@ -368,16 +368,16 @@ namespace gsl {
             set(colors_per_light * row + i, j, 0);
     }
 
-    void set_diffuse_specular(const unsigned int row, const unsigned int col, const std::tuple<float, float>& vals) {
+    void set_diffuse_specular(const unsigned int row, const unsigned int col, const std::tuple<float, float>& vals, const cv::Mat_<float> diffuse_tex, const cv::Mat_<float> specular_tex) {
       float diffuse, specular;
       std::tie(diffuse, specular) = vals;
       for (unsigned int i = 0; i < colors_per_light; i++) {
         for (unsigned int j = 0; j < colors_per_light; j++) {
           if (i == j) {
             // diffuse
-            set(colors_per_light * row+i, colors_per_light + colors_per_light * components_per_light * col+j, diffuse);
+            set(colors_per_light * row+i, colors_per_light + colors_per_light * components_per_light * col+j, diffuse*diffuse_tex(i));
             // specular
-            set(colors_per_light * row+i, colors_per_light + colors_per_light * components_per_light * col+colors_per_light+j, specular);
+            set(colors_per_light * row+i, colors_per_light + colors_per_light * components_per_light * col+colors_per_light+j, specular*specular_tex(i));
           } else {
             // diffuse
             set(colors_per_light * row+i, colors_per_light + colors_per_light * components_per_light * col+j, 0);
@@ -505,7 +505,7 @@ namespace gsl {
 }
 
 template<unsigned int colors_per_light, unsigned int components_per_light, template <typename, int> class point_selector, typename T, typename T1, int dim>
-std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const cv::Mat_<cv::Vec<T, dim>>& image, const cv::Mat_<cv::Vec<T, dim>>& normals, const cv::Mat_<cv::Vec<T, dim>>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, const Lights<T1>& lights, const int alpha) {
+std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const cv::Mat_<cv::Vec<T, dim>>& image, const cv::Mat_<cv::Vec<T, dim>>& normals, const cv::Mat_<cv::Vec<T, dim>>& position, const cv::Mat_<cv::Vec<T, dim>>& diffuse_texture, const cv::Mat_<cv::Vec<T, dim>>& specular_texture, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, const Lights<T1>& lights, const int alpha) {
   std::cout << "creating linear system" << std::endl;
 
   const unsigned int sample_max = get_maximum_number_of_sample_points(normals, clear_color);
@@ -546,10 +546,12 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
 
     const cv::Mat_<float> pos_vec(position(_y, _x));
     const cv::Mat_<float> normal(normals(_y, _x), false);
+    const cv::Mat_<float> diffuse_tex(diffuse_texture(_y, _x));
+    const cv::Mat_<float> specular_tex(specular_texture(_y, _x));
 
     for (unsigned int col = 0; col < lights.lights.size(); col++) {
       const Light<T>& light = lights.lights.at(col);
-      x.set_diffuse_specular(row, col, get_diffuse_specular(pos_vec, normal, light, model_view_matrix, alpha));
+      x.set_diffuse_specular(row, col, get_diffuse_specular(pos_vec, normal, light, model_view_matrix, alpha), diffuse_tex, specular_tex);
     }
   }
 
@@ -733,12 +735,12 @@ bool check_solution(const gsl::vector<colors_per_light, components_per_light> &s
 }
 
 template<typename T>
-void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const size_t max_iter = 0, const int alpha = 50) {
+void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<cv::Vec3f>& diffuse, const cv::Mat_<cv::Vec3f>& specular, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const size_t max_iter = 0, const int alpha = 50) {
   show_rgb_image("target image", image);
   const unsigned int colors_per_light = 3;
   const unsigned int components_per_light = 2;
 
-  auto linear_system = create_linear_system<colors_per_light, components_per_light, sample_point_random>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
+  auto linear_system = create_linear_system<colors_per_light, components_per_light, sample_point_random>(image, normals, position, diffuse, specular, model_view_matrix, clear_color, lights, alpha);
   assert(std::get<0>(linear_system).get_rows() > std::get<0>(linear_system).get_cols());
 
   std::cout << "creating problem to minimize" << std::endl;

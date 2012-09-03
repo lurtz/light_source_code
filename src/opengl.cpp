@@ -26,7 +26,7 @@
 #include "kmeansw.h"
 
 MeshObj * _meshobj = nullptr;
-cv::Mat const * _original_image = nullptr;
+cv::Mat _original_image;
 Trackball _ball;
 
 GLclampf clear_color = 0.3;
@@ -34,7 +34,8 @@ GLfloat _zNear, _zFar;
 GLfloat _fov;
 
 // FBO stuff //
-GLuint fboTexture[3];
+// image normal position diffuse_texture specular_texture
+GLuint fboTexture[5];
 GLuint fboDepthTexture;
 GLuint fbo;
 
@@ -132,12 +133,12 @@ void flipImage(T& image, const unsigned int width) {
   flipImage(std::begin(image), std::end(image), width);
 }
 
-std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<float> > renderSceneIntoFBO() {
+std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<float> > renderSceneIntoFBO() {
     // render scene into first color attachment of FBO -> use as filter texture later on //
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-    static const GLenum buffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2};
-    glDrawBuffers(3, buffers);
+    static const GLenum buffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4};
+    glDrawBuffers(5, buffers);
     glDepthMask(GL_TRUE);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -148,6 +149,8 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Ma
     cv::Mat_<cv::Vec3f> image(windowHeight, windowWidth);
     cv::Mat_<cv::Vec3f> normals(windowHeight, windowWidth);
     cv::Mat_<cv::Vec3f> position(windowHeight, windowWidth);
+    cv::Mat_<cv::Vec3f> diffuse(windowHeight, windowWidth);
+    cv::Mat_<cv::Vec3f> specular(windowHeight, windowWidth);
     cv::Mat_<float> depth(windowHeight, windowWidth);
 
     // read each texture into an array
@@ -157,6 +160,10 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Ma
     glReadPixels(0, 0, windowWidth, windowHeight, GL_RGB, GL_FLOAT, normals.data);
     glReadBuffer(GL_COLOR_ATTACHMENT2);
     glReadPixels(0, 0, windowWidth, windowHeight, GL_RGB, GL_FLOAT, position.data);
+    glReadBuffer(GL_COLOR_ATTACHMENT3);
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_RGB, GL_FLOAT, diffuse.data);
+    glReadBuffer(GL_COLOR_ATTACHMENT4);
+    glReadPixels(0, 0, windowWidth, windowHeight, GL_RGB, GL_FLOAT, specular.data);
     glReadBuffer(GL_DEPTH_ATTACHMENT);
     glReadPixels(0, 0, windowWidth, windowHeight, GL_DEPTH_COMPONENT, GL_FLOAT, depth.data);
 
@@ -170,7 +177,10 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Ma
       flipImage(depth, windowWidth);
     }
 
-    return std::make_tuple(image, normals, position, depth);
+    cv::imshow("bla", image);
+    cv::waitKey(0);
+
+    return std::make_tuple(image, normals, position, diffuse, specular, depth);
 }
 
 decltype(renderSceneIntoFBO()) create_test_image() {
@@ -248,10 +258,6 @@ Lights<T> reduce_lights(const Lights<T>& lights, const unsigned int k) {
 }
 
 void calc_lights() {
-  return;
-  if (image_displayed)
-    return;
-  
   assert(test_sum());
 //  testkmeansw();
 
@@ -260,7 +266,10 @@ void calc_lights() {
   cv::Mat_<cv::Vec3f> image;
   cv::Mat_<cv::Vec3f> normals;
   cv::Mat_<cv::Vec3f> position;
-  std::tie(image, normals, position, std::ignore) = create_test_image();
+  cv::Mat_<cv::Vec3f> diffuse;
+  cv::Mat_<cv::Vec3f> specular;
+  
+  std::tie(image, normals, position, diffuse, specular, std::ignore) = create_test_image();
   const auto test_creation_time = std::chrono::high_resolution_clock::now();
   std::cout << "test created" << std::endl;
   
@@ -278,7 +287,7 @@ void calc_lights() {
   std::cout << "a lot of lights created" << std::endl;
   
 //  optimize_lights(image, normals, position, model_view_matrix.t(), clear_color, lights);
-  optimize_lights_multi_dim_fit(image, normals, position, model_view_matrix.t(), clear_color, a_lot_of_lights);
+  optimize_lights_multi_dim_fit(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, a_lot_of_lights);
   const auto time_after_huge_lights_run = std::chrono::high_resolution_clock::now();
   std::cout << "a lot of lights optimized" << std::endl;
   
@@ -286,7 +295,7 @@ void calc_lights() {
   const auto time_after_reducing_lights = std::chrono::high_resolution_clock::now();
   std::cout << "a lot of lights reduced" << std::endl;
   
-  optimize_lights_multi_dim_fit(image, normals, position, model_view_matrix.t(), clear_color, lights);
+  optimize_lights_multi_dim_fit(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, lights);
   std::cout << "small number of lights reduced" << std::endl;
   
   const auto finish_time = std::chrono::high_resolution_clock::now();
@@ -297,8 +306,6 @@ void calc_lights() {
   std::cout << "  light estimation huge light number: " << time_after_huge_lights_run - time_after_huge_lights_creation << std::endl;
   std::cout << "  reducing lights: " << time_after_reducing_lights - time_after_huge_lights_run << std::endl;
   std::cout << "  light estimation: " << finish_time - time_after_reducing_lights << std::endl;
-  
-  image_displayed = true;
 }
 
 void updateGL() {
@@ -319,15 +326,17 @@ void updateGL() {
   _ball.rotateView();
   
   // render //
-  calc_lights();
+  if (!image_displayed) {
+    calc_lights();
+    image_displayed = true;
+  }
   renderScene();
   
   // swap render and screen buffer //
   glutSwapBuffers();
 }
 
-void run(const cv::Mat& original_image, MeshObj * const meshobj) {
-  _original_image = &original_image;
+void run(MeshObj * const meshobj) {
   _meshobj = meshobj;
   _meshobj->setLight(lights);
   glutMainLoop();
@@ -381,8 +390,8 @@ void initGL() {
 
 void initFBO() {
   // init color textures //
-  glGenTextures(3, fboTexture);
-  for (unsigned int i = 0; i < 3; ++i) {
+  glGenTextures(5, fboTexture);
+  for (unsigned int i = 0; i < 5; ++i) {
     glBindTexture(GL_TEXTURE_2D, fboTexture[i]);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -408,6 +417,8 @@ void initFBO() {
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture[0], 0);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, fboTexture[1], 0);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, fboTexture[2], 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, fboTexture[3], 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, fboTexture[4], 0);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, fboDepthTexture, 0);
 
   // unbind FBO until it's needed //
@@ -424,12 +435,14 @@ void initLights() {
 //  lights = Lights<float>("bla", 10, 30, plane_acceptor_tuple(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
 }
 
-void setupOpenGL(int * argc, char ** argv, const unsigned int width, const unsigned int height) {
+void setupOpenGL(int * argc, char ** argv, const arguments &args) {
+    _original_image = cv::imread(args.image_filename);
+  
     /* Initialize GLUT */
     glutInit(argc, argv);
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGB);
     glutInitWindowPosition(100, 100);
-    glutInitWindowSize(windowWidth = width, windowHeight = height);
+    glutInitWindowSize(windowWidth = _original_image.cols, windowHeight = _original_image.rows);
     glutCreateWindow("light sources");
 //    glutFullScreen();
     glutDisplayFunc(updateGL);

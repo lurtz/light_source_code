@@ -57,4 +57,6 @@ void main () {
     gl_FragData[0] = color;
     gl_FragData[1] = vec4(N, 0.0);
     gl_FragData[2] = vec4(-eyeVec, 1.0);
+    gl_FragData[3] = texture2D(diffuseTex, gl_TexCoord[0].st).rgba;
+    gl_FragData[4] = texture2D(specularTex, gl_TexCoord[0].st).rgba;
 }
