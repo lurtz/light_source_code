@@ -3,5 +3,6 @@
 #mesh-name testscenes/teapot.obj
 mesh-name testscenes/barney.obj
 texture-name testscenes/barney.ppm
+scale 0.1
 translation 0/0/0
 #scale 0.91

@@ -250,7 +250,7 @@ struct sample_point_random {
   const cv::Mat_<cv::Vec<T, dim>>& normals;
   cv::Mat_<unsigned char> used_pixels;
   const T clear_color;
-  sample_point_random(const cv::Mat_<cv::Vec<T, dim>>& normals, const unsigned int points_to_deliver, const T clear_color) : normals(normals), used_pixels(normals.rows, normals.cols), clear_color(clear_color) {
+  sample_point_random(const cv::Mat_<cv::Vec<T, dim>>& normals, const unsigned int points_to_deliver, const T clear_color) : normals(normals), used_pixels(normals.rows, normals.cols, static_cast<unsigned char>(0)), clear_color(clear_color) {
   }
   std::tuple<unsigned int, unsigned int> operator()() {
     int _x = 0;
@@ -554,6 +554,7 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
       x.set_diffuse_specular(row, col, get_diffuse_specular(pos_vec, normal, light, model_view_matrix, alpha), diffuse_tex, specular_tex);
     }
   }
+  std::cout << std::endl;
 
   return std::make_tuple(std::move(x), std::move(y));
 }

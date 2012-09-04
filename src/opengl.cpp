@@ -26,7 +26,7 @@
 #include "kmeansw.h"
 
 MeshObj * _meshobj = nullptr;
-cv::Mat _original_image;
+cv::Mat_<cv::Vec3f> _original_image;
 Trackball _ball;
 
 GLclampf clear_color = 0.3;
@@ -176,9 +176,6 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Ma
       flipImage(position, windowWidth);
       flipImage(depth, windowWidth);
     }
-
-    cv::imshow("bla", image);
-    cv::waitKey(0);
 
     return std::make_tuple(image, normals, position, diffuse, specular, depth);
 }
@@ -437,12 +434,21 @@ void initLights() {
 
 void setupOpenGL(int * argc, char ** argv, const arguments &args) {
     _original_image = cv::imread(args.image_filename);
+    windowWidth = _original_image.cols;
+    windowHeight = _original_image.rows;
+    if (_original_image.rows == 0 || _original_image.cols == 0) {
+      std::cerr << "INPUT DATA HAS 0 SIZE!" << std::endl;
+      windowWidth = 640;
+      windowHeight = 480;
+      _original_image = cv::Mat_<cv::Vec3f>(windowHeight, windowWidth);
+      std::cerr << "setting size to " << windowWidth << "x" << windowHeight << std::endl;
+    }
   
     /* Initialize GLUT */
     glutInit(argc, argv);
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGB);
     glutInitWindowPosition(100, 100);
-    glutInitWindowSize(windowWidth = _original_image.cols, windowHeight = _original_image.rows);
+    glutInitWindowSize(windowWidth, windowHeight);
     glutCreateWindow("light sources");
 //    glutFullScreen();
     glutDisplayFunc(updateGL);

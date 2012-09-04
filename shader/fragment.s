@@ -54,6 +54,21 @@ void main () {
     else
       color += specular_light;
 
+    // clamping is a must have
+    if (color.x > 1)
+      color.x = 1;
+    if (color.y > 1)
+      color.y = 1;
+    if (color.z > 1)
+      color.z = 1;
+
+    if (color.x < 0)
+      color.x = 0;
+    if (color.y < 0)
+      color.y = 0;
+    if (color.z < 0)
+      color.z = 0;
+
     gl_FragData[0] = color;
     gl_FragData[1] = vec4(N, 0.0);
     gl_FragData[2] = vec4(-eyeVec, 1.0);
