@@ -25,6 +25,8 @@
 #include "solver.h"
 #include "kmeansw.h"
 
+arguments _args;
+
 MeshObj * _meshobj = nullptr;
 cv::Mat_<cv::Vec3f> _original_image;
 Trackball _ball;
@@ -168,6 +170,9 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Ma
     glReadPixels(0, 0, windowWidth, windowHeight, GL_DEPTH_COMPONENT, GL_FLOAT, depth.data);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    if (_args.texture_filename.size() == 0)
+      diffuse = specular = cv::Mat_<cv::Vec3f>(windowHeight, windowWidth, cv::Vec3f(1,1,1));
     
     // opencv images are upside down
     if (true) {
@@ -175,6 +180,8 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Ma
       flipImage(normals, windowWidth);
       flipImage(position, windowWidth);
       flipImage(depth, windowWidth);
+      flipImage(diffuse, windowWidth);
+      flipImage(specular, windowWidth);
     }
 
     return std::make_tuple(image, normals, position, diffuse, specular, depth);
@@ -433,6 +440,7 @@ void initLights() {
 }
 
 void setupOpenGL(int * argc, char ** argv, const arguments &args) {
+    _args = args;
     _original_image = cv::imread(args.image_filename);
     windowWidth = _original_image.cols;
     windowHeight = _original_image.rows;
