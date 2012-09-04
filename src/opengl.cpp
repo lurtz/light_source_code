@@ -330,7 +330,7 @@ void updateGL() {
   _ball.rotateView();
   
   // render //
-  if (!image_displayed) {
+  if (!image_displayed && _args.optimize) {
     calc_lights();
     image_displayed = true;
   }
@@ -431,12 +431,6 @@ void initFBO() {
 
 void initLights() {
   lights = Lights<float>(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
-//  lights = Lights<float>(10, 140);
-  float x, y, z;
-  std::tie(x, y, z) = _ball.getViewDirection();
-//  lights = Lights<float>(10, 30);
-//  lights = Lights<float>(10, 30, plane_acceptor(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
-//  lights = Lights<float>("bla", 10, 30, plane_acceptor_tuple(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
 }
 
 void setupOpenGL(int * argc, char ** argv, const arguments &args) {

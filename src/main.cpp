@@ -37,7 +37,7 @@ std::vector<std::string> split(const std::string &s, char delim) {
   return split(s, delim, elems);
 }
 
-const char * opt_string = "m:x:i:s:r:t:hc:";
+const char * opt_string = "m:x:i:s:r:t:hc:n";
 
 const struct option long_opts[] = {
   { "mesh-name", required_argument, nullptr, 'm'},
@@ -48,6 +48,7 @@ const struct option long_opts[] = {
   { "translation", required_argument, nullptr, 't'},
   { "help", no_argument, nullptr, 'h'},
   { "config", required_argument, nullptr, 'c'},
+  { "no-optimization", no_argument, nullptr, 'n'},
   { nullptr, no_argument, nullptr, 0}
 };
 
@@ -79,6 +80,7 @@ void print_help() {
     << "-r|--rotation rotation to be applied to the mesh. format: x/y/z\n"
     << "-t|--translation position of the mesh in the image. format: x/y/z\n"
     << "-c|--config configuration file\n"
+    << "-n|--no-optimization only render the current mesh"
     << std::endl;
 }
 
@@ -160,6 +162,9 @@ arguments parse_options(const int& argc, char * const argv[]) {
         break;
       case 'c':
         read_config_file(optarg, args);
+        break;
+      case 'n':
+        args.optimize = false;
         break;
       case 'h':
       default:
