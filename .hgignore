@@ -1,4 +1,10 @@
-build
+# use glob syntax.
+syntax: glob
+
+*build
 .*.swp
 .project
 .cproject
+.kdev4
+*.kdev4
+*~
