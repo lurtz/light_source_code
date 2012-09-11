@@ -90,6 +90,7 @@ void reshape(int width, int height) {
 }
 
 void visualize_lights() {
+  // TODO show lightning properties
   for (const auto& light : lights.lights) {
     glPushMatrix();
     std::vector<float> pos = light.get_position();
@@ -263,7 +264,8 @@ Lights<T> reduce_lights(const Lights<T>& lights, const unsigned int k) {
 
 void calc_lights() {
   assert(test_sum());
-//  testkmeansw();
+
+//  testkmeansall();
 
   const auto start_time = std::chrono::high_resolution_clock::now();
   

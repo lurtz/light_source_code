@@ -18,7 +18,7 @@ double kmeansw( InputArray _data, int K,
                    const vector<double>& weights);
 }
 
-void testkmeansw();
+void testkmeansall();
 
 template<typename T, int dim>
 std::ostream& operator<<(std::ostream& out, cv::Vec<T, dim> vec) {

@@ -1,5 +1,6 @@
 #include "kmeansw.h"
 #include <opencv2/core/operations.hpp>
+#include <opencv2/highgui/highgui.hpp>
 #include <iostream>
 
 #define CV_KMEANS_USE_INITIAL_LABELS    1
@@ -143,7 +144,6 @@ double kmeansw( InputArray _data, int K,
 
     _bestLabels.create(N, 1, CV_32S, -1, true);
 
-    // TODO these I want to calculate the lightning of the resulting cluster, or run algorithm again?
     Mat _labels, best_labels = _bestLabels.getMat();
     if( flags & CV_KMEANS_USE_INITIAL_LABELS )
     {
@@ -402,9 +402,75 @@ void testkmeansw() {
   weights.back() = 10000;
 
   cv::kmeansw(points, k, labels, termcrit, 1, cv::KMEANS_RANDOM_CENTERS, centers, weights);
-//  cv::kmeans(points, k, labels, termcrit, 1, cv::KMEANS_RANDOM_CENTERS, centers);
 
   std::cout << "got " << centers.rows << " centers" << std::endl;
   for (int i = 0; i < centers.rows; i++)
     std::cout << centers.at<cv::Vec3f>(i) << std::endl;
+}
+
+void testkmeansw2() {
+  const unsigned int cols = 500, rows = 500;
+  const int k = 30;
+  cv::TermCriteria termcrit(cv::TermCriteria::EPS, 1000, 0.01);
+  cv::Mat_<cv::Vec2f> centers;
+  cv::Mat_<cv::Vec2f> points(rows * cols, 1);
+  cv::Mat_<int> labels;
+  cv::Mat_<double> weights_image(rows, cols);
+  std::vector<double> weights(points.rows);
+  cv::Vec2f light(25, 25);
+  cv::Vec2f size(rows, cols);
+  const double max_dist = cv::norm(size - light);
+  for (unsigned int row = 0; row < rows; row++)
+    for (unsigned int col = 0; col < cols; col++) {
+      cv::Vec2f tmp(row, col);
+      points(row*cols + col) = tmp;
+      weights_image(row, col) = max_dist - cv::norm(tmp - light);
+      weights.at(row*cols + col) = weights_image(row, col);
+//      weights.at(row*cols + col) = 1;
+    }
+
+//  cv::kmeans(points, k, labels, termcrit, 1, cv::KMEANS_RANDOM_CENTERS, centers);
+  cv::kmeansw(points, k, labels, termcrit, 1, cv::KMEANS_RANDOM_CENTERS, centers, weights);
+
+  cv::Mat_<float> center_pos(rows, cols, 0.0);
+  std::cout << "got " << centers.rows << " centers" << std::endl;
+  for (int i = 0; i < centers.rows; i++) {
+    std::cout << centers(i) << std::endl;
+    cv::Vec2f pos(centers(i));
+    center_pos(pos[0], pos[1]) = 1.0;
+  }
+
+  cv::imshow("center position", center_pos);
+  cv::imshow("weights_image", weights_image/max_dist);
+  cv::waitKey(0);
+}
+
+void testkmeans() {
+  cv::Mat_<cv::Vec2f> samples(8,1);
+  samples << cv::Vec2f(2,2), cv::Vec2f(2,2.1), cv::Vec2f(1.9,2), cv::Vec2f(1.9,1.9), cv::Vec2f(4,4), cv::Vec2f(4.1,4), cv::Vec2f(4,4.1), cv::Vec2f(10,10);
+  cv::Mat_<int> labels;
+  cv::Mat_<cv::Vec2f> centers;
+
+  // double kmeans(const Mat& samples, int clusterCount, Mat& labels, cv::TermCriteria termcrit, int attempts, int flags, cv::Mat* centers
+  double compactness = cv::kmeans(samples, 3, labels, cv::TermCriteria(), 2, cv::KMEANS_PP_CENTERS, centers);
+
+  std::cout << "labels:" << std::endl;
+  for(int i = 0; i < labels.rows; ++i) {
+    std::cout << labels.at<int>(0, i) << std::endl;
+  }
+
+  std::cout << "\ncenters:" << std::endl;
+  for(int i = 0; i < centers.rows; ++i) {
+    std::cout << centers(i) << std::endl;
+  }
+
+  std::cout << "\ncompactness: " << compactness << std::endl;
+}
+
+void testkmeansall() {
+  testkmeans();
+//  testkmeansw();
+  testkmeansw2();
+
+  std::exit(0);
 }
