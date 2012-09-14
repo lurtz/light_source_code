@@ -408,6 +408,21 @@ void testkmeansw() {
     std::cout << centers.at<cv::Vec3f>(i) << std::endl;
 }
 
+template<typename T, typename T1>
+void mark_if(cv::Mat_<T>& mat, const T1 row, const T1 col, const T val) {
+  if (row >= 0 && row < mat.rows && col >= 0 && col < mat.cols)
+    mat(row, col) = val;
+}
+
+template<typename T, typename T1>
+void mark(cv::Mat_<T>& mat, cv::Vec<T1, 2> pos) {
+  for (int i = -1; i < 2; i++)
+    for (int j = -1; j < 2; j++) {
+      mark_if(mat, pos[0]+i, pos[1]+j, 0.0);
+    }
+  mark_if(mat, pos[0], pos[1], 1.0);
+}
+
 void testkmeansw2() {
   const unsigned int cols = 500, rows = 500;
   const int k = 30;
@@ -417,31 +432,32 @@ void testkmeansw2() {
   cv::Mat_<int> labels;
   cv::Mat_<double> weights_image(rows, cols);
   std::vector<double> weights(points.rows);
-  cv::Vec2f light(25, 25);
+  cv::Vec2f light(100, 100);
   cv::Vec2f size(rows, cols);
   const double max_dist = cv::norm(size - light);
   for (unsigned int row = 0; row < rows; row++)
     for (unsigned int col = 0; col < cols; col++) {
       cv::Vec2f tmp(row, col);
       points(row*cols + col) = tmp;
-      weights_image(row, col) = max_dist - cv::norm(tmp - light);
-      weights.at(row*cols + col) = weights_image(row, col);
+      double weight = max_dist - cv::norm(tmp - light);
+      weight = std::pow(weight, 2); // TODO see if points get more attracted to light
+      weights_image(row, col) = weight;
+      weights.at(row*cols + col) = weight;
 //      weights.at(row*cols + col) = 1;
     }
+  weights_image /= max_dist;
 
 //  cv::kmeans(points, k, labels, termcrit, 1, cv::KMEANS_RANDOM_CENTERS, centers);
   cv::kmeansw(points, k, labels, termcrit, 1, cv::KMEANS_RANDOM_CENTERS, centers, weights);
 
-  cv::Mat_<float> center_pos(rows, cols, 0.0);
   std::cout << "got " << centers.rows << " centers" << std::endl;
   for (int i = 0; i < centers.rows; i++) {
     std::cout << centers(i) << std::endl;
     cv::Vec2f pos(centers(i));
-    center_pos(pos[0], pos[1]) = 1.0;
+    mark(weights_image, pos);
   }
 
-  cv::imshow("center position", center_pos);
-  cv::imshow("weights_image", weights_image/max_dist);
+  cv::imshow("weights_image", weights_image);
   cv::waitKey(0);
 }
 

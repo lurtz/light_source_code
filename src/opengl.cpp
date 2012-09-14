@@ -265,7 +265,7 @@ Lights<T> reduce_lights(const Lights<T>& lights, const unsigned int k) {
 void calc_lights() {
   assert(test_sum());
 
-//  testkmeansall();
+  testkmeansall();
 
   const auto start_time = std::chrono::high_resolution_clock::now();
   
