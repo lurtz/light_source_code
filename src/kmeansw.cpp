@@ -440,9 +440,10 @@ void testkmeansw2() {
       cv::Vec2f tmp(row, col);
       points(row*cols + col) = tmp;
       double weight = max_dist - cv::norm(tmp - light);
-      weight = std::pow(weight, 2); // TODO see if points get more attracted to light
+//      weight = std::pow(weight, 10); // TODO see if points get more attracted to light
       weights_image(row, col) = weight;
-      weights.at(row*cols + col) = weight;
+//      weights.at(row*cols + col) = std::pow(weight, 10);
+      weights.at(row*cols + col) = std::pow(20, 2*weight/max_dist);
 //      weights.at(row*cols + col) = 1;
     }
   weights_image /= max_dist;
@@ -472,8 +473,9 @@ void testkmeans() {
 
   std::cout << "labels:" << std::endl;
   for(int i = 0; i < labels.rows; ++i) {
-    std::cout << labels.at<int>(0, i) << std::endl;
+    std::cout << labels.at<int>(0, i) << ' ';
   }
+  std::cout << std::endl;
 
   std::cout << "\ncenters:" << std::endl;
   for(int i = 0; i < centers.rows; ++i) {
