@@ -440,7 +440,6 @@ void testkmeansw2() {
       cv::Vec2f tmp(row, col);
       points(row*cols + col) = tmp;
       double weight = max_dist - cv::norm(tmp - light);
-//      weight = std::pow(weight, 10); // TODO see if points get more attracted to light
       weights_image(row, col) = weight;
 //      weights.at(row*cols + col) = std::pow(weight, 10);
       weights.at(row*cols + col) = std::pow(20, 2*weight/max_dist);
