@@ -412,6 +412,17 @@ namespace gsl {
       if (gsl_vector_memcpy(v.get(), rhs))
         throw;
     }
+
+    template<typename T>
+    vector(const Lights<T>& lights) : v(gsl_vector_alloc(colors_per_light + lights.lights.size()*components_per_light*colors_per_light), gsl_vector_free) {
+      set_ambient(lights.ambient);
+
+      for (unsigned int i = 0; i < lights.lights.size(); i++) {
+        const Light<T>& light = lights.lights.at(i);
+        set_diffuse(i, light.get_diffuse());
+        set_specular(i, light.get_specular());
+      }
+    }
     
     vector& operator=(const vector& rhs) {
       if (this != &rhs) {
@@ -433,11 +444,18 @@ namespace gsl {
         v = std::move(rhs.v);
       return *this;
     }
-    
-    void set_raw(const size_t i, const double x) {
-      gsl_vector_set(v.get(), i, x);
+
+    bool operator==(const vector &rhs) const {
+      for (size_t i = 0; i < v->size; i++)
+        if (std::abs(get(i) - rhs.get(i)) > std::numeric_limits<float>::epsilon())
+          return false;
+      return true;
     }
 
+    bool operator!=(const vector &rhs) const {
+      return !(*this == rhs);
+    }
+    
     gsl_vector * get() {
       return v.get();
     }
@@ -458,8 +476,8 @@ namespace gsl {
       gsl_vector_set_all(v.get(), x);
     }
     
-    template<typename T>
-    std::vector<T> get(const size_t i, const int offset) const {
+    template<typename T, int offset>
+    std::vector<T> get(const size_t i) const {
       std::vector<T> tmp(colors_per_light+1);
       for (unsigned j = 0; j < colors_per_light; j++)
         tmp.at(j) = get(offset*colors_per_light + i*colors_per_light*components_per_light + j);
@@ -469,25 +487,52 @@ namespace gsl {
     
     template<typename T>
     std::vector<T> get_ambient() const {
-      return get<T>(0, AMBIENT);
+      return get<T, AMBIENT>(0);
     }
     
     template<typename T>
     std::vector<T> get_diffuse(const size_t i) const {
-      return get<T>(i, DIFFUSE);
+      return get<T, DIFFUSE>(i);
     }
     
     template<typename T>
     std::vector<T> get_specular(const size_t i) const {
-      return get<T>(i, SPECULAR);
+      return get<T, SPECULAR>(i);
     }
-    
+
+    void set(const size_t i, const double x) {
+      gsl_vector_set(v.get(), i, x);
+    }
+
+    /** set target color */
     void set(const unsigned int row, const cv::Vec<float, colors_per_light>& pixel) {
-      for (unsigned int i = 0; i < colors_per_light; i++) {
-        set_raw(colors_per_light*row + i, pixel[i]);
+      for (size_t i = 0; i < colors_per_light; i++) {
+        set(colors_per_light*row + i, pixel[i]);
       }
     }
-    
+
+    /** set light properties for initial guess */
+    template<int offset, typename T>
+    void set(const size_t i, const std::vector<T> &val) {
+      for (size_t j = 0; j < colors_per_light; j++) {
+        set(offset*colors_per_light + i*colors_per_light*components_per_light + j, val.at(j));
+      }
+    }
+
+    template<typename T>
+    void set_ambient(const std::vector<T> &ambient) {
+      set<AMBIENT>(0, ambient);
+    }
+
+    template<typename T>
+    void set_diffuse(const size_t i, const std::vector<T> &diffuse) {
+      set<DIFFUSE>(i, diffuse);
+    }
+
+    template<typename T>
+    void set_specular(const size_t i, const std::vector<T> &specular) {
+      set<SPECULAR>(i, specular);
+    }
   };
 
   typedef struct workspace {
@@ -625,20 +670,12 @@ namespace gsl {
     gsl::vector<colors_per_light, components_per_light> step_size;
     
     public:
-      
-    minimizer(const gsl_multimin_fminimizer_type * T, gsl_multimin_function f)
-    : problem(gsl_multimin_fminimizer_alloc(T, f.n), gsl_multimin_fminimizer_free), function(std::move(f)) {
+     
+    minimizer(const gsl_multimin_fminimizer_type * T, gsl_multimin_function f, const gsl::vector<colors_per_light, components_per_light> start_point)
+    : problem(gsl_multimin_fminimizer_alloc(T, f.n), gsl_multimin_fminimizer_free), function(std::move(f)), start_point(std::move(start_point)) {
       if (!problem)
         throw;
-      start_point = gsl::vector<colors_per_light, components_per_light>(f.n, 0.0);
       step_size = gsl::vector<colors_per_light, components_per_light>(f.n, 1.0);
-      reset();
-    }
-    
-    minimizer(const gsl_multimin_fminimizer_type * T, gsl_multimin_function f, const gsl::vector<colors_per_light, components_per_light> start_point, const gsl::vector<colors_per_light, components_per_light> step_size)
-    : problem(gsl_multimin_fminimizer_alloc(T, f.n), gsl_multimin_fminimizer_free), function(std::move(f)), start_point(std::move(start_point)), step_size(std::move(step_size)) {
-      if (!problem)
-        throw;
       reset();
     }
     
@@ -746,22 +783,17 @@ void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::
 
   std::cout << "creating problem to minimize" << std::endl;
   gsl_multimin_function f{&cost<colors_per_light, components_per_light>, std::get<0>(linear_system).get_cols(), &linear_system};
-  gsl::minimizer<colors_per_light, components_per_light> minimizer(gsl_multimin_fminimizer_nmsimplex2, f);
-//  gsl::minimizer<colors_per_light, components_per_light> minimizer(gsl_multimin_fminimizer_nmsimplex2, f, gsl::vector<colors_per_light, components_per_light>(f.n, 0.5), gsl::vector<colors_per_light, components_per_light>(f.n, 0.5));
+  gsl::minimizer<colors_per_light, components_per_light> minimizer(gsl_multimin_fminimizer_nmsimplex2, f, lights);
 
   std::cout << "starting" << std::endl;
-  int status = GSL_CONTINUE;
-  for (size_t iter = 0; status == GSL_CONTINUE && (max_iter == 0 || iter < max_iter)  ; iter++) {
-    status = minimizer.iterate();
+  for (size_t iter = 0; minimizer.iterate() == GSL_CONTINUE && (max_iter == 0 || iter < max_iter); iter++) {
     std::cout << "first stage " << iter <<  ", " << minimizer.get_function_value() << "\r";
   }
   std::cout << std::endl;
   
   f.f = &cost<colors_per_light, components_per_light, false>;
   minimizer.set_function_and_start_point(f, minimizer.get_solution());
-  status = GSL_CONTINUE;
-  for (size_t iter = 0; status == GSL_CONTINUE && (max_iter == 0 || iter < max_iter); iter++) {
-    status = minimizer.iterate();
+  for (size_t iter = 0; minimizer.iterate() == GSL_CONTINUE && (max_iter == 0 || iter < max_iter); iter++) {
     std::cout << "second stage " << iter <<  ", " << minimizer.get_function_value() << "\r";
   }
   std::cout << std::endl;
@@ -770,6 +802,8 @@ void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::
 //  check_solution(solution);
   set_solution<float>(solution, lights);
 //  print(lights);
+
+  assert(solution == (gsl::vector<colors_per_light, components_per_light>(lights)));
   
   cv::waitKey(100);
   
