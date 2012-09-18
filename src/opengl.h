@@ -12,7 +12,8 @@ typedef struct arguments {
   float rotation[3];
   float translation[3];
   bool optimize;
-  arguments() : mesh_filename(""), texture_filename(""), image_filename(""), scale(1), rotation{0}, translation{0}, optimize(true) {}
+  bool single_pass;
+  arguments() : mesh_filename(""), texture_filename(""), image_filename(""), scale(1), rotation{0}, translation{0}, optimize(true), single_pass(false) {}
 } arguments;
 
 void setupOpenGL(int * argc, char ** argv, const arguments &args);

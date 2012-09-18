@@ -90,11 +90,13 @@ void reshape(int width, int height) {
 }
 
 void visualize_lights() {
-  // TODO show lightning properties
   for (const auto& light : lights.lights) {
     glPushMatrix();
-    std::vector<float> pos = light.get_position();
+    const auto &pos = light.get_position();
+    const auto &diffuse = light.get_diffuse();
+    const auto &specular = light.get_specular();
     glTranslatef(pos.at(0), pos.at(1), pos.at(2));
+    glColor3f(diffuse.at(0)+specular.at(0), diffuse.at(1)+specular.at(1), diffuse.at(2)+specular.at(2));
     glutSolidSphere(.10, 4, 4);
     glPopMatrix();
   }
@@ -102,7 +104,7 @@ void visualize_lights() {
 
 void renderScene() {
     _meshobj->render();
-    if (image_displayed)
+    if (image_displayed  || !_args.optimize)
       visualize_lights();
 
     if (false)
@@ -115,12 +117,6 @@ void renderScene() {
               glutSolidSphere(.10, 4, 4);
               glPopMatrix();
             }
-}
-
-unsigned int calc_index(const unsigned int x, const unsigned int y, const unsigned int width, const unsigned int height) {
-  assert(x < width);
-  assert(y < height);
-  return x+y*width;
 }
 
 template<class RandomAccessIterator>
@@ -176,14 +172,12 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Ma
       diffuse = specular = cv::Mat_<cv::Vec3f>(windowHeight, windowWidth, cv::Vec3f(1,1,1));
     
     // opencv images are upside down
-    if (true) {
-      flipImage(image, windowWidth);
-      flipImage(normals, windowWidth);
-      flipImage(position, windowWidth);
-      flipImage(depth, windowWidth);
-      flipImage(diffuse, windowWidth);
-      flipImage(specular, windowWidth);
-    }
+    flipImage(image, windowWidth);
+    flipImage(normals, windowWidth);
+    flipImage(position, windowWidth);
+    flipImage(depth, windowWidth);
+    flipImage(diffuse, windowWidth);
+    flipImage(specular, windowWidth);
 
     return std::make_tuple(image, normals, position, diffuse, specular, depth);
 }
@@ -245,7 +239,10 @@ Lights<T> reduce_lights(const Lights<T>& lights, const unsigned int k) {
     for (unsigned int j = 0; j < dim; j++)
       pos[j] = light.get_position().at(j);
     positions(i) = pos;
-    weight.at(i) = sum(light.get_diffuse()) + sum(light.get_specular());
+//    weight.at(i) = sum(light.get_diffuse()) + sum(light.get_specular());
+    // RGB for diffuse and specular -> 6 values from 0 to 1
+    // let sum range from 0 to 2
+    weight.at(i) = std::pow(20, 2.0/6*(sum(light.get_diffuse()) + sum(light.get_specular())));
 
 //    std::cout << "light position: " << pos << ", weight: " << weight.at(i) << std::endl;
   }
@@ -265,7 +262,7 @@ Lights<T> reduce_lights(const Lights<T>& lights, const unsigned int k) {
 void calc_lights() {
   assert(test_sum());
 
-  testkmeansall();
+//  testkmeansall();
 
   const auto start_time = std::chrono::high_resolution_clock::now();
   
@@ -296,13 +293,16 @@ void calc_lights() {
   optimize_lights_multi_dim_fit(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, a_lot_of_lights);
   const auto time_after_huge_lights_run = std::chrono::high_resolution_clock::now();
   std::cout << "a lot of lights optimized" << std::endl;
-  
-  lights = reduce_lights<4>(a_lot_of_lights, small_num_lights);
-  const auto time_after_reducing_lights = std::chrono::high_resolution_clock::now();
-  std::cout << "a lot of lights reduced" << std::endl;
-  
-  optimize_lights_multi_dim_fit(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, lights);
-  std::cout << "small number of lights reduced" << std::endl;
+
+  if (!_args.single_pass) {
+    lights = reduce_lights<4>(a_lot_of_lights, small_num_lights);
+    std::cout << "a lot of lights reduced" << std::endl;
+
+    optimize_lights_multi_dim_fit(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, lights);
+    std::cout << "small number of lights reduced" << std::endl;
+  } else {
+    lights = a_lot_of_lights;
+  }
   
   const auto finish_time = std::chrono::high_resolution_clock::now();
 
@@ -310,8 +310,7 @@ void calc_lights() {
   std::cout << "  test creation: " << test_creation_time - start_time << std::endl;
   std::cout << "  huge light number creation: " << time_after_huge_lights_creation - test_creation_time << std::endl;
   std::cout << "  light estimation huge light number: " << time_after_huge_lights_run - time_after_huge_lights_creation << std::endl;
-  std::cout << "  reducing lights: " << time_after_reducing_lights - time_after_huge_lights_run << std::endl;
-  std::cout << "  light estimation: " << finish_time - time_after_reducing_lights << std::endl;
+  std::cout << "  light estimation smaller light number: " << finish_time - time_after_huge_lights_run << std::endl;
 }
 
 void updateGL() {

@@ -37,7 +37,7 @@ std::vector<std::string> split(const std::string &s, char delim) {
   return split(s, delim, elems);
 }
 
-const char * opt_string = "m:x:i:s:r:t:hc:n";
+const char * opt_string = "m:x:i:s:r:t:hc:np";
 
 const struct option long_opts[] = {
   { "mesh-name", required_argument, nullptr, 'm'},
@@ -49,6 +49,7 @@ const struct option long_opts[] = {
   { "help", no_argument, nullptr, 'h'},
   { "config", required_argument, nullptr, 'c'},
   { "no-optimization", no_argument, nullptr, 'n'},
+  { "single-pass", no_argument, nullptr, 'p'},
   { nullptr, no_argument, nullptr, 0}
 };
 
@@ -80,7 +81,8 @@ void print_help() {
     << "-r|--rotation rotation to be applied to the mesh. format: x/y/z\n"
     << "-t|--translation position of the mesh in the image. format: x/y/z\n"
     << "-c|--config configuration file\n"
-    << "-n|--no-optimization only render the current mesh"
+    << "-n|--no-optimization only render the current mesh\n"
+    << "-p|--single-pass only do one run without using weighted kmeans to reduce number of lights"
     << std::endl;
 }
 
@@ -132,10 +134,9 @@ void read_config_file(const std::string filename, arguments &args) {
 
 arguments parse_options(const int& argc, char * const argv[]) {
   arguments args;
-  if (argc == 1) {
-    read_config_file("../config", args);
-    return args;
-  }
+  // read default values
+  read_config_file("../config", args);
+  // read other options
   int opt = 0;
   int long_index = 0;
   while ((opt = getopt_long(argc, argv, opt_string, long_opts, &long_index)) != -1) {
@@ -165,6 +166,9 @@ arguments parse_options(const int& argc, char * const argv[]) {
         break;
       case 'n':
         args.optimize = false;
+        break;
+      case 'p':
+        args.single_pass = true;
         break;
       case 'h':
       default:
