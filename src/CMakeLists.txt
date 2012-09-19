@@ -23,5 +23,5 @@ TARGET_LINK_LIBRARIES(light_sources
   ${OPENGL_LIBRARIES}
   ${LPSOLVE_LIBRARIES}
   ${GSL_LIBRARIES}
-  libtpc
+  tpc
 )

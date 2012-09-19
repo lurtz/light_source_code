@@ -102,7 +102,7 @@ void _free_memory( void* memory, int true_f );
  * @return 0 - on success, 1 - on failure (out of memory )
  */
 int init_memory_handler() {
-   MEM_HANDLE = (struct Memory_handler *)malloc (sizeof( struct Memory_handler ) );
+   MEM_HANDLE = malloc (sizeof( struct Memory_handler ) );
    
    if (MEM_HANDLE == NULL)
    {
@@ -191,7 +191,7 @@ void* allocate_memory( int size ) {
       if (loop->next == NULL)
          break;
 
-      loop = (struct Memory_handler *)loop->next;
+      loop = loop->next;
       
    }
    /* and loop is pointer to last node */
@@ -212,7 +212,7 @@ void* allocate_memory( int size ) {
          loop->next = malloc (sizeof( struct Memory_handler ) );
          if (loop->next == NULL)
             return NULL;
-         loop = (struct Memory_handler *)loop->next;
+         loop = loop->next;
       }
       
       loop->mem  = malloc( size + 2*DEBUG_BUFFER_BORDER);
@@ -226,7 +226,7 @@ void* allocate_memory( int size ) {
          loop->true_size = size;
       #endif
                  
-      return (void *)(DEBUG_BUFFER_BORDER + (size_t)loop->mem);
+      return DEBUG_BUFFER_BORDER + loop->mem ;
    }
    else
    {
@@ -242,7 +242,7 @@ void* allocate_memory( int size ) {
          best->true_size = size;
       #endif
 
-      return (void *)((size_t)best->mem + DEBUG_BUFFER_BORDER);
+      return best->mem + DEBUG_BUFFER_BORDER;	
    }
 }
 
@@ -323,7 +323,7 @@ void _free_memory( void* memory, int true_f ) {
          break;
 
       loopm1 = loop;
-      loop = (struct Memory_handler *)loop->next;
+      loop = loop->next;
    }
    printf("(WW) Memory handler: did not find memory to be freed\n");
 }
@@ -332,7 +332,7 @@ void _free_memory( void* memory, int true_f ) {
  * Free all memory, permanently. Used as clean_up() function.
  */
 void free_all_memory() {
-   struct Memory_handler* loop = (struct Memory_handler *)MEM_HANDLE->next;
+   struct Memory_handler* loop = MEM_HANDLE->next;
    struct Memory_handler* next = NULL;
 
    if (MEM_HANDLE->used)
@@ -347,7 +347,7 @@ void free_all_memory() {
   
    while( loop != NULL )
    {
-      next = (struct Memory_handler *)loop->next;
+      next = loop->next;
       
       
       free ( loop->mem );
@@ -390,7 +390,7 @@ void debug_print_memory() {
          mem_free += loop->size;
       }
 
-      loop = (struct Memory_handler *)loop->next;
+      loop = loop->next;
    }
    printf("Total nodes: %d memory used: %d  currently in use: %d currently free: %d\n",
            nodes, mem_alloc, mem_used, mem_free );

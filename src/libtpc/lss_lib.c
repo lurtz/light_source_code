@@ -228,7 +228,7 @@ int _lss_h12(
   if (LSS_TEST > 1)
   {
      printf("(II) LSS_12 called with mode (%d) !\n", mode);
-     w1 = (double *)malloc( sizeof(double) * m);
+     w1 = malloc( sizeof(double) * m);
      assert(w1 != NULL);
   }
 
@@ -476,7 +476,7 @@ int _lss_hfti(
       {
          printf("allocating for w1!\n");	
       }
-      w1 = (double *)malloc( sizeof(double) * n );
+      w1 = malloc( sizeof(double) * n );
        w1_alloc = 1;
    }
    if (w2 == NULL)
@@ -485,7 +485,7 @@ int _lss_hfti(
       {
         printf("allocating for w2!\n");	
       }
-      w2 = (double *)malloc ( sizeof(double) * n);
+      w2 = malloc ( sizeof(double) * n);
       w2_alloc = 1;
    }
 
@@ -495,7 +495,7 @@ int _lss_hfti(
       {
          printf("allocating for ip!\n");	
       }
-      ip = (int *)malloc ( sizeof(int) * n);
+      ip = malloc ( sizeof(int) * n);
       w3_alloc = 1;
    }
    if ( w1 == NULL || w2 == NULL || ip == NULL)

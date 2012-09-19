@@ -5,4 +5,4 @@ SET(TPC_SRC
   nnls.c
 )
 
-add_library(libtpc ${TPC_SRC})
+add_library(tpc ${TPC_SRC})
