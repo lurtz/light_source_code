@@ -2,6 +2,9 @@
 #define SOLVER_H_
 
 #include "lights.h"
+extern "C" {
+#include "libtpc/include/nnls.h"
+}
 
 #ifdef OPENCV_OLD_INCLUDES
   #include <cv.h>
@@ -807,6 +810,10 @@ void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::
   
   cv::waitKey(100);
   
+}
+
+void test_tpc() {
+  nnls(0, 0, 0, 0, 0, 0, 0, 0, 0);
 }
 
 #endif /* SOLVER_H_ */
