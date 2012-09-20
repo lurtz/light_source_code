@@ -817,9 +817,9 @@ void optimize_lights_nnls(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::
   show_rgb_image("target image", image);
   const unsigned int colors_per_light = 3;
   const unsigned int components_per_light = 2;
-  gsl::matrix <colors_per_light, components_per_light> M;
-  gsl::vector <colors_per_light, components_per_light> b;
-  std::tie(M, b) = create_linear_system<colors_per_light, components_per_light, sample_point_random>(image, normals, position, diffuse, specular, model_view_matrix, clear_color, lights, alpha);
+  gsl::matrix<colors_per_light, components_per_light> A;
+  gsl::vector<colors_per_light, components_per_light> b;
+  std::tie(A, b) = create_linear_system<colors_per_light, components_per_light, sample_point_random>(image, normals, position, diffuse, specular, model_view_matrix, clear_color, lights, alpha);
   
   nnls(0, 0, 0, 0, 0, 0, 0, 0, 0);
 }
