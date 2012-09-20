@@ -290,7 +290,8 @@ void calc_lights() {
   std::cout << "a lot of lights created" << std::endl;
   
 //  optimize_lights(image, normals, position, model_view_matrix.t(), clear_color, lights);
-  optimize_lights_multi_dim_fit(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, a_lot_of_lights);
+//  optimize_lights_multi_dim_fit(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, a_lot_of_lights);
+  optimize_lights_nnls(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, a_lot_of_lights);
   const auto time_after_huge_lights_run = std::chrono::high_resolution_clock::now();
   std::cout << "a lot of lights optimized" << std::endl;
 
@@ -298,7 +299,9 @@ void calc_lights() {
     lights = reduce_lights<4>(a_lot_of_lights, small_num_lights);
     std::cout << "a lot of lights reduced" << std::endl;
 
-    optimize_lights_multi_dim_fit(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, lights);
+//    optimize_lights(image, normals, position, model_view_matrix.t(), clear_color, lights);
+//    optimize_lights_multi_dim_fit(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, lights);
+    optimize_lights_nnls(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, a_lot_of_lights);
     std::cout << "small number of lights reduced" << std::endl;
   } else {
     lights = a_lot_of_lights;

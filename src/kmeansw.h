@@ -1,3 +1,6 @@
+// taken from opencv
+// opencv is bsd licenced
+
 #ifndef __CV_KMEANS_W__
 #define __CV_KMEANS_W__
 

@@ -812,7 +812,14 @@ void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::
   
 }
 
-void test_tpc() {
+template<typename T>
+void optimize_lights_nnls(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<cv::Vec3f>& diffuse, const cv::Mat_<cv::Vec3f>& specular, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const int alpha = 50) {
+  show_rgb_image("target image", image);
+  const unsigned int colors_per_light = 3;
+  const unsigned int components_per_light = 2;
+
+  auto linear_system = create_linear_system<colors_per_light, components_per_light, sample_point_random>(image, normals, position, diffuse, specular, model_view_matrix, clear_color, lights, alpha);
+  
   nnls(0, 0, 0, 0, 0, 0, 0, 0, 0);
 }
 
