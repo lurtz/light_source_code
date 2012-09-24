@@ -248,6 +248,9 @@ struct sample_point_deterministic {
   }
 };
 
+
+// do not take all points of the image
+// distribute them over the mesh in the image
 template<typename T, int dim>
 struct sample_point_random {
   const cv::Mat_<cv::Vec<T, dim>>& normals;
@@ -631,47 +634,19 @@ void set_solution(const gsl::vector<colors_per_light, components_per_light>& c, 
   }
 }
 
-template<typename T>
-void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<cv::Vec3f>& diffuse, const cv::Mat_<cv::Vec3f>& specular, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const int alpha = 50) {
-  show_rgb_image("target image", image);
-//  cv::imshow("normals", normals);
-//  cv::imshow("position", position);
-  
-  //  order of images is: xyz, RGB
-  
-//  test_modelview_matrix_and_light_positions<T>(model_view_matrix, lights);
+template<int colors_per_light, int components_per_light>
+struct ls {
+  gsl::vector<colors_per_light, components_per_light> operator()(gsl::matrix<colors_per_light, components_per_light>& x, gsl::vector<colors_per_light, components_per_light>& y, const gsl::vector<colors_per_light, components_per_light>& initial_guess) {
+    // get solution
+    gsl::matrix<colors_per_light, components_per_light> cov(x.get_cols(), x.get_cols());
+    gsl::vector<colors_per_light, components_per_light> c(x.get_cols());
+    double chisq;
+    gsl::workspace problem(x.get_rows(), x.get_cols());
+    problem.solve(x, y, c, cov, chisq);
 
-  print(lights);
-
-//  test_normals(normals);
-  //get_min_max_and_print(normals);
-
-  // do not take all points of the image
-  // calculate this value somehow, maybe specify the number of samples and
-  // distribute them over the mesh in the image
-
-  const unsigned int colors_per_light = 3;
-  const unsigned int components_per_light = 2;
-
-  gsl::matrix<colors_per_light, components_per_light> x;
-  gsl::vector<colors_per_light, components_per_light> y;
-
-  std::tie(x, y) = create_linear_system<colors_per_light, components_per_light, sample_point_random>(image, normals, position, diffuse, specular, model_view_matrix, clear_color, lights, alpha);
-
-  // get solution
-  
-  gsl::matrix<colors_per_light, components_per_light> cov(x.get_cols(), x.get_cols());
-  gsl::vector<colors_per_light, components_per_light> c(x.get_cols());
-  double chisq;
-  gsl::workspace problem(x.get_rows(), x.get_cols());
-  problem.solve(x, y, c, cov, chisq);
-
-  set_solution<float>(c, lights);
-
-  cv::waitKey(100);
-
-  print(lights);
-}
+    return c;
+  }
+};
 
 namespace gsl {
   template<int colors_per_light, int components_per_light>
@@ -784,61 +759,75 @@ bool check_solution(const gsl::vector<colors_per_light, components_per_light> &s
   return ret_val;
 }
 
-template<typename T>
-void optimize_lights_multi_dim_fit(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<cv::Vec3f>& diffuse, const cv::Mat_<cv::Vec3f>& specular, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const size_t max_iter = 0, const int alpha = 50) {
+template<int colors_per_light, int components_per_light>
+struct multi_dim_fit {
+    gsl::vector<colors_per_light, components_per_light> operator()(gsl::matrix<colors_per_light, components_per_light>& a, gsl::vector<colors_per_light, components_per_light>& b, const gsl::vector<colors_per_light, components_per_light>& initial_guess) {
+    auto linear_system = std::make_tuple(std::move(a), std::move(b));
+    assert(std::get<0>(linear_system).get_rows() > std::get<0>(linear_system).get_cols());
+
+    std::cout << "creating problem to minimize" << std::endl;
+    gsl_multimin_function f{&cost<colors_per_light, components_per_light>, std::get<0>(linear_system).get_cols(), &linear_system};
+    gsl::minimizer<colors_per_light, components_per_light> minimizer(gsl_multimin_fminimizer_nmsimplex2, f, initial_guess);
+
+    std::cout << "starting" << std::endl;
+    for (size_t iter = 0; minimizer.iterate() == GSL_CONTINUE; iter++) {
+      std::cout << "first stage " << iter <<  ", " << minimizer.get_function_value() << "\r";
+    }
+    std::cout << std::endl;
+
+    f.f = &cost<colors_per_light, components_per_light, false>;
+    minimizer.set_function_and_start_point(f, minimizer.get_solution());
+    for (size_t iter = 0; minimizer.iterate() == GSL_CONTINUE; iter++) {
+      std::cout << "second stage " << iter <<  ", " << minimizer.get_function_value() << "\r";
+    }
+    std::cout << std::endl;
+
+    return minimizer.get_solution();
+  }
+};
+
+template<int colors_per_light, int components_per_light>
+struct nnls_struct {
+  gsl::vector<colors_per_light, components_per_light> operator()(gsl::matrix<colors_per_light, components_per_light>& a, gsl::vector<colors_per_light, components_per_light>& b, const gsl::vector<colors_per_light, components_per_light>& initial_guess) {
+    // nnls uses colum major matrix
+    a.transpose();
+    std::unique_ptr<double*[]> a_nnls = a.get_nnls_matrix();
+
+    gsl::vector<colors_per_light, components_per_light> x(a.get_rows());
+
+    nnls(a_nnls.get(), a.get_cols(), a.get_rows(), b.get()->data, x.get()->data, nullptr, nullptr, nullptr, nullptr);
+
+    return x;
+  }
+};
+
+template<template <int, int> class optimizer, typename T>
+void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<cv::Vec3f>& diffuse, const cv::Mat_<cv::Vec3f>& specular, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const int alpha = 50) {
   show_rgb_image("target image", image);
+  //  cv::imshow("normals", normals);
+  //  cv::imshow("position", position);
+
+  //  order of images is: xyz, RGB
+
+  //  test_modelview_matrix_and_light_positions<T>(model_view_matrix, lights);
+
+  //  test_normals(normals);
+  //  get_min_max_and_print(normals);
+
   const unsigned int colors_per_light = 3;
   const unsigned int components_per_light = 2;
 
-  auto linear_system = create_linear_system<colors_per_light, components_per_light, sample_point_random>(image, normals, position, diffuse, specular, model_view_matrix, clear_color, lights, alpha);
-  assert(std::get<0>(linear_system).get_rows() > std::get<0>(linear_system).get_cols());
-
-  std::cout << "creating problem to minimize" << std::endl;
-  gsl_multimin_function f{&cost<colors_per_light, components_per_light>, std::get<0>(linear_system).get_cols(), &linear_system};
-  gsl::minimizer<colors_per_light, components_per_light> minimizer(gsl_multimin_fminimizer_nmsimplex2, f, lights);
-
-  std::cout << "starting" << std::endl;
-  for (size_t iter = 0; minimizer.iterate() == GSL_CONTINUE && (max_iter == 0 || iter < max_iter); iter++) {
-    std::cout << "first stage " << iter <<  ", " << minimizer.get_function_value() << "\r";
-  }
-  std::cout << std::endl;
-  
-  f.f = &cost<colors_per_light, components_per_light, false>;
-  minimizer.set_function_and_start_point(f, minimizer.get_solution());
-  for (size_t iter = 0; minimizer.iterate() == GSL_CONTINUE && (max_iter == 0 || iter < max_iter); iter++) {
-    std::cout << "second stage " << iter <<  ", " << minimizer.get_function_value() << "\r";
-  }
-  std::cout << std::endl;
-  
-  auto solution = minimizer.get_solution();
-//  check_solution(solution);
-  set_solution<float>(solution, lights);
-//  print(lights);
-
-  assert(solution == (gsl::vector<colors_per_light, components_per_light>(lights)));
-  
-  cv::waitKey(100);
-  
-}
-
-template<typename T>
-void optimize_lights_nnls(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<cv::Vec3f>& diffuse, const cv::Mat_<cv::Vec3f>& specular, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const int alpha = 50) {
-  show_rgb_image("target image", image);
-  const unsigned int colors_per_light = 3;
-  const unsigned int components_per_light = 2;
-  gsl::matrix<colors_per_light, components_per_light> A;
+  gsl::matrix<colors_per_light, components_per_light> a;
   gsl::vector<colors_per_light, components_per_light> b;
-  std::tie(A, b) = create_linear_system<colors_per_light, components_per_light, sample_point_random>(image, normals, position, diffuse, specular, model_view_matrix, clear_color, lights, alpha);
+  std::tie(a, b) = create_linear_system<colors_per_light, components_per_light, sample_point_random>(image, normals, position, diffuse, specular, model_view_matrix, clear_color, lights, alpha);
 
-  // nnls may use colum major matrix
-  A.transpose();
-  std::unique_ptr<double*[]> A_nnls = A.get_nnls_matrix();
-
-  gsl::vector<colors_per_light, components_per_light> x(A.get_cols());
-
-  nnls(A_nnls.get(), A.get_cols(), A.get_rows(), b.get()->data, x.get()->data, nullptr, nullptr, nullptr, nullptr);
-
+  gsl::vector<colors_per_light, components_per_light> x = optimizer<colors_per_light, components_per_light>()(a, b, lights);
+  
+//  check_solution(x);
+  
   set_solution<float>(x, lights);
+
+  assert(x == (gsl::vector<colors_per_light, components_per_light>(lights)));
 
   cv::waitKey(100);
 }
