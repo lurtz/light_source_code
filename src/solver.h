@@ -349,11 +349,26 @@ namespace gsl {
     }
 
     size_t get_rows() const {
-      return m.get()->size1;
+      return m->size1;
     }
 
     size_t get_cols() const {
-      return m.get()->size2;
+      return m->size2;
+    }
+
+    std::unique_ptr<double*[]> get_nnls_matrix() const {
+      std::unique_ptr<double*[]> array(new double*[get_rows()]);
+      for (size_t i = 0; i < get_rows(); i++) {
+        array[i] = gsl_matrix_ptr(m.get(), i, 0);
+      }
+      return array;
+    }
+
+    void transpose() {
+      gsl::matrix<colors_per_light, components_per_light> dest(get_cols(), get_rows());
+      if (gsl_matrix_transpose_memcpy(dest.m.get(), m.get()))
+        throw;
+      *this = std::move(dest);
     }
 
     //   global  each light
@@ -410,7 +425,7 @@ namespace gsl {
     vector(const vector& rhs) : v(nullptr, gsl_vector_free) {
       *this = rhs;
     }
-    
+
     vector(gsl_vector const * const rhs) : v(gsl_vector_alloc(rhs->size), gsl_vector_free) {
       if (gsl_vector_memcpy(v.get(), rhs))
         throw;
@@ -432,21 +447,15 @@ namespace gsl {
         v = std::unique_ptr<gsl_vector, void (*)(gsl_vector *)>(gsl_vector_alloc(rhs.v->size), gsl_vector_free);
         if (!v)
           throw;
-	if (gsl_vector_memcpy(v.get(), rhs.v.get()))
-	  throw;
+        if (gsl_vector_memcpy(v.get(), rhs.v.get()))
+          throw;
       }
       return *this;
     };
     
-    vector(vector&& rhs) : v(0, gsl_vector_free) {
-      *this = std::move(rhs);
-    }
+    vector(vector&&) = default;
     
-    vector& operator=(vector&& rhs) {
-      if (this != &rhs)
-        v = std::move(rhs.v);
-      return *this;
-    }
+    vector& operator=(vector&&) = default;
 
     bool operator==(const vector &rhs) const {
       for (size_t i = 0; i < v->size; i++)
@@ -623,7 +632,7 @@ void set_solution(const gsl::vector<colors_per_light, components_per_light>& c, 
 }
 
 template<typename T>
-void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const int alpha = 50) {
+void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<cv::Vec3f>& diffuse, const cv::Mat_<cv::Vec3f>& specular, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const int alpha = 50) {
   show_rgb_image("target image", image);
 //  cv::imshow("normals", normals);
 //  cv::imshow("position", position);
@@ -647,7 +656,7 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
   gsl::matrix<colors_per_light, components_per_light> x;
   gsl::vector<colors_per_light, components_per_light> y;
 
-  std::tie(x, y) = create_linear_system<colors_per_light, components_per_light, sample_point_random>(image, normals, position, model_view_matrix, clear_color, lights, alpha);
+  std::tie(x, y) = create_linear_system<colors_per_light, components_per_light, sample_point_random>(image, normals, position, diffuse, specular, model_view_matrix, clear_color, lights, alpha);
 
   // get solution
   
@@ -820,8 +829,18 @@ void optimize_lights_nnls(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::
   gsl::matrix<colors_per_light, components_per_light> A;
   gsl::vector<colors_per_light, components_per_light> b;
   std::tie(A, b) = create_linear_system<colors_per_light, components_per_light, sample_point_random>(image, normals, position, diffuse, specular, model_view_matrix, clear_color, lights, alpha);
-  
-  nnls(0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+  // nnls may use colum major matrix
+  A.transpose();
+  std::unique_ptr<double*[]> A_nnls = A.get_nnls_matrix();
+
+  gsl::vector<colors_per_light, components_per_light> x(A.get_cols());
+
+  nnls(A_nnls.get(), A.get_cols(), A.get_rows(), b.get()->data, x.get()->data, nullptr, nullptr, nullptr, nullptr);
+
+  set_solution<float>(x, lights);
+
+  cv::waitKey(100);
 }
 
 #endif /* SOLVER_H_ */
