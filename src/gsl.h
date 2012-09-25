@@ -233,6 +233,12 @@ namespace gsl {
     }
   };
 
+  template<int colors_per_light, int components_per_light>
+  void matrix_vector_mult(double alpha, const matrix<colors_per_light, components_per_light>& A, const gsl_vector * X, double beta, vector<colors_per_light, components_per_light>& Y) {
+    if(gsl_blas_dgemv(CblasNoTrans, alpha, A.get(), X, beta, Y.get()))
+      throw;
+  }
+
   typedef struct workspace {
     std::unique_ptr<gsl_multifit_linear_workspace, void (*)(gsl_multifit_linear_workspace*)> w;
     workspace(size_t rows, size_t cols) : w(gsl_multifit_linear_alloc(rows, cols), gsl_multifit_linear_free) {
@@ -296,14 +302,7 @@ namespace gsl {
       int status = gsl_multimin_test_size(size, epsabs);
       return status;
     }
-
   };
-
-  template<int colors_per_light, int components_per_light>
-  void matrix_vector_mult(double alpha, const matrix<colors_per_light, components_per_light>& A, const gsl_vector * X, double beta, vector<colors_per_light, components_per_light>& Y) {
-    if(gsl_blas_dgemv(CblasNoTrans, alpha, A.get(), X, beta, Y.get()))
-      throw;
-  }
 }
 
 

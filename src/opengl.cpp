@@ -289,8 +289,8 @@ void calc_lights() {
   const auto time_after_huge_lights_creation = std::chrono::high_resolution_clock::now();
   std::cout << "a lot of lights created" << std::endl;
 
-//  optimize_lights<ls>(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, lights);
-//  optimize_lights<multi_dim_fit>(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, a_lot_of_lights);
+  optimize_lights<ls>(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, lights);
+  optimize_lights<multi_dim_fit>(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, a_lot_of_lights);
   optimize_lights<nnls_struct>(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, a_lot_of_lights);
   const auto time_after_huge_lights_run = std::chrono::high_resolution_clock::now();
   std::cout << "a lot of lights optimized" << std::endl;
