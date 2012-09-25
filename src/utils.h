@@ -71,4 +71,17 @@ bool has_length(const cv::Vec<T, dim>& vec, T1 length, T eps = std::numeric_limi
   return std::fabs(cv::norm(length) - length) < eps;
 }
 
+template<class RandomAccessIterator>
+void flipImage(RandomAccessIterator first_row, RandomAccessIterator past_last_row, const unsigned int width) {
+  for (; first_row < past_last_row; first_row+=width, past_last_row-=width) {
+    std::swap_ranges(first_row, first_row + width, past_last_row - width);
+  }
+}
+
+// this nice friend works with std::vector<> as well as for cv::Mat_<>
+template<class T>
+void flipImage(T& image, const unsigned int width) {
+  flipImage(std::begin(image), std::end(image), width);
+}
+
 #endif /* __UTILS_H__ */

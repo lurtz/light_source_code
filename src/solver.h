@@ -267,6 +267,7 @@ double cost(const gsl_vector *v, void *params) {
   gsl::matrix_vector_mult(1, x, v, -1, y_copy);
   double cost = 0;
   // how good we got the picture
+  // TODO for using sum() gsl::vector needs begin() and end()
   for (unsigned int i = 0; i < y_copy.size(); i++) {
     cost += fabs(y_copy.get(i));
   }

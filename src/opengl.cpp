@@ -117,19 +117,6 @@ void renderScene() {
             }
 }
 
-template<class RandomAccessIterator>
-void flipImage(RandomAccessIterator first_row, RandomAccessIterator past_last_row, const unsigned int width) {
-  for (; first_row < past_last_row; first_row+=width, past_last_row-=width) {
-    std::swap_ranges(first_row, first_row + width, past_last_row - width);
-  }
-}
-
-// this nice friend works with std::vector<> as well as for cv::Mat_<>
-template<class T>
-void flipImage(T& image, const unsigned int width) {
-  flipImage(std::begin(image), std::end(image), width);
-}
-
 std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<float>, cv::Mat_<GLfloat>> renderSceneIntoFBO() {
     // render scene into first color attachment of FBO -> use as filter texture later on //
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -217,8 +204,8 @@ void updateGL() {
   // render //
   if (!image_displayed && _args.optimize) {
 //    lights = calc_lights<ls, sample_point_random>(create_test_image(), _ball.getViewDirection(), _args);
-//    lights = calc_lights<multi_dim_fit, sample_point_random>(create_test_image(), _ball.getViewDirection(), _args);
-    lights = calc_lights<nnls_struct, sample_point_deterministic>(create_test_image(), _ball.getViewDirection(), _args);
+    lights = calc_lights<multi_dim_fit, sample_point_random>(create_test_image(), _ball.getViewDirection(), _args);
+//    lights = calc_lights<nnls_struct, sample_point_deterministic>(create_test_image(), _ball.getViewDirection(), _args);
     image_displayed = true;
   }
   renderScene();
