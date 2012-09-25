@@ -25,6 +25,7 @@ extern "C" {
 #include <memory>
 #include <tuple>
 #include <chrono>
+#include <algorithm>
 
 template<typename T>
 cv::Mat_<T> reflect(const cv::Mat_<T>& normal, const cv::Mat_<T>& vector) {
@@ -54,19 +55,15 @@ cv::Mat_<float> transform(const cv::Mat_<GLfloat>& model_view_matrix, const std:
   return light_pos;
 }
 
-// TODO more STL
 template<typename T, int dim>
-bool is_sample_point(const cv::Vec<T, dim>& normal, const T eps = std::numeric_limits<T>::epsilon()) {
+bool is_sample_point(const cv::Vec<T, dim>& normal) {
   // skip if length is not 1
-  return fabs(cv::norm(normal) - 1) < eps;
+  return has_length(normal, 1);
 }
 
 template<typename T, int dim>
 unsigned int get_maximum_number_of_sample_points(const cv::Mat_<cv::Vec<T, dim>>& normals) {
-  unsigned int sum = 0; // TODO do some more STL
-  for (const auto& normal: normals)
-    sum += is_sample_point(normal);
-  return sum;
+  return std::accumulate(std::begin(normals), std::end(normals), 0, [](unsigned int sum, const cv::Vec<T, dim>& normal) { return sum + is_sample_point(normal); });
 }
 
 template<typename T, int dim>
@@ -95,7 +92,6 @@ struct sample_point_deterministic {
     return std::make_tuple(p.y, p.x);
   }
 };
-
 
 // do not take all points of the image
 // distribute them over the mesh in the image
