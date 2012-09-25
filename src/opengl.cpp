@@ -216,7 +216,9 @@ void updateGL() {
   
   // render //
   if (!image_displayed && _args.optimize) {
-    lights = calc_lights(create_test_image(), _ball.getViewDirection(), _args);
+//    lights = calc_lights<ls, sample_point_random>(create_test_image(), _ball.getViewDirection(), _args);
+//    lights = calc_lights<multi_dim_fit, sample_point_random>(create_test_image(), _ball.getViewDirection(), _args);
+    lights = calc_lights<nnls_struct, sample_point_random>(create_test_image(), _ball.getViewDirection(), _args);
     image_displayed = true;
   }
   renderScene();

@@ -378,39 +378,27 @@ Lights<T> reduce_lights(const Lights<T>& lights, const unsigned int k) {
   return Lights<T>(centers_templ);
 }
 
-template<template <int, int> class optimizer, typename T>
+template<template <int, int> class optimizer, template <typename, int> class point_selector, typename T>
 void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<cv::Vec3f>& diffuse, const cv::Mat_<cv::Vec3f>& specular, const cv::Mat_<GLfloat>& model_view_matrix, Lights<T>& lights, const int alpha = 50) {
-  show_rgb_image("target image", image);
-  //  cv::imshow("normals", normals);
-  //  cv::imshow("position", position);
-
   //  order of images is: xyz, RGB
-
-  //  test_modelview_matrix_and_light_positions<T>(model_view_matrix, lights);
-
-  //  test_normals(normals);
-  //  get_min_max_and_print(normals);
-
   const unsigned int colors_per_light = 3;
   const unsigned int components_per_light = 2;
 
   gsl::matrix<colors_per_light, components_per_light> a;
   gsl::vector<colors_per_light, components_per_light> b;
-  std::tie(a, b) = create_linear_system<colors_per_light, components_per_light, sample_point_random>(image, normals, position, diffuse, specular, model_view_matrix, lights, alpha);
+  std::tie(a, b) = create_linear_system<colors_per_light, components_per_light, point_selector>(image, normals, position, diffuse, specular, model_view_matrix, lights, alpha);
 
   gsl::vector<colors_per_light, components_per_light> x = optimizer<colors_per_light, components_per_light>()(a, b, lights);
   
-//  check_solution(x);
+  check_solution(x);
   
   set_solution<float>(x, lights);
 
   assert(x == (gsl::vector<colors_per_light, components_per_light>(lights)));
-
-  cv::waitKey(100);
 }
 
+template<template <int, int> class optimizer, template <typename, int> class point_selector>
 Lights<float> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<float>, cv::Mat_<float>>& image_data, const std::tuple<float, float, float>& view_direction, const arguments& args) {
-
 //  testkmeansall();
 
   const auto start_time = std::chrono::high_resolution_clock::now();
@@ -424,6 +412,15 @@ Lights<float> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec
 
   std::tie(image, normals, position, diffuse, specular, std::ignore, model_view_matrix) = image_data;
 
+  show_rgb_image("target image", image);
+//  cv::imshow("normals", normals);
+//  cv::imshow("position", position);
+
+//  test_modelview_matrix_and_light_positions<T>(model_view_matrix, lights);
+
+//  test_normals(normals);
+//  get_min_max_and_print(normals);
+
   const unsigned int huge_num_lights = 20;
   const unsigned int small_num_lights = 10;
   float x, y, z;
@@ -432,9 +429,7 @@ Lights<float> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec
   const auto time_after_huge_lights_creation = std::chrono::high_resolution_clock::now();
   std::cout << "a lot of lights created" << std::endl;
 
-//  optimize_lights<ls>(image, normals, position, diffuse, specular, model_view_matrix.t(), lights);
-//  optimize_lights<multi_dim_fit>(image, normals, position, diffuse, specular, model_view_matrix.t(), a_lot_of_lights);
-  optimize_lights<nnls_struct>(image, normals, position, diffuse, specular, model_view_matrix.t(), a_lot_of_lights);
+  optimize_lights<optimizer, point_selector>(image, normals, position, diffuse, specular, model_view_matrix.t(), a_lot_of_lights);
   const auto time_after_huge_lights_run = std::chrono::high_resolution_clock::now();
   std::cout << "a lot of lights optimized" << std::endl;
 
@@ -443,10 +438,7 @@ Lights<float> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec
     lights = reduce_lights<4>(a_lot_of_lights, small_num_lights);
     std::cout << "a lot of lights reduced" << std::endl;
 
-//    optimize_lights<ls>(image, normals, position, diffuse, specular, model_view_matrix.t(), lights);
-//    optimize_lights<multi_dim_fit>(image, normals, position, diffuse, specular, model_view_matrix.t(), lights);
-    optimize_lights<nnls_struct>(image, normals, position, diffuse, specular, model_view_matrix.t(), lights);
-
+    optimize_lights<optimizer, point_selector>(image, normals, position, diffuse, specular, model_view_matrix.t(), lights);
 
     std::cout << "small number of lights reduced" << std::endl;
   } else {
@@ -459,6 +451,8 @@ Lights<float> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec
   std::cout << "  huge light number creation: " << time_after_huge_lights_creation - start_time << std::endl;
   std::cout << "  light estimation huge light number: " << time_after_huge_lights_run - time_after_huge_lights_creation << std::endl;
   std::cout << "  light estimation smaller light number: " << finish_time - time_after_huge_lights_run << std::endl;
+
+  cv::waitKey(100);
 
   return lights;
 }
