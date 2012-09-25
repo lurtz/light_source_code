@@ -71,10 +71,9 @@ unsigned int get_maximum_number_of_sample_points(const cv::Mat_<cv::Vec<T, dim>>
 template<typename T, int dim>
 struct sample_point_deterministic {
   typename cv::Mat_<cv::Vec<T, dim>>::const_iterator pos;
-  const typename cv::Mat_<cv::Vec<T, dim>>::const_iterator end;
   const double step_size;
   double points_to_skip;
-  sample_point_deterministic(const cv::Mat_<cv::Vec<T, dim>>& normals, const unsigned int points_to_deliver) : pos(std::begin(normals)), end(std::end(normals)), step_size(static_cast<double>(get_maximum_number_of_sample_points(normals))/points_to_deliver), points_to_skip(0) {
+  sample_point_deterministic(const cv::Mat_<cv::Vec<T, dim>>& normals, const unsigned int points_to_deliver) : pos(std::begin(normals)), step_size(static_cast<double>(get_maximum_number_of_sample_points(normals))/points_to_deliver), points_to_skip(0) {
     assert(step_size >= 1.0);
   }
   std::tuple<unsigned int, unsigned int> operator()() {
