@@ -7,6 +7,7 @@
 #else
   #include <opencv2/core/core.hpp>
 #endif
+#include <limits>
 
 template<typename T>
 bool check_bounds_of_value(const T value, const std::string& valuename, const T min = 0, const T max = 1) {

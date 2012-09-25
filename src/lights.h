@@ -7,15 +7,14 @@
 #include <map>
 #include <vector>
 #include <iostream>
-#include <sstream>
 #include <cmath>
 #include <cassert>
-#include <iterator>
 #ifdef OPENCV_OLD_INCLUDES
   #include <cv.h>
 #else
   #include <opencv2/core/core.hpp>
 #endif
+#include "utils.h"
 
 // position, ambient, diffuse, specular in vec4
 // RGB format
@@ -26,17 +25,6 @@ const float light_properties[][4] = {
     ,{ 30,  0, 0, 1}, {0.0, 0.0, 0.5, 0}, {0, 0, 1, 0}
     ,{ 0,  -10, 0, 1}, {0.5, 0.0, 0.5, 0}, {1, 0, 1, 0}
 };
-
-template<typename T, int dim>
-std::vector<T> create_vector_from_array(const T (&array)[dim]) {
-  std::vector<T> tmp(array, array + dim);
-  return tmp;
-}
-
-template<typename T>
-void print(T t) {
-  std::cout << t << std::endl;
-}
 
 template<typename T>
 std::vector<T> create_ambient_color(T r = 0.1, T g = 0.1, T b = 0.1, T a = 0.0) {
@@ -121,42 +109,9 @@ struct Light {
 };
 
 template<typename T>
-std::ostream& operator<<(std::ostream& stream, const std::vector<T>& vec) {
-  stream << "(";
-  std::copy(std::begin(vec), std::end(vec)-1, std::ostream_iterator<T>(stream, ", "));
-  stream << vec.back();
-  stream << ")";
-  return stream;
-}
-
-template<typename K, typename V>
-std::ostream& operator<<(std::ostream& out, const std::pair<K,V>& pair) {
-  out << pair.first << ", " << pair.second;
-  return out;
-}
-
-template<typename K, typename V>
-std::ostream& operator<<(std::ostream& out, const std::map<K,V>& map) {
-  for (const auto& iter : map)
-    out << iter << std::endl;
-  return out;
-}
-
-template<typename T>
 std::ostream& operator<<(std::ostream& out, const Light<T>& light) {
   out << light.props;
   return out;
-}
-
-template<typename T, int D>
-T distFromPlane(const cv::Vec<T, D>& x, const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
-  return normal.dot(x-point);
-}
-
-template<typename T, int D>
-T distFromPlane(const std::vector<T>& x, const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
-  cv::Mat mat(x);
-  return distFromPlane(mat.at<cv::Vec<T,D>>(0), normal, point);
 }
 
 // taken from

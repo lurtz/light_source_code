@@ -9,6 +9,7 @@ extern "C" {
 #include "libtpc/include/nnls.h"
 }
 #include "args.h"
+#include "utils.h"
 
 #ifdef OPENCV_OLD_INCLUDES
   #include <cv.h>
@@ -20,7 +21,6 @@ extern "C" {
 #endif
 
 #include <vector>
-#include <iomanip>
 #include <limits>
 #include <memory>
 #include <tuple>
@@ -54,6 +54,7 @@ cv::Mat_<float> transform(const cv::Mat_<GLfloat>& model_view_matrix, const std:
   return light_pos;
 }
 
+// TODO more STL
 template<typename T, int dim>
 bool is_sample_point(const cv::Vec<T, dim>& normal, const T eps = std::numeric_limits<T>::epsilon()) {
   // skip if length is not 1
@@ -189,7 +190,6 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
   // calculate this value somehow, maybe specify the number of samples and
   // distribute them over the mesh in the image
   point_selector<T, dim> ps(normals, rows/colors_per_light);
-//  sample_point_random<T, dim> ps(normals, rows/colors_per_light, clear_color);
 
   for (unsigned int row = 0; row < rows/colors_per_light; row++) {
     std::cout << "at row " << row*colors_per_light << "/" << rows << "\r";
@@ -223,18 +223,19 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
   return std::make_tuple(std::move(x), std::move(y));
 }
 
+// TODO maybe method of object
 template<typename T, int colors_per_light, int components_per_light>
 void set_solution(const gsl::vector<colors_per_light, components_per_light>& c, Lights<T>& lights) {
   // ambient
-  lights.ambient = c.template get_ambient<T>();
+  lights.ambient = c.template get<T, gsl::AMBIENT>(0);
 
   // diffuse and specular
   for (unsigned int i = 0; i < lights.lights.size(); i++) {
     Light<T>& light = lights.lights.at(i);
     std::vector<T>& diff = light.get_diffuse();
     std::vector<T>& spec = light.get_specular();
-    diff = c.template get_diffuse<T>(i);
-    spec = c.template get_specular<T>(i);
+    diff = c.template get<T, gsl::DIFFUSE>(i);
+    spec = c.template get<T, gsl::SPECULAR>(i);
   }
 }
 
@@ -335,18 +336,6 @@ struct nnls_struct {
   }
 };
 
-template<class Rep, class Period>
-std::ostream& operator<<(std::ostream& out, const std::chrono::duration<Rep, Period>& tp) {
-  out << std::chrono::duration_cast<std::chrono::seconds>(tp).count() << "s";
-  return out;
-}
-
-template<typename T>
-double sum(const T& v) {
-  double sum = std::accumulate(std::begin(v), std::end(v), 0.0);
-  return sum;
-}
-
 template<int dim, typename T>
 Lights<T> reduce_lights(const Lights<T>& lights, const unsigned int k) {
   cv::Mat_<cv::Vec<T, dim>> positions(lights.lights.size(), 1);
@@ -357,7 +346,6 @@ Lights<T> reduce_lights(const Lights<T>& lights, const unsigned int k) {
     for (unsigned int j = 0; j < dim; j++)
       pos[j] = light.get_position().at(j);
     positions(i) = pos;
-//    weight.at(i) = sum(light.get_diffuse()) + sum(light.get_specular());
     // RGB for diffuse and specular -> 6 values from 0 to 1
     // let sum range from 0 to 2
     weight.at(i) = std::pow(20, 2.0/6*(sum(light.get_diffuse()) + sum(light.get_specular())));

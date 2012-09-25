@@ -8,6 +8,7 @@
 namespace gsl {
   // TODO overload operators
   // TODO iterators
+  enum {AMBIENT = 0, DIFFUSE, SPECULAR};
 
   template<int colors_per_light, int components_per_light>
   class matrix {
@@ -66,27 +67,26 @@ namespace gsl {
     void set_ambient(const unsigned int row) {
       for (unsigned int i = 0; i < colors_per_light; i++)
         for (unsigned int j = 0; j < colors_per_light; j++)
-          if (i == j)
-            set(colors_per_light * row + i, j, 1);
-          else
-            set(colors_per_light * row + i, j, 0);
+          set(colors_per_light * row + i, j, i == j);
     }
 
     void set_diffuse_specular(const unsigned int row, const unsigned int col, const std::tuple<float, float>& vals, const cv::Mat_<float> diffuse_tex, const cv::Mat_<float> specular_tex) {
       float diffuse, specular;
       std::tie(diffuse, specular) = vals;
       for (unsigned int i = 0; i < colors_per_light; i++) {
+        const size_t row_pos = colors_per_light * row + i;
         for (unsigned int j = 0; j < colors_per_light; j++) {
+          const size_t col_pos = colors_per_light * (DIFFUSE + components_per_light * col) + j;
           if (i == j) {
             // diffuse
-            set(colors_per_light * row+i, colors_per_light + colors_per_light * components_per_light * col+j, diffuse*diffuse_tex(i));
+            set(row_pos, col_pos, diffuse*diffuse_tex(i));
             // specular
-            set(colors_per_light * row+i, colors_per_light + colors_per_light * components_per_light * col+colors_per_light+j, specular*specular_tex(i));
+            set(row_pos, col_pos + (SPECULAR-DIFFUSE) * colors_per_light, specular*specular_tex(i));
           } else {
             // diffuse
-            set(colors_per_light * row+i, colors_per_light + colors_per_light * components_per_light * col+j, 0);
+            set(row_pos, col_pos, 0);
             // specular
-            set(colors_per_light * row+i, colors_per_light + colors_per_light * components_per_light * col+colors_per_light+j, 0);
+            set(row_pos, col_pos + (SPECULAR-DIFFUSE) * colors_per_light, 0);
           }
         }
       }
@@ -95,8 +95,6 @@ namespace gsl {
 
   template<int colors_per_light, int components_per_light>
   class vector {
-    enum {AMBIENT = 0, DIFFUSE, SPECULAR};
-
     std::unique_ptr<gsl_vector, void (*)(gsl_vector *)> v;
 
     public:
@@ -119,12 +117,12 @@ namespace gsl {
 
     template<typename T>
     vector(const Lights<T>& lights) : v(gsl_vector_alloc(colors_per_light + lights.lights.size()*components_per_light*colors_per_light), gsl_vector_free) {
-      set_ambient(lights.ambient);
+      set<AMBIENT>(0, lights.ambient);
 
       for (unsigned int i = 0; i < lights.lights.size(); i++) {
         const Light<T>& light = lights.lights.at(i);
-        set_diffuse(i, light.get_diffuse());
-        set_specular(i, light.get_specular());
+        set<DIFFUSE>(i, light.get_diffuse());
+        set<SPECULAR>(i, light.get_specular());
       }
     }
 
@@ -183,21 +181,6 @@ namespace gsl {
       return tmp;
     }
 
-    template<typename T>
-    std::vector<T> get_ambient() const {
-      return get<T, AMBIENT>(0);
-    }
-
-    template<typename T>
-    std::vector<T> get_diffuse(const size_t i) const {
-      return get<T, DIFFUSE>(i);
-    }
-
-    template<typename T>
-    std::vector<T> get_specular(const size_t i) const {
-      return get<T, SPECULAR>(i);
-    }
-
     void set(const size_t i, const double x) {
       gsl_vector_set(v.get(), i, x);
     }
@@ -215,21 +198,6 @@ namespace gsl {
       for (size_t j = 0; j < colors_per_light; j++) {
         set(offset*colors_per_light + i*colors_per_light*components_per_light + j, val.at(j));
       }
-    }
-
-    template<typename T>
-    void set_ambient(const std::vector<T> &ambient) {
-      set<AMBIENT>(0, ambient);
-    }
-
-    template<typename T>
-    void set_diffuse(const size_t i, const std::vector<T> &diffuse) {
-      set<DIFFUSE>(i, diffuse);
-    }
-
-    template<typename T>
-    void set_specular(const size_t i, const std::vector<T> &specular) {
-      set<SPECULAR>(i, specular);
     }
   };
 
