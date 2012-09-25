@@ -4,9 +4,11 @@
 #include "lights.h"
 #include "gsl.h"
 #include "tests.h"
+#include "kmeansw.h"
 extern "C" {
 #include "libtpc/include/nnls.h"
 }
+#include "args.h"
 
 #ifdef OPENCV_OLD_INCLUDES
   #include <cv.h>
@@ -22,6 +24,7 @@ extern "C" {
 #include <limits>
 #include <memory>
 #include <tuple>
+#include <chrono>
 
 template<typename T>
 cv::Mat_<T> reflect(const cv::Mat_<T>& normal, const cv::Mat_<T>& vector) {
@@ -52,19 +55,16 @@ cv::Mat_<float> transform(const cv::Mat_<GLfloat>& model_view_matrix, const std:
 }
 
 template<typename T, int dim>
-bool is_sample_point(const cv::Vec<T, dim>& normal, const T clear_color, const T eps = std::numeric_limits<T>::epsilon()) {
-  bool ret_val = true;
-  ret_val &= !(fabs(normal[0] - clear_color) < eps && fabs(normal[1] - clear_color) < eps && fabs(normal[2] - clear_color) < eps);
+bool is_sample_point(const cv::Vec<T, dim>& normal, const T eps = std::numeric_limits<T>::epsilon()) {
   // skip if length is not 1
-  ret_val &= fabs(cv::norm(normal) - 1) < eps;
-  return ret_val;
+  return fabs(cv::norm(normal) - 1) < eps;
 }
 
 template<typename T, int dim>
-unsigned int get_maximum_number_of_sample_points(const cv::Mat_<cv::Vec<T, dim>>& normals, const T clear_color) {
+unsigned int get_maximum_number_of_sample_points(const cv::Mat_<cv::Vec<T, dim>>& normals) {
   unsigned int sum = 0; // TODO do some more STL
   for (const auto& normal: normals)
-    sum += is_sample_point(normal, clear_color);
+    sum += is_sample_point(normal);
   return sum;
 }
 
@@ -72,17 +72,16 @@ template<typename T, int dim>
 struct sample_point_deterministic {
   typename cv::Mat_<cv::Vec<T, dim>>::const_iterator pos;
   const typename cv::Mat_<cv::Vec<T, dim>>::const_iterator end;
-  const T clear_color;
   const double step_size;
   double points_to_skip;
-  sample_point_deterministic(const cv::Mat_<cv::Vec<T, dim>>& normals, const unsigned int points_to_deliver, const T clear_color) : pos(std::begin(normals)), end(std::end(normals)), clear_color(clear_color), step_size(static_cast<double>(get_maximum_number_of_sample_points(normals, clear_color))/points_to_deliver), points_to_skip(0) {
+  sample_point_deterministic(const cv::Mat_<cv::Vec<T, dim>>& normals, const unsigned int points_to_deliver) : pos(std::begin(normals)), end(std::end(normals)), step_size(static_cast<double>(get_maximum_number_of_sample_points(normals))/points_to_deliver), points_to_skip(0) {
     assert(step_size >= 1.0);
   }
   std::tuple<unsigned int, unsigned int> operator()() {
     bool loop = true;
     while (loop) {
       loop = false;
-      while (!is_sample_point(*pos), clear_color)
+      while (!is_sample_point(*pos))
         pos++;
       if (points_to_skip > 1.0) {
         pos++;
@@ -90,7 +89,7 @@ struct sample_point_deterministic {
         loop = true;
       }
     }
-    assert(is_sample_point(*pos, clear_color));
+    assert(is_sample_point(*pos));
     points_to_skip += step_size;
     cv::Point p = pos.pos();
     return std::make_tuple(p.y, p.x);
@@ -104,8 +103,7 @@ template<typename T, int dim>
 struct sample_point_random {
   const cv::Mat_<cv::Vec<T, dim>>& normals;
   cv::Mat_<unsigned char> used_pixels;
-  const T clear_color;
-  sample_point_random(const cv::Mat_<cv::Vec<T, dim>>& normals, const unsigned int points_to_deliver, const T clear_color) : normals(normals), used_pixels(normals.rows, normals.cols, static_cast<unsigned char>(0)), clear_color(clear_color) {
+  sample_point_random(const cv::Mat_<cv::Vec<T, dim>>& normals, const unsigned int points_to_deliver) : normals(normals), used_pixels(normals.rows, normals.cols, static_cast<unsigned char>(0)) {
   }
   std::tuple<unsigned int, unsigned int> operator()() {
     int _x = 0;
@@ -123,7 +121,7 @@ struct sample_point_random {
       // skip if no object
       // assume that a normal is (clear_color,clear_color,clear_color) where no object is
       cv::Vec<T, dim> normal = normals(y, x);
-      if (!is_sample_point(normal, clear_color))
+      if (!is_sample_point(normal))
         continue;
 
       assert(fabs(cv::norm(normal) - 1) < eps);
@@ -172,10 +170,10 @@ std::tuple<float, float> get_diffuse_specular(const cv::Mat_<float> &pos_vec, co
 }
 
 template<unsigned int colors_per_light, unsigned int components_per_light, template <typename, int> class point_selector, typename T, typename T1, int dim>
-std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const cv::Mat_<cv::Vec<T, dim>>& image, const cv::Mat_<cv::Vec<T, dim>>& normals, const cv::Mat_<cv::Vec<T, dim>>& position, const cv::Mat_<cv::Vec<T, dim>>& diffuse_texture, const cv::Mat_<cv::Vec<T, dim>>& specular_texture, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, const Lights<T1>& lights, const int alpha) {
+std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const cv::Mat_<cv::Vec<T, dim>>& image, const cv::Mat_<cv::Vec<T, dim>>& normals, const cv::Mat_<cv::Vec<T, dim>>& position, const cv::Mat_<cv::Vec<T, dim>>& diffuse_texture, const cv::Mat_<cv::Vec<T, dim>>& specular_texture, const cv::Mat_<GLfloat>& model_view_matrix, const Lights<T1>& lights, const int alpha) {
   std::cout << "creating linear system" << std::endl;
 
-  const unsigned int sample_max = get_maximum_number_of_sample_points(normals, clear_color);
+  const unsigned int sample_max = get_maximum_number_of_sample_points(normals);
   assert(sample_max >= lights.lights.size());
   const double fraction_of_points_to_take = std::log2((static_cast<double>(lights.lights.size())*components_per_light / sample_max) + 1);
   const double min_fraction_of_points_to_take = 0.1;
@@ -191,7 +189,7 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
   // do not take all points of the image
   // calculate this value somehow, maybe specify the number of samples and
   // distribute them over the mesh in the image
-  point_selector<T, dim> ps(normals, rows/colors_per_light, clear_color);
+  point_selector<T, dim> ps(normals, rows/colors_per_light);
 //  sample_point_random<T, dim> ps(normals, rows/colors_per_light, clear_color);
 
   for (unsigned int row = 0; row < rows/colors_per_light; row++) {
@@ -338,8 +336,50 @@ struct nnls_struct {
   }
 };
 
+template<class Rep, class Period>
+std::ostream& operator<<(std::ostream& out, const std::chrono::duration<Rep, Period>& tp) {
+  out << std::chrono::duration_cast<std::chrono::seconds>(tp).count() << "s";
+  return out;
+}
+
+template<typename T>
+double sum(const T& v) {
+  double sum = std::accumulate(std::begin(v), std::end(v), 0.0);
+  return sum;
+}
+
+template<int dim, typename T>
+Lights<T> reduce_lights(const Lights<T>& lights, const unsigned int k) {
+  cv::Mat_<cv::Vec<T, dim>> positions(lights.lights.size(), 1);
+  std::vector<double> weight(positions.rows);
+  for (int i = 0; i < positions.rows; i++) {
+    const Light<T>& light = lights.lights.at(i);
+    cv::Vec<T, dim> pos;
+    for (unsigned int j = 0; j < dim; j++)
+      pos[j] = light.get_position().at(j);
+    positions(i) = pos;
+//    weight.at(i) = sum(light.get_diffuse()) + sum(light.get_specular());
+    // RGB for diffuse and specular -> 6 values from 0 to 1
+    // let sum range from 0 to 2
+    weight.at(i) = std::pow(20, 2.0/6*(sum(light.get_diffuse()) + sum(light.get_specular())));
+
+//    std::cout << "light position: " << pos << ", weight: " << weight.at(i) << std::endl;
+  }
+  cv::Mat labels;
+  cv::TermCriteria termcrit(cv::TermCriteria::EPS, 1000, 0.01);
+  cv::Mat centers;
+  cv::kmeansw(positions, k, labels, termcrit, 1, cv::KMEANS_RANDOM_CENTERS, centers, weight);
+
+  cv::Mat_<cv::Vec<T, dim>> centers_templ(k, 1);
+  for (int i = 0; i < centers.rows; i++) {
+    centers_templ(i) = centers.at<cv::Vec<T, dim>>(i);
+  }
+
+  return Lights<T>(centers_templ);
+}
+
 template<template <int, int> class optimizer, typename T>
-void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<cv::Vec3f>& diffuse, const cv::Mat_<cv::Vec3f>& specular, const cv::Mat_<GLfloat>& model_view_matrix, const float clear_color, Lights<T>& lights, const int alpha = 50) {
+void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<cv::Vec3f>& diffuse, const cv::Mat_<cv::Vec3f>& specular, const cv::Mat_<GLfloat>& model_view_matrix, Lights<T>& lights, const int alpha = 50) {
   show_rgb_image("target image", image);
   //  cv::imshow("normals", normals);
   //  cv::imshow("position", position);
@@ -356,7 +396,7 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
 
   gsl::matrix<colors_per_light, components_per_light> a;
   gsl::vector<colors_per_light, components_per_light> b;
-  std::tie(a, b) = create_linear_system<colors_per_light, components_per_light, sample_point_random>(image, normals, position, diffuse, specular, model_view_matrix, clear_color, lights, alpha);
+  std::tie(a, b) = create_linear_system<colors_per_light, components_per_light, sample_point_random>(image, normals, position, diffuse, specular, model_view_matrix, lights, alpha);
 
   gsl::vector<colors_per_light, components_per_light> x = optimizer<colors_per_light, components_per_light>()(a, b, lights);
   
@@ -367,6 +407,60 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
   assert(x == (gsl::vector<colors_per_light, components_per_light>(lights)));
 
   cv::waitKey(100);
+}
+
+Lights<float> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<float>, cv::Mat_<float>>& image_data, const std::tuple<float, float, float>& view_direction, const arguments& args) {
+
+//  testkmeansall();
+
+  const auto start_time = std::chrono::high_resolution_clock::now();
+
+  cv::Mat_<cv::Vec3f> image;
+  cv::Mat_<cv::Vec3f> normals;
+  cv::Mat_<cv::Vec3f> position;
+  cv::Mat_<cv::Vec3f> diffuse;
+  cv::Mat_<cv::Vec3f> specular;
+  cv::Mat_<float> model_view_matrix;
+
+  std::tie(image, normals, position, diffuse, specular, std::ignore, model_view_matrix) = image_data;
+
+  const unsigned int huge_num_lights = 20;
+  const unsigned int small_num_lights = 10;
+  float x, y, z;
+  std::tie(x, y, z) = view_direction;
+  Lights<float> a_lot_of_lights("bla", 10, huge_num_lights, plane_acceptor_tuple(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
+  const auto time_after_huge_lights_creation = std::chrono::high_resolution_clock::now();
+  std::cout << "a lot of lights created" << std::endl;
+
+//  optimize_lights<ls>(image, normals, position, diffuse, specular, model_view_matrix.t(), lights);
+//  optimize_lights<multi_dim_fit>(image, normals, position, diffuse, specular, model_view_matrix.t(), a_lot_of_lights);
+  optimize_lights<nnls_struct>(image, normals, position, diffuse, specular, model_view_matrix.t(), a_lot_of_lights);
+  const auto time_after_huge_lights_run = std::chrono::high_resolution_clock::now();
+  std::cout << "a lot of lights optimized" << std::endl;
+
+  Lights<float> lights;
+  if (!args.single_pass) {
+    lights = reduce_lights<4>(a_lot_of_lights, small_num_lights);
+    std::cout << "a lot of lights reduced" << std::endl;
+
+//    optimize_lights<ls>(image, normals, position, diffuse, specular, model_view_matrix.t(), lights);
+//    optimize_lights<multi_dim_fit>(image, normals, position, diffuse, specular, model_view_matrix.t(), lights);
+    optimize_lights<nnls_struct>(image, normals, position, diffuse, specular, model_view_matrix.t(), lights);
+
+
+    std::cout << "small number of lights reduced" << std::endl;
+  } else {
+    lights = a_lot_of_lights;
+  }
+
+  const auto finish_time = std::chrono::high_resolution_clock::now();
+
+  std::cout << "complete run: " << finish_time - start_time << std::endl;
+  std::cout << "  huge light number creation: " << time_after_huge_lights_creation - start_time << std::endl;
+  std::cout << "  light estimation huge light number: " << time_after_huge_lights_run - time_after_huge_lights_creation << std::endl;
+  std::cout << "  light estimation smaller light number: " << finish_time - time_after_huge_lights_run << std::endl;
+
+  return lights;
 }
 
 #endif /* SOLVER_H_ */

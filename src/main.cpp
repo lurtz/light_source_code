@@ -16,6 +16,7 @@
 #include <fstream>
 #include <vector>
 #include "opengl.h"
+#include "args.h"
 
 // This is my plan:
 // I have to synthesize a new image using the mesh obj and the light source

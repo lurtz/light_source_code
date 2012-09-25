@@ -10,7 +10,6 @@
 #include <iterator>
 #include <tuple>
 #include <memory>
-#include <chrono>
 #include "opengl.h"
 #include "Trackball.h"
 
@@ -23,7 +22,6 @@
 #endif
 
 #include "solver.h"
-#include "kmeansw.h"
 
 arguments _args;
 
@@ -132,7 +130,7 @@ void flipImage(T& image, const unsigned int width) {
   flipImage(std::begin(image), std::end(image), width);
 }
 
-std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<float> > renderSceneIntoFBO() {
+std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<float>, cv::Mat_<GLfloat>> renderSceneIntoFBO() {
     // render scene into first color attachment of FBO -> use as filter texture later on //
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
@@ -179,10 +177,17 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Ma
     flipImage(diffuse, windowWidth);
     flipImage(specular, windowWidth);
 
-    return std::make_tuple(image, normals, position, diffuse, specular, depth);
+    // do not need to be flipped
+    GLfloat model_view_matrix_stack[16];
+    glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix_stack);
+    cv::Mat_<GLfloat> model_view_matrix;
+    cv::Mat_<GLfloat>(4,4, model_view_matrix_stack).copyTo(model_view_matrix);
+
+    return std::make_tuple(image, normals, position, diffuse, specular, depth, model_view_matrix);
 }
 
 decltype(renderSceneIntoFBO()) create_test_image() {
+  std::cout << "creating test image..." << std::endl;
   auto tmp_lights = Lights<float>(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
   _meshobj->setLight(tmp_lights);
 
@@ -190,132 +195,6 @@ decltype(renderSceneIntoFBO()) create_test_image() {
 
   _meshobj->setLight(lights);
   return tuple;
-}
-
-template<class Rep, class Period>
-std::ostream& operator<<(std::ostream& out, const std::chrono::duration<Rep, Period>& tp) {
-  out << std::chrono::duration_cast<std::chrono::seconds>(tp).count() << "s";
-  return out;
-}
-
-template<typename T>
-double sum(const T& v) {
-  double sum = std::accumulate(std::begin(v), std::end(v), 0.0);
-  return sum;
-}
-
-bool test_sum() {
-  bool ret_val = true;
-  float numbers[] = {1,2,3,4};
-  double numbers_sum = sum(numbers);
-  ret_val &= numbers_sum == 10.0f;
-  std::vector<float> vec;
-  vec.push_back(10);
-  vec.push_back(20);
-  vec.push_back(30);
-  vec.push_back(40);
-  vec.push_back(50);
-  numbers_sum = sum(vec);
-  ret_val &= numbers_sum == 150;
-  
-  vec = std::vector<float>();
-  vec.push_back(0.1);
-  vec.push_back(0.3);
-  vec.push_back(0.5);
-  vec.push_back(0.7);
-  vec.push_back(-0.1);
-  numbers_sum = sum(vec);
-  ret_val &= numbers_sum == 1.5;
-  return ret_val;
-}
-
-template<int dim, typename T>
-Lights<T> reduce_lights(const Lights<T>& lights, const unsigned int k) {
-  cv::Mat_<cv::Vec<T, dim>> positions(lights.lights.size(), 1);
-  std::vector<double> weight(positions.rows);
-  for (int i = 0; i < positions.rows; i++) {
-    const Light<T>& light = lights.lights.at(i);
-    cv::Vec<T, dim> pos;
-    for (unsigned int j = 0; j < dim; j++)
-      pos[j] = light.get_position().at(j);
-    positions(i) = pos;
-//    weight.at(i) = sum(light.get_diffuse()) + sum(light.get_specular());
-    // RGB for diffuse and specular -> 6 values from 0 to 1
-    // let sum range from 0 to 2
-    weight.at(i) = std::pow(20, 2.0/6*(sum(light.get_diffuse()) + sum(light.get_specular())));
-
-//    std::cout << "light position: " << pos << ", weight: " << weight.at(i) << std::endl;
-  }
-  cv::Mat labels;
-  cv::TermCriteria termcrit(cv::TermCriteria::EPS, 1000, 0.01);
-  cv::Mat centers;
-  cv::kmeansw(positions, k, labels, termcrit, 1, cv::KMEANS_RANDOM_CENTERS, centers, weight);
-
-  cv::Mat_<cv::Vec<T, dim>> centers_templ(k, 1);
-  for (int i = 0; i < centers.rows; i++) {
-    centers_templ(i) = centers.at<cv::Vec<T, dim>>(i);
-  }
-  
-  return Lights<T>(centers_templ);
-}
-
-void calc_lights() {
-  assert(test_sum());
-
-//  testkmeansall();
-
-  const auto start_time = std::chrono::high_resolution_clock::now();
-  
-  cv::Mat_<cv::Vec3f> image;
-  cv::Mat_<cv::Vec3f> normals;
-  cv::Mat_<cv::Vec3f> position;
-  cv::Mat_<cv::Vec3f> diffuse;
-  cv::Mat_<cv::Vec3f> specular;
-  
-  std::tie(image, normals, position, diffuse, specular, std::ignore) = create_test_image();
-  const auto test_creation_time = std::chrono::high_resolution_clock::now();
-  std::cout << "test created" << std::endl;
-  
-  // do not need to be flipped
-  GLfloat model_view_matrix_stack[16];
-  glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix_stack);
-  cv::Mat_<GLfloat> model_view_matrix(4, 4, model_view_matrix_stack);
-
-  const unsigned int huge_num_lights = 20;
-  const unsigned int small_num_lights = 10;
-  float x, y, z;
-  std::tie(x, y, z) = _ball.getViewDirection();
-  Lights<float> a_lot_of_lights("bla", 10, huge_num_lights, plane_acceptor_tuple(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
-  const auto time_after_huge_lights_creation = std::chrono::high_resolution_clock::now();
-  std::cout << "a lot of lights created" << std::endl;
-
-  optimize_lights<ls>(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, lights);
-  optimize_lights<multi_dim_fit>(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, a_lot_of_lights);
-  optimize_lights<nnls_struct>(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, a_lot_of_lights);
-  const auto time_after_huge_lights_run = std::chrono::high_resolution_clock::now();
-  std::cout << "a lot of lights optimized" << std::endl;
-
-  if (!_args.single_pass) {
-    lights = reduce_lights<4>(a_lot_of_lights, small_num_lights);
-    std::cout << "a lot of lights reduced" << std::endl;
-
-//    optimize_lights<ls>(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, lights);
-//    optimize_lights<multi_dim_fit>(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, lights);
-    optimize_lights<nnls_struct>(image, normals, position, diffuse, specular, model_view_matrix.t(), clear_color, lights);
-
-    
-    std::cout << "small number of lights reduced" << std::endl;
-  } else {
-    lights = a_lot_of_lights;
-  }
-  
-  const auto finish_time = std::chrono::high_resolution_clock::now();
-
-  std::cout << "complete run: " << finish_time - start_time << std::endl;
-  std::cout << "  test creation: " << test_creation_time - start_time << std::endl;
-  std::cout << "  huge light number creation: " << time_after_huge_lights_creation - test_creation_time << std::endl;
-  std::cout << "  light estimation huge light number: " << time_after_huge_lights_run - time_after_huge_lights_creation << std::endl;
-  std::cout << "  light estimation smaller light number: " << finish_time - time_after_huge_lights_run << std::endl;
 }
 
 void updateGL() {
@@ -337,7 +216,7 @@ void updateGL() {
   
   // render //
   if (!image_displayed && _args.optimize) {
-    calc_lights();
+    lights = calc_lights(create_test_image(), _ball.getViewDirection(), _args);
     image_displayed = true;
   }
   renderScene();
