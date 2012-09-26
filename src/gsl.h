@@ -4,6 +4,7 @@
 #include <gsl/gsl_multifit.h>
 #include <gsl/gsl_multimin.h>
 #include <gsl/gsl_blas.h>
+#include <memory>
 
 namespace gsl {
   // TODO overload operators

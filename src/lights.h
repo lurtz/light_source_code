@@ -35,13 +35,13 @@ std::vector<T> create_ambient_color(T r = 0.1, T g = 0.1, T b = 0.1, T a = 0.0) 
   ret_val.push_back(a);
   return ret_val;
 }
-
-const std::string position_name = "position";
-const std::string diffuse_name = "diffuse";
-const std::string specular_name = "specular";
   
 template<typename T>
 struct Light {
+  static const std::string position_name;
+  static const std::string diffuse_name;
+  static const std::string specular_name;
+  
   typedef std::map<std::string, std::vector<T> > properties; // position, diffuse, specuar
   properties props;
   
@@ -90,7 +90,7 @@ struct Light {
     return props.find(specular_name)->second;
   }
 
-  std::string get_shader_name(const unsigned int number, const std::string& property) const {
+  static std::string get_shader_name(const unsigned int number, const std::string& property) {
     std::stringstream name;
     name << "lights[" << number << "]." << property;
     return name.str();
@@ -107,6 +107,13 @@ struct Light {
     }
   }
 };
+
+template<typename T>
+const std::string Light<T>::position_name = "position";
+template<typename T>
+const std::string Light<T>::diffuse_name = "diffuse";
+template<typename T>
+const std::string Light<T>::specular_name = "specular";
 
 template<typename T>
 std::ostream& operator<<(std::ostream& out, const Light<T>& light) {
