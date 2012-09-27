@@ -27,30 +27,33 @@ const float light_properties[][4] = {
 };
 
 template<typename T>
-std::vector<T> create_ambient_color(T r = 0.1, T g = 0.1, T b = 0.1, T a = 0.0) {
-  std::vector<T> ret_val;
-  ret_val.push_back(r);
-  ret_val.push_back(g);
-  ret_val.push_back(b);
-  ret_val.push_back(a);
-  return ret_val;
+cv::Vec<T, 4> create_ambient_color(T r = 0.1, T g = 0.1, T b = 0.1, T a = 0.0) {
+  return cv::Vec<T, 4>(r, b, g, a);
 }
-  
-template<typename T>
+
+template<typename T, int dim>
 struct Light {
   static const std::string position_name;
   static const std::string diffuse_name;
   static const std::string specular_name;
   
-  typedef std::map<std::string, std::vector<T> > properties; // position, diffuse, specuar
+  typedef std::map<std::string, cv::Vec<T, dim>> properties; // position, diffuse, specuar
   properties props;
   
   Light() {}
   
   Light(const std::vector<T>& position, const std::vector<T>& diffuse, const std::vector<T>& specular) {
-    props[position_name] = position;
-    props[diffuse_name] = diffuse;
-    props[specular_name] = specular;
+    cv::Vec<T, dim> position_vec;
+    cv::Vec<T, dim> diffuse_vec;
+    cv::Vec<T, dim> specular_vec;
+    for (unsigned int i = 0; i < dim; i++) {
+      position_vec[i] = position.at(i);
+      diffuse_vec[i] = diffuse.at(i);
+      specular_vec[i] = specular.at(i);
+    }
+    props[position_name] = position_vec;
+    props[diffuse_name] = diffuse_vec;
+    props[specular_name] = specular_vec;
   }
   
   template<int D>
