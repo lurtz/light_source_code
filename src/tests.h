@@ -86,8 +86,8 @@ bool is_scalar(const cv::Mat_<T>& mat) {
   return dims && cols && rows;
 }
 
-template<typename T>
-void test_modelview_matrix_and_light_positions(const cv::Mat_<GLfloat>& model_view_matrix, const Lights<T>& lights) {
+template<typename T, int dim>
+void test_modelview_matrix_and_light_positions(const cv::Mat_<GLfloat>& model_view_matrix, const Lights<T, dim>& lights) {
   std::cout << "modelviewmatrix:\n" << model_view_matrix << std::endl;
 
   for (const auto& light : lights.lights) {

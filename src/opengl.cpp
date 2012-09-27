@@ -21,7 +21,7 @@
   #include <opencv2/highgui/highgui.hpp>
 #endif
 
-//#include "solver.h"
+#include "solver.h"
 
 arguments _args;
 
