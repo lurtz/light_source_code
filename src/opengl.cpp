@@ -21,7 +21,7 @@
   #include <opencv2/highgui/highgui.hpp>
 #endif
 
-#include "solver.h"
+//#include "solver.h"
 
 arguments _args;
 
@@ -39,7 +39,7 @@ GLuint fboTexture[5];
 GLuint fboDepthTexture;
 GLuint fbo;
 
-Lights<float> lights;
+Lights<float, 4> lights;
 
 bool image_displayed = false;
 
@@ -93,8 +93,8 @@ void visualize_lights() {
     const auto &pos = light.get_position();
     const auto &diffuse = light.get_diffuse();
     const auto &specular = light.get_specular();
-    glTranslatef(pos.at(0), pos.at(1), pos.at(2));
-    glColor3f(diffuse.at(0)+specular.at(0), diffuse.at(1)+specular.at(1), diffuse.at(2)+specular.at(2));
+    glTranslatef(pos[0], pos[1], pos[2]);
+    glColor3f(diffuse[0]+specular[0], diffuse[1]+specular[1], diffuse[2]+specular[2]);
     glutSolidSphere(.10, 4, 4);
     glPopMatrix();
   }
@@ -175,7 +175,7 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Ma
 
 decltype(renderSceneIntoFBO()) create_test_image() {
   std::cout << "creating test image..." << std::endl;
-  auto tmp_lights = Lights<float>(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
+  auto tmp_lights = Lights<float, 4>(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
   _meshobj->setLight(tmp_lights);
 
   auto tuple = renderSceneIntoFBO();
@@ -204,7 +204,7 @@ void updateGL() {
   // render //
   if (!image_displayed && _args.optimize) {
 //    lights = calc_lights<ls, sample_point_random>(create_test_image(), _ball.getViewDirection(), _args);
-    lights = calc_lights<multi_dim_fit, sample_point_random>(create_test_image(), _ball.getViewDirection(), _args);
+//    lights = calc_lights<multi_dim_fit, sample_point_random>(create_test_image(), _ball.getViewDirection(), _args);
 //    lights = calc_lights<nnls_struct, sample_point_deterministic>(create_test_image(), _ball.getViewDirection(), _args);
     image_displayed = true;
   }
@@ -304,7 +304,7 @@ void initFBO() {
 }
 
 void initLights() {
-  lights = Lights<float>(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
+  lights = Lights<float, 4>(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
 }
 
 void setupOpenGL(int * argc, char ** argv, const arguments &args) {

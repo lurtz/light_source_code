@@ -26,9 +26,10 @@ const float light_properties[][4] = {
     ,{ 0,  -10, 0, 1}, {0.5, 0.0, 0.5, 0}, {1, 0, 1, 0}
 };
 
-template<typename T>
-cv::Vec<T, 4> create_ambient_color(T r = 0.1, T g = 0.1, T b = 0.1, T a = 0.0) {
-  return cv::Vec<T, 4>(r, b, g, a);
+// TODO variadic number of arguments
+template<typename T, int dim>
+cv::Vec<T, dim> create_ambient_color(T r = 0.1, T g = 0.1, T b = 0.1, T a = 0.0) {
+  return cv::Vec<T, dim>(r, b, g, a);
 }
 
 template<typename T, int dim>
@@ -43,53 +44,42 @@ struct Light {
   Light() {}
   
   Light(const std::vector<T>& position, const std::vector<T>& diffuse, const std::vector<T>& specular) {
-    cv::Vec<T, dim> position_vec;
-    cv::Vec<T, dim> diffuse_vec;
-    cv::Vec<T, dim> specular_vec;
     for (unsigned int i = 0; i < dim; i++) {
-      position_vec[i] = position.at(i);
-      diffuse_vec[i] = diffuse.at(i);
-      specular_vec[i] = specular.at(i);
+      props[position_name][i] = position.at(i);
+      props[diffuse_name][i] = diffuse.at(i);
+      props[specular_name][i] = specular.at(i);
     }
-    props[position_name] = position_vec;
-    props[diffuse_name] = diffuse_vec;
-    props[specular_name] = specular_vec;
-  }
-  
-  template<int D>
-  Light(const T (&position)[D], const T (&diffuse)[D], const T (&specular)[D]) {
-    props[position_name] = create_vector_from_array(position);
-    props[diffuse_name] = create_vector_from_array(diffuse);
-    props[specular_name] = create_vector_from_array(specular);
   }
 
-  template<int D>
-  Light(const cv::Vec<T, D>& pos, const std::vector<T>& diffuse, const std::vector<T>& specular) {
-    std::vector<T> tmp_pos(D);
-    for (unsigned int i = 0; i < D; i++)
-      tmp_pos.at(i) = pos[i];
-    props[position_name] = tmp_pos;
+  Light(const cv::Vec<T, dim>& position, const cv::Vec<T, dim>& diffuse, const cv::Vec<T, dim>& specular) {
+    props[position_name] = position;
     props[diffuse_name] = diffuse;
     props[specular_name] = specular;
   }
   
-  const std::vector<T>& get_position() const {
+  Light(const T (&position)[dim], const T (&diffuse)[dim], const T (&specular)[dim]) {
+    props[position_name] = create_vector_from_array(position);
+    props[diffuse_name] = create_vector_from_array(diffuse);
+    props[specular_name] = create_vector_from_array(specular);
+  }
+  
+  const cv::Vec<T, dim>& get_position() const {
     return props.find(position_name)->second;
   }
 
-  std::vector<T>& get_diffuse() {
+  cv::Vec<T, dim>& get_diffuse() {
     return props[diffuse_name];
   }
 
-  const std::vector<T>& get_diffuse() const {
+  const cv::Vec<T, dim>& get_diffuse() const {
     return props.find(diffuse_name)->second;
   }
 
-  std::vector<T>& get_specular() {
+  cv::Vec<T, dim>& get_specular() {
     return props[specular_name];
   }
 
-  const std::vector<T>& get_specular() const {
+  const cv::Vec<T, dim>& get_specular() const {
     return props.find(specular_name)->second;
   }
 
@@ -104,22 +94,22 @@ struct Light {
       std::string property_name = iter_properties.first; // position, diffuse, specuar
       GLint uniform_light_property = glGetUniformLocation(programm_id, get_shader_name(i, property_name).c_str());
       auto value = iter_properties.second;
-      glUniform4f(uniform_light_property, value.at(0), value.at(1), value.at(2), value.at(3));
+      glUniform4f(uniform_light_property, value[0], value[1], value[2], value[3]);
 //      if (uniform_light_property == -1)
 //        std::cout << "uniform handle is -1 with uniform name " << iter_properties.first << std::endl;
     }
   }
 };
 
-template<typename T>
-const std::string Light<T>::position_name = "position";
-template<typename T>
-const std::string Light<T>::diffuse_name = "diffuse";
-template<typename T>
-const std::string Light<T>::specular_name = "specular";
+template<typename T, int dim>
+const std::string Light<T, dim>::position_name = "position";
+template<typename T, int dim>
+const std::string Light<T, dim>::diffuse_name = "diffuse";
+template<typename T, int dim>
+const std::string Light<T, dim>::specular_name = "specular";
 
-template<typename T>
-std::ostream& operator<<(std::ostream& out, const Light<T>& light) {
+template<typename T, int dim>
+std::ostream& operator<<(std::ostream& out, const Light<T, dim>& light) {
   out << light.props;
   return out;
 }
@@ -138,32 +128,20 @@ struct uniform_on_sphere_point_distributor {
   void seed(unsigned int c = 0) {
     i = c;
   }
-  std::vector<T> operator()() {
+  cv::Vec<T, 4> operator()() {
     const double y = i*off - 1 + off/2;
     const double r = sqrt(1 - y*y);
     const double phi = i * inc;
-    std::vector<T> position(4);
-    position.at(0) = cos(phi)*r * radius;
-    position.at(1) = y          * radius;
-    position.at(2) = sin(phi)*r * radius;
-    position.at(3) = 1;
-    assert(abs(cv::norm(cv::Vec<T, 3>(position.at(0), position.at(1), position.at(2))) - radius) < std::numeric_limits<T>::epsilon());
+    cv::Vec<T, 4> position;
+    position[0] = cos(phi)*r * radius;
+    position[1] = y          * radius;
+    position[2] = sin(phi)*r * radius;
+    position[3] = 1;
+    assert(abs(cv::norm(cv::Vec<T, 3>(position[0], position[1], position[2])) - radius) < std::numeric_limits<T>::epsilon());
     i++;
     return position;
   }
 };
-
-typedef struct halton_sequence {
-  const unsigned int m_base;
-  float m_number;
-  halton_sequence(const unsigned int base = 2, const unsigned int number = 1);
-  float operator()();
-  void discard(unsigned long long z);
-  void seed(const unsigned int i = 1);
-  static float min();
-  static float max();
-} halton_sequence;
-
 
 template<typename T>
 struct uniform_on_sphere_point_distributor_without_limit {
@@ -174,94 +152,94 @@ struct uniform_on_sphere_point_distributor_without_limit {
   bool sign;
   uniform_on_sphere_point_distributor_without_limit(const T radius) : radius(radius), seq1(3, 1), z_dist(0.0, 360.0), t_dist(0.0, M_PI/2), sign(false) {
   }
-  std::vector<T> operator()() {
+  cv::Vec<T, 4> operator()() {
     T theta = z_dist(engine);
     T phi = t_dist(engine);
 //    T theta = 360*seq1();
 //    T phi = M_PI/2*seq2();
-    std::vector<T> tmp(4);
-    tmp.at(0) = cos(sqrt(phi)) * cos(theta) * radius;
-    tmp.at(1) = cos(sqrt(phi)) * sin(theta) * radius;
-    tmp.at(2) = sin(sqrt(phi))              * radius;
-    tmp.at(3) = 1;
+    cv::Vec<T, 4> tmp;
+    tmp[0] = cos(sqrt(phi)) * cos(theta) * radius;
+    tmp[1] = cos(sqrt(phi)) * sin(theta) * radius;
+    tmp[2] = sin(sqrt(phi))              * radius;
+    tmp[3] = 1;
     if (sign)
       tmp.at(2) = - tmp.at(2);
     sign ^= true;
-    assert(abs(cv::norm(cv::Vec<T, 3>(tmp.at(0), tmp.at(1), tmp.at(2))) - radius) < std::numeric_limits<T>::epsilon());
+    assert(abs(cv::norm(cv::Vec<T, 3>(tmp[0], tmp[1], tmp[2])) - radius) < std::numeric_limits<T>::epsilon());
     return tmp;
   }
 };
 
 template<typename T, int D>
-std::function<bool(std::vector<T>)> plane_acceptor(const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
-  return [&](const std::vector<T>& p){return distFromPlane(p, normal, point) > 0;};
+std::function<bool(cv::Vec<T, D>)> plane_acceptor(const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
+  return [&](const cv::Vec<T, D>& p){return distFromPlane(p, normal, point) > 0;};
 }
 
 template<typename T, int D>
-std::tuple<std::function<bool(std::vector<T>)>, double> plane_acceptor_tuple(const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
+std::tuple<decltype(plane_acceptor<T, D>), double> plane_acceptor_tuple(const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
   return std::make_tuple(plane_acceptor(normal, point), 2.1);
 }
 
-template<typename T>
+template<typename T, int dim>
 struct Lights {
-  std::vector<T> ambient;
-  std::vector<Light<T> > lights;
+  cv::Vec<T, dim> ambient;
+  std::vector<Light<T, dim>> lights;
   
   Lights() {}
-  
+
+  /* // TODO renable
   Lights(const T radius, const unsigned int num_lights = 10,
-      const std::function<bool(std::vector<T>)> &point_acceptor = [](const std::vector<T>& pos){return true;},
-      const std::vector<T> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
-    std::vector<T> default_light_property(4);
+      const decltype(plane_acceptor<T, dim>) &point_acceptor = [](const cv::Vec<T, dim>& pos){return true;},
+      const cv::Vec<T, dim> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
+    cv::Vec<T, dim> default_light_property(cv::Scalar_<T>(0));
     uniform_on_sphere_point_distributor_without_limit<T> dist(radius);
     for (unsigned int i = 0; i < num_lights;) {
-      std::vector<T> position = dist();
+      auto position = dist();
       if (point_acceptor(position)) {
-        lights.at(i) = Light<T>(position, default_light_property, default_light_property);
+        lights.at(i) = Light<T, dim>(position, default_light_property, default_light_property);
         i++;
       }
     }
   }
-  
+  */
+  /* // TODO renable
   Lights(std::string bla, float radius = 10, unsigned int num_lights = 10,
-      const std::tuple<std::function<bool(std::vector<T>)>, double> &point_acceptor = std::make_tuple([](const std::vector<T>& pos){return true;}, 1),
-      std::vector<T> ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
-    std::vector<T> default_light_property(4);
-    std::function<bool(std::vector<T>)> func;
+      const std::tuple<decltype(plane_acceptor<T, dim>()), double> &point_acceptor = std::make_tuple([](const cv::Vec<T, D>& pos){return true;}, 1),
+      const cv::Vec<T, dim> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
+    cv::Vec<T, dim> default_light_property(cv::Scalar_<T>(0));
+    decltype(plane_acceptor<T, dim>()) func;
     double num_discarded_points;
     std::tie(func, num_discarded_points) = point_acceptor;
     // distribute light sources uniformly on the sphere
     uniform_on_sphere_point_distributor<T> dist(radius, num_lights*num_discarded_points);
     for (unsigned int i = 0; i < num_lights;) {
-      std::vector<T> position = dist();
+      cv::Vec<T, 4> position = dist();
       if (func(position)) {
         lights.at(i) = Light<T>(position, default_light_property, default_light_property);
         i++;
       }
     }
   }
-  
-  template<int dim>
-  Lights(const T light_props[][dim], const unsigned int count, const std::vector<T> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(count) {
+  */
+  Lights(const T light_props[][dim], const unsigned int count, const cv::Vec<T, dim> &ambient = create_ambient_color<T, dim>()) : ambient(ambient), lights(count) {
     for (unsigned int i = 0; i < NUM_PROPERTIES * count; i += NUM_PROPERTIES) {
       const unsigned int pos = i / NUM_PROPERTIES;
-      lights.at(pos) = Light<T>(light_props[i + 0], light_props[i + 1], light_props[i + 2]);
+      lights.at(pos) = Light<T, dim>(light_props[i + 0], light_props[i + 1], light_props[i + 2]);
     }
   }
 
-  template<int dim>
-  Lights(const cv::Mat_<cv::Vec<T, dim>>& positions, const std::vector<T> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(positions.rows) {
+  Lights(const cv::Mat_<cv::Vec<T, dim>>& positions, const cv::Vec<T, dim> &ambient = create_ambient_color<T, dim>()) : ambient(ambient), lights(positions.rows) {
     std::vector<T> default_light_property(4);
     unsigned int i = 0;
     for (const auto& pos : positions) {
-      lights.at(i) = Light<T>(pos, default_light_property, default_light_property);
+      lights.at(i) = Light<T, dim>(pos, default_light_property, default_light_property);
       i++;
     }
   }
   
   void setUniforms(const GLuint programm_id) const {
     GLint uniform_light_property = glGetUniformLocation(programm_id, "ambient_light");
-    glUniform4f(uniform_light_property, ambient.at(0), ambient.at(1), ambient.at(2), ambient.at(3));
+    glUniform4f(uniform_light_property, ambient[0], ambient[1], ambient[2], ambient[3]);
 //    if (uniform_light_property == -1)
 //      std::cout << "uniform handle is -1 with uniform name " << "ambient_color" << std::endl;
 
@@ -272,12 +250,13 @@ struct Lights {
   }
 };
 
-template<typename T>
-std::ostream& operator<<(std::ostream& out, const Lights<T>& lights) {
+template<typename T, int dim>
+std::ostream& operator<<(std::ostream& out, const Lights<T, dim>& lights) {
   out << "ambient illumination: ";
   out << lights.ambient << std::endl;
   unsigned int i = 0;
-  for (Light<T> iter : lights.lights)
+  // std::copy + std::ostream_iterator ?
+  for (Light<T, dim> iter : lights.lights)
     out << "Light\n" << i++ << ": " << iter;
   return out;
 }

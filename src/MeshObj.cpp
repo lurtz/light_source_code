@@ -6,7 +6,7 @@
 
 #define OFFSET(i) (static_cast<char*>(nullptr) + (i))
 
-MeshObj::MeshObj(Lights<float> const * lights, float const * const rotation, float const * const translation, const float scale)
+MeshObj::MeshObj(Lights<float, 4> const * lights, float const * const rotation, float const * const translation, const float scale)
   : mMaterial(0), mVBO(0), mIBO(0), mIndexCount(0), mShadowVBO(0), mShadowIBO(0), mShadowIndexCount(0), _scale(scale), _lights(lights) {
   for (int i = 0; i < 3; ++i) {
     mMinBounds[i] = std::numeric_limits<float>::max();
@@ -153,6 +153,6 @@ void MeshObj::scale(float scale) {
   _scale = scale;
 }
 
-void MeshObj::setLight(const Lights<float>& lights) {
+void MeshObj::setLight(const Lights<float, 4>& lights) {
   _lights = &lights;
 }

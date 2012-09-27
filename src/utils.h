@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <chrono>
 #ifdef OPENCV_OLD_INCLUDES
   #include <cv.h>
@@ -16,9 +17,11 @@ void print(T t) {
 }
 
 template<typename T, int dim>
-std::vector<T> create_vector_from_array(const T (&array)[dim]) {
-  std::vector<T> tmp(array, array + dim);
-  return tmp;
+cv::Vec<T, dim> create_vector_from_array(const T (&array)[dim]) {
+  cv::Vec<T, dim> ret_val;
+  for (unsigned int i = 0; i < dim; i++)
+    ret_val[i] = array[i];
+  return ret_val;
 }
 
 template<typename T>
@@ -46,12 +49,6 @@ std::ostream& operator<<(std::ostream& out, const std::map<K,V>& map) {
 template<typename T, int D>
 T distFromPlane(const cv::Vec<T, D>& x, const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
   return normal.dot(x-point);
-}
-
-template<typename T, int D>
-T distFromPlane(const std::vector<T>& x, const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
-  cv::Mat mat(x);
-  return distFromPlane(mat.at<cv::Vec<T,D>>(0), normal, point);
 }
 
 template<class Rep, class Period>
@@ -83,5 +80,16 @@ template<class T>
 void flipImage(T& image, const unsigned int width) {
   flipImage(std::begin(image), std::end(image), width);
 }
+
+typedef struct halton_sequence {
+  const unsigned int m_base;
+  float m_number;
+  halton_sequence(const unsigned int base = 2, const unsigned int number = 1);
+  float operator()();
+  void discard(unsigned long long z);
+  void seed(const unsigned int i = 1);
+  static float min();
+  static float max();
+} halton_sequence;
 
 #endif /* __UTILS_H__ */
