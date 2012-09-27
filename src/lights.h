@@ -187,7 +187,6 @@ struct Lights {
   
   Lights() {}
 
-  /* // TODO renable
   Lights(const T radius, const unsigned int num_lights = 10,
       const decltype(plane_acceptor<T, dim>) &point_acceptor = [](const cv::Vec<T, dim>& pos){return true;},
       const cv::Vec<T, dim> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
@@ -201,10 +200,9 @@ struct Lights {
       }
     }
   }
-  */
-  /* // TODO renable
+  
   Lights(std::string bla, float radius = 10, unsigned int num_lights = 10,
-      const std::tuple<decltype(plane_acceptor<T, dim>()), double> &point_acceptor = std::make_tuple([](const cv::Vec<T, D>& pos){return true;}, 1),
+      const std::tuple<decltype(plane_acceptor<T, dim>), double> &point_acceptor = std::make_tuple([](const cv::Vec<T, dim>& pos){return true;}, 1),
       const cv::Vec<T, dim> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
     cv::Vec<T, dim> default_light_property(cv::Scalar_<T>(0));
     decltype(plane_acceptor<T, dim>()) func;
@@ -215,12 +213,12 @@ struct Lights {
     for (unsigned int i = 0; i < num_lights;) {
       cv::Vec<T, 4> position = dist();
       if (func(position)) {
-        lights.at(i) = Light<T>(position, default_light_property, default_light_property);
+        lights.at(i) = Light<T, dim>(position, default_light_property, default_light_property);
         i++;
       }
     }
   }
-  */
+  
   Lights(const T light_props[][dim], const unsigned int count, const cv::Vec<T, dim> &ambient = create_ambient_color<T, dim>()) : ambient(ambient), lights(count) {
     for (unsigned int i = 0; i < NUM_PROPERTIES * count; i += NUM_PROPERTIES) {
       const unsigned int pos = i / NUM_PROPERTIES;
