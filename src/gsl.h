@@ -5,6 +5,8 @@
 #include <gsl/gsl_multimin.h>
 #include <gsl/gsl_blas.h>
 #include <memory>
+#include <limits>
+#include "lights.h"
 
 namespace gsl {
   // TODO overload operators
@@ -116,12 +118,12 @@ namespace gsl {
         throw;
     }
 
-    template<typename T>
-    vector(const Lights<T>& lights) : v(gsl_vector_alloc(colors_per_light + lights.lights.size()*components_per_light*colors_per_light), gsl_vector_free) {
+    template<typename T, int dim>
+    vector(const Lights<T, dim>& lights) : v(gsl_vector_alloc(colors_per_light + lights.lights.size()*components_per_light*colors_per_light), gsl_vector_free) {
       set<AMBIENT>(0, lights.ambient);
 
       for (unsigned int i = 0; i < lights.lights.size(); i++) {
-        const Light<T>& light = lights.lights.at(i);
+        const Light<T, dim>& light = lights.lights.at(i);
         set<DIFFUSE>(i, light.get_diffuse());
         set<SPECULAR>(i, light.get_specular());
       }
@@ -174,11 +176,11 @@ namespace gsl {
     }
 
     template<typename T, int offset>
-    std::vector<T> get(const size_t i) const {
-      std::vector<T> tmp(colors_per_light+1);
+    cv::Vec<T, colors_per_light+1> get(const size_t i) const {
+      cv::Vec<T, colors_per_light+1> tmp;
       for (unsigned j = 0; j < colors_per_light; j++)
-        tmp.at(j) = get(offset*colors_per_light + i*colors_per_light*components_per_light + j);
-      tmp.at(colors_per_light) = 0;
+        tmp[j] = get(offset*colors_per_light + i*colors_per_light*components_per_light + j);
+      tmp[colors_per_light] = 0;
       return tmp;
     }
 
@@ -194,10 +196,11 @@ namespace gsl {
     }
 
     /** set light properties for initial guess */
-    template<int offset, typename T>
-    void set(const size_t i, const std::vector<T> &val) {
+    template<int offset, typename T, int dim>
+    void set(const size_t i, const cv::Vec<T, dim> &val) {
+      static_assert(colors_per_light <= dim, "val contains less items than needed to set");
       for (size_t j = 0; j < colors_per_light; j++) {
-        set(offset*colors_per_light + i*colors_per_light*components_per_light + j, val.at(j));
+        set(offset*colors_per_light + i*colors_per_light*components_per_light + j, val[j]);
       }
     }
   };
