@@ -176,7 +176,7 @@ std::function<bool(cv::Vec<T, D>)> plane_acceptor(const cv::Vec<T, D>& normal, c
 }
 
 template<typename T, int D>
-std::tuple<decltype(plane_acceptor<T, D>), double> plane_acceptor_tuple(const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
+std::tuple<std::function<bool(cv::Vec<T, D>)>, double> plane_acceptor_tuple(const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
   return std::make_tuple(plane_acceptor(normal, point), 2.1);
 }
 

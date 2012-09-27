@@ -410,7 +410,8 @@ Lights<float, 4> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::
   const unsigned int small_num_lights = 10;
   float x, y, z;
   std::tie(x, y, z) = view_direction;
-  Lights<float, 4> a_lot_of_lights("bla", 10, huge_num_lights, plane_acceptor_tuple(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
+  Lights<float, 4> a_lot_of_lights("bla", 10, huge_num_lights, plane_acceptor_tuple<float, 4>(cv::Vec4f(-x, -y, -z, 0), cv::Vec4f(0, 0, 0, 0)), create_ambient_color<float, 4>());
+/*
   const auto time_after_huge_lights_creation = std::chrono::high_resolution_clock::now();
   std::cout << "a lot of lights created" << std::endl;
 
@@ -440,6 +441,8 @@ Lights<float, 4> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::
   cv::waitKey(100);
 
   return lights;
+  */
+  return a_lot_of_lights; // TODO remove
 }
 
 #endif /* SOLVER_H_ */
