@@ -120,7 +120,7 @@ struct sample_point_random {
       if (!is_sample_point(normal))
         continue;
 
-      assert(fabs(cv::norm(normal) - 1) < eps);
+      assert(std::fabs(cv::norm(normal) - 1) < eps);
       assert(_x < normals.cols);
       assert(_y < normals.rows);
 

@@ -68,7 +68,7 @@ double sum(const T& v) {
 
 template<typename T, int dim, typename T1>
 bool has_length(const cv::Vec<T, dim>& vec, T1 length, T eps = std::numeric_limits<T>::epsilon()) {
-  return std::fabs(cv::norm(length) - length) < eps;
+  return std::fabs(cv::norm(vec) - length) < eps;
 }
 
 template<class RandomAccessIterator>
