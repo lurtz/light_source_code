@@ -342,7 +342,7 @@ Lights<T, dim> reduce_lights(const Lights<T, dim>& lights, const unsigned int k)
     const Light<T, dim>& light = lights.lights.at(i);
     cv::Vec<T, dim> pos;
     for (unsigned int j = 0; j < dim; j++)
-      pos[j] = light.get_position().at(j);
+      pos[j] = light.get_position()[j];
     positions(i) = pos;
     // RGB for diffuse and specular -> 6 values from 0 to 1
     // let sum range from 0 to 2
@@ -419,8 +419,8 @@ Lights<float, 4> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::
   const auto time_after_huge_lights_run = std::chrono::high_resolution_clock::now();
   std::cout << "a lot of lights optimized" << std::endl;
 
-
   Lights<float, 4> lights;
+  
   if (!args.single_pass) {
     lights = reduce_lights(a_lot_of_lights, small_num_lights);
     std::cout << "a lot of lights reduced" << std::endl;

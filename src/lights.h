@@ -209,7 +209,7 @@ struct Lights {
       const decltype(plane_acceptor_tuple<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) &point_acceptor = std::make_tuple([](const cv::Vec<T, dim>& pos){return true;}, 1),
       const cv::Vec<T, dim> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
     cv::Vec<T, dim> default_light_property(cv::Scalar_<T>(0));
-    decltype(plane_acceptor<T, dim>()) func;
+    decltype(plane_acceptor<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) func;
     double num_discarded_points;
     std::tie(func, num_discarded_points) = point_acceptor;
     // distribute light sources uniformly on the sphere
@@ -231,7 +231,7 @@ struct Lights {
   }
 
   Lights(const cv::Mat_<cv::Vec<T, dim>>& positions, const cv::Vec<T, dim> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(positions.rows) {
-    std::vector<T> default_light_property(4);
+    cv::Vec<T, dim> default_light_property(cv::Scalar_<T>(0));
     unsigned int i = 0;
     for (const auto& pos : positions) {
       lights.at(i) = Light<T, dim>(pos, default_light_property, default_light_property);

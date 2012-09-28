@@ -63,6 +63,14 @@ double sum(const T& v) {
   return sum;
 }
 
+template<typename T, int dim>
+double sum(const cv::Vec<T, dim>& v) {
+  double sum = 0;
+  for (int i = 0; i < dim; i++)
+    sum += v[i];
+  return sum;
+}
+
 template<typename T, int dim, typename T1>
 bool has_length(const cv::Vec<T, dim>& vec, T1 length, T eps = std::numeric_limits<T>::epsilon()) {
   return std::fabs(cv::norm(length) - length) < eps;
