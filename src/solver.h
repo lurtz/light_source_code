@@ -45,8 +45,8 @@ void show_rgb_image(std::string name, cv::Mat_<cv::Vec<T, 3>> image) {
   cv::imshow(name, bla);
 }
 
-template<typename T>
-cv::Mat_<float> transform(const cv::Mat_<GLfloat>& model_view_matrix, const std::vector<T>& light_pos_in_object_space_vector) {
+template<typename T, int dim>
+cv::Mat_<float> transform(const cv::Mat_<GLfloat>& model_view_matrix, const cv::Vec<T, dim>& light_pos_in_object_space_vector) {
   const cv::Mat_<float> light_pos_in_object_space_mat(light_pos_in_object_space_vector, false);
   // durch vierte komponente teilen
   const cv::Mat_<float> light_pos_vec4(model_view_matrix * light_pos_in_object_space_mat);
@@ -132,8 +132,8 @@ struct sample_point_random {
   }
 };
 
-template<typename T>
-std::tuple<float, float> get_diffuse_specular(const cv::Mat_<float> &pos_vec, const cv::Mat_<float> &normal, const Light<T> &light, const cv::Mat_<GLfloat>& model_view_matrix, const int alpha) {
+template<typename T, int dim>
+std::tuple<float, float> get_diffuse_specular(const cv::Mat_<float> &pos_vec, const cv::Mat_<float> &normal, const Light<T, dim> &light, const cv::Mat_<GLfloat>& model_view_matrix, const int alpha) {
   const cv::Mat_<float> light_pos = transform(model_view_matrix, light.get_position());
 
   const cv::Mat_<float> L_ = light_pos - pos_vec;
@@ -165,8 +165,9 @@ std::tuple<float, float> get_diffuse_specular(const cv::Mat_<float> &pos_vec, co
   return std::make_tuple(diffuse, specular);
 }
 
-template<unsigned int colors_per_light, unsigned int components_per_light, template <typename, int> class point_selector, typename T, typename T1, int dim>
-std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const cv::Mat_<cv::Vec<T, dim>>& image, const cv::Mat_<cv::Vec<T, dim>>& normals, const cv::Mat_<cv::Vec<T, dim>>& position, const cv::Mat_<cv::Vec<T, dim>>& diffuse_texture, const cv::Mat_<cv::Vec<T, dim>>& specular_texture, const cv::Mat_<GLfloat>& model_view_matrix, const Lights<T1>& lights, const int alpha) {
+// TODO reduce template parameters T, dim
+template<unsigned int colors_per_light, unsigned int components_per_light, template <typename, int> class point_selector, typename T, typename T1, int dim, int dim1>
+std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const cv::Mat_<cv::Vec<T, dim>>& image, const cv::Mat_<cv::Vec<T, dim>>& normals, const cv::Mat_<cv::Vec<T, dim>>& position, const cv::Mat_<cv::Vec<T, dim>>& diffuse_texture, const cv::Mat_<cv::Vec<T, dim>>& specular_texture, const cv::Mat_<GLfloat>& model_view_matrix, const Lights<T1, dim1>& lights, const int alpha) {
   std::cout << "creating linear system" << std::endl;
 
   const unsigned int sample_max = get_maximum_number_of_sample_points(normals);
@@ -210,7 +211,7 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
     const cv::Mat_<float> specular_tex(specular_texture(_y, _x));
 
     for (unsigned int col = 0; col < lights.lights.size(); col++) {
-      const Light<T>& light = lights.lights.at(col);
+      const Light<T1, dim1>& light = lights.lights.at(col);
       x.set_diffuse_specular(row, col, get_diffuse_specular(pos_vec, normal, light, model_view_matrix, alpha), diffuse_tex, specular_tex);
     }
   }
@@ -220,16 +221,16 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
 }
 
 // TODO maybe method of object
-template<typename T, int colors_per_light, int components_per_light>
-void set_solution(const gsl::vector<colors_per_light, components_per_light>& c, Lights<T>& lights) {
+template<typename T, int colors_per_light, int components_per_light, int dim>
+void set_solution(const gsl::vector<colors_per_light, components_per_light>& c, Lights<T, dim>& lights) {
   // ambient
   lights.ambient = c.template get<T, gsl::AMBIENT>(0);
 
   // diffuse and specular
   for (unsigned int i = 0; i < lights.lights.size(); i++) {
-    Light<T>& light = lights.lights.at(i);
-    std::vector<T>& diff = light.get_diffuse();
-    std::vector<T>& spec = light.get_specular();
+    Light<T, dim>& light = lights.lights.at(i);
+    cv::Vec<T, dim>& diff = light.get_diffuse();
+    cv::Vec<T, dim>& spec = light.get_specular();
     diff = c.template get<T, gsl::DIFFUSE>(i);
     spec = c.template get<T, gsl::SPECULAR>(i);
   }
@@ -334,14 +335,14 @@ struct nnls_struct {
 };
 
 template<int dim, typename T>
-Lights<T> reduce_lights(const Lights<T>& lights, const unsigned int k) {
+Lights<T, dim> reduce_lights(const Lights<T, dim>& lights, const unsigned int k) {
   cv::Mat_<cv::Vec<T, dim>> positions(lights.lights.size(), 1);
   std::vector<double> weight(positions.rows);
   for (int i = 0; i < positions.rows; i++) {
-    const Light<T>& light = lights.lights.at(i);
+    const Light<T, dim>& light = lights.lights.at(i);
     cv::Vec<T, dim> pos;
     for (unsigned int j = 0; j < dim; j++)
-      pos[j] = light.get_position().at(j);
+      pos[j] = light.get_position()[j];
     positions(i) = pos;
     // RGB for diffuse and specular -> 6 values from 0 to 1
     // let sum range from 0 to 2
@@ -359,11 +360,11 @@ Lights<T> reduce_lights(const Lights<T>& lights, const unsigned int k) {
     centers_templ(i) = centers.at<cv::Vec<T, dim>>(i);
   }
 
-  return Lights<T>(centers_templ);
+  return Lights<T, dim>(centers_templ);
 }
 
-template<template <int, int> class optimizer, template <typename, int> class point_selector, typename T>
-void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<cv::Vec3f>& diffuse, const cv::Mat_<cv::Vec3f>& specular, const cv::Mat_<GLfloat>& model_view_matrix, Lights<T>& lights, const int alpha = 50) {
+template<template <int, int> class optimizer, template <typename, int> class point_selector, typename T, int dim>
+void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<cv::Vec3f>& diffuse, const cv::Mat_<cv::Vec3f>& specular, const cv::Mat_<GLfloat>& model_view_matrix, Lights<T, dim>& lights, const int alpha = 50) {
   //  order of images is: xyz, RGB
   const unsigned int colors_per_light = 3;
   const unsigned int components_per_light = 2;
@@ -382,7 +383,7 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
 }
 
 template<template <int, int> class optimizer, template <typename, int> class point_selector>
-Lights<float> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<float>, cv::Mat_<float>>& image_data, const std::tuple<float, float, float>& view_direction, const arguments& args) {
+Lights<float, 4> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<float>, cv::Mat_<float>>& image_data, const std::tuple<float, float, float>& view_direction, const arguments& args) {
 //  testkmeansall();
 
   const auto start_time = std::chrono::high_resolution_clock::now();
@@ -409,7 +410,8 @@ Lights<float> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec
   const unsigned int small_num_lights = 10;
   float x, y, z;
   std::tie(x, y, z) = view_direction;
-  Lights<float> a_lot_of_lights("bla", 10, huge_num_lights, plane_acceptor_tuple(cv::Vec3f(-x, -y, -z), cv::Vec3f(0, 0, 0)));
+  Lights<float, 4> a_lot_of_lights("bla", 10, huge_num_lights, plane_acceptor_tuple<float, 4>(cv::Vec4f(-x, -y, -z, 0), cv::Vec4f(0, 0, 0, 0)));
+  
   const auto time_after_huge_lights_creation = std::chrono::high_resolution_clock::now();
   std::cout << "a lot of lights created" << std::endl;
 
@@ -417,9 +419,10 @@ Lights<float> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec
   const auto time_after_huge_lights_run = std::chrono::high_resolution_clock::now();
   std::cout << "a lot of lights optimized" << std::endl;
 
-  Lights<float> lights;
+  Lights<float, 4> lights;
+  
   if (!args.single_pass) {
-    lights = reduce_lights<4>(a_lot_of_lights, small_num_lights);
+    lights = reduce_lights(a_lot_of_lights, small_num_lights);
     std::cout << "a lot of lights reduced" << std::endl;
 
     optimize_lights<optimizer, point_selector>(image, normals, position, diffuse, specular, model_view_matrix.t(), lights);

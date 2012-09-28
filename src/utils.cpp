@@ -1,4 +1,4 @@
-#include "lights.h"
+#include "utils.h"
 
 halton_sequence::halton_sequence(const unsigned int base, const unsigned int number) : m_base(base), m_number(number) {
 }
@@ -9,7 +9,7 @@ halton_sequence::halton_sequence(const unsigned int base, const unsigned int num
        result = 0;
        f = 1 / base;
        i = index;
-       WHILE (i > 0) 
+       WHILE (i > 0)
        BEGIN
            result = result + f * (i % base);
            i = FLOOR(i / base);
