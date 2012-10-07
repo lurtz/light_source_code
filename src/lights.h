@@ -28,14 +28,37 @@ const float light_properties[][4] = {
     ,{ 0,  -10, 0, 1}, {0.5, 0.0, 0.5, 0}, {1, 0, 1, 0}
 };
 
-// TODO variadic number of arguments, template parameter int dim (llvm breaks with it)
-template<typename T>
-cv::Vec<T, 4> create_ambient_color(T r = 0.1, T g = 0.1, T b = 0.1, T a = 0.0) {
-  return cv::Vec<T, 4>(r, b, g, a);
+template<typename T, int dim>
+cv::Vec<T, dim> default_ambient_color(T val = 0.1) {
+  cv::Vec<T, dim> ret_val;
+  for (unsigned int i = 0; i < dim; i++)
+    ret_val[i] = val;
+  return ret_val;
 }
 
+enum Properties {POSITION, DIFFUSE, SPECULAR};
+
+struct enum_to_string {
+  std::map<int, std::string> binds;
+  enum_to_string() {
+    binds[POSITION] = "position";
+    binds[DIFFUSE] = "diffuse";
+    binds[SPECULAR] = "specular";
+  }
+
+  const std::string operator[](Properties property) const {
+    auto x = binds.find(property);
+    if (x == binds.end())
+      throw;
+    return x->second;
+  }
+};
+
+const enum_to_string binds;
+  
 template<typename T, int dim>
 struct Light {
+  
   static const std::string position_name;
   static const std::string diffuse_name;
   static const std::string specular_name;
@@ -44,14 +67,6 @@ struct Light {
   properties props;
   
   Light() {}
-  
-  Light(const std::vector<T>& position, const std::vector<T>& diffuse, const std::vector<T>& specular) {
-    for (unsigned int i = 0; i < dim; i++) {
-      props[position_name][i] = position.at(i);
-      props[diffuse_name][i] = diffuse.at(i);
-      props[specular_name][i] = specular.at(i);
-    }
-  }
 
   Light(const cv::Vec<T, dim>& position, const cv::Vec<T, dim>& diffuse, const cv::Vec<T, dim>& specular) {
     props[position_name] = position;
@@ -66,23 +81,36 @@ struct Light {
   }
   
   const cv::Vec<T, dim>& get_position() const {
-    return props.find(position_name)->second;
+    return get<POSITION>();
   }
 
   cv::Vec<T, dim>& get_diffuse() {
-    return props[diffuse_name];
+    return get<DIFFUSE>();
   }
 
   const cv::Vec<T, dim>& get_diffuse() const {
-    return props.find(diffuse_name)->second;
+    return get<DIFFUSE>();
   }
 
   cv::Vec<T, dim>& get_specular() {
-    return props[specular_name];
+    return get<SPECULAR>();
   }
 
   const cv::Vec<T, dim>& get_specular() const {
-    return props.find(specular_name)->second;
+    return get<SPECULAR>();
+  }
+
+  template<Properties prop>
+  cv::Vec<T, dim>& get() {
+    return props[binds[prop]];
+  }
+
+  template<Properties prop>
+  const cv::Vec<T, dim>& get() const {
+    auto x = props.find(binds[prop]);
+    if (x == props.end())
+      throw;
+    return x->second;
   }
 
   static std::string get_shader_name(const unsigned int number, const std::string& property) {
@@ -120,12 +148,12 @@ std::ostream& operator<<(std::ostream& out, const Light<T, dim>& light) {
 // http://www.xsi-blog.com/archives/115
 template<typename T>
 struct uniform_on_sphere_point_distributor {
-  double inc;
+  const double inc = M_PI * (3 - std::sqrt(5));
   const double off;
   unsigned int i;
   const float radius;
   const unsigned int num_lights;
-  uniform_on_sphere_point_distributor(const float radius, const unsigned int num_lights) : inc(M_PI * (3 - sqrt(5))), off(2.0/num_lights), i(0), radius(radius), num_lights(num_lights) {
+  uniform_on_sphere_point_distributor(const float radius, const unsigned int num_lights) : off(2.0/num_lights), i(0), radius(radius), num_lights(num_lights) {
   }
   void seed(unsigned int c = 0) {
     i = c;
@@ -135,11 +163,11 @@ struct uniform_on_sphere_point_distributor {
     const double r = sqrt(1 - y*y);
     const double phi = i * inc;
     cv::Vec<T, 4> position;
-    position[0] = cos(phi)*r * radius;
-    position[1] = y          * radius;
-    position[2] = sin(phi)*r * radius;
+    position[0] = std::cos(phi) * r * radius;
+    position[1] = y                 * radius;
+    position[2] = std::sin(phi) * r * radius;
     position[3] = 1;
-    assert(abs(cv::norm(cv::Vec<T, 3>(position[0], position[1], position[2])) - radius) < std::numeric_limits<T>::epsilon());
+    assert(std::fabs(cv::norm(cv::Vec<T, 3>(position[0], position[1], position[2])) - radius) <= 16*std::numeric_limits<T>::epsilon());
     i++;
     return position;
   }
@@ -189,11 +217,10 @@ struct Lights {
   
   Lights() {}
 
-  /*
   Lights(const T radius, const unsigned int num_lights = 10,
       const decltype(plane_acceptor<T, dim>) &point_acceptor = [](const cv::Vec<T, dim>& pos){return true;},
-      const cv::Vec<T, dim> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
-    cv::Vec<T, dim> default_light_property(cv::Scalar_<T>(0));
+      const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(num_lights) {
+    const cv::Vec<T, dim> default_light_property(cv::Scalar_<T>(0));
     uniform_on_sphere_point_distributor_without_limit<T> dist(radius);
     for (unsigned int i = 0; i < num_lights;) {
       auto position = dist();
@@ -203,12 +230,11 @@ struct Lights {
       }
     }
   }
-  */
   
   Lights(std::string bla, float radius = 10, unsigned int num_lights = 10,
       const decltype(plane_acceptor_tuple<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) &point_acceptor = std::make_tuple([](const cv::Vec<T, dim>& pos){return true;}, 1),
-      const cv::Vec<T, dim> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
-    cv::Vec<T, dim> default_light_property(cv::Scalar_<T>(0));
+      const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(num_lights) {
+    const cv::Vec<T, dim> default_light_property(cv::Scalar_<T>(0));
     decltype(plane_acceptor<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) func;
     double num_discarded_points;
     std::tie(func, num_discarded_points) = point_acceptor;
@@ -223,15 +249,15 @@ struct Lights {
     }
   }
   
-  Lights(const T light_props[][dim], const unsigned int count, const cv::Vec<T, dim> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(count) {
+  Lights(const T light_props[][dim], const unsigned int count, const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(count) {
     for (unsigned int i = 0; i < NUM_PROPERTIES * count; i += NUM_PROPERTIES) {
       const unsigned int pos = i / NUM_PROPERTIES;
       lights.at(pos) = Light<T, dim>(light_props[i + 0], light_props[i + 1], light_props[i + 2]);
     }
   }
 
-  Lights(const cv::Mat_<cv::Vec<T, dim>>& positions, const cv::Vec<T, dim> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(positions.rows) {
-    cv::Vec<T, dim> default_light_property(cv::Scalar_<T>(0));
+  Lights(const cv::Mat_<cv::Vec<T, dim>>& positions, const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(positions.rows) {
+    const cv::Vec<T, dim> default_light_property(cv::Scalar_<T>(0));
     unsigned int i = 0;
     for (const auto& pos : positions) {
       lights.at(i) = Light<T, dim>(pos, default_light_property, default_light_property);
