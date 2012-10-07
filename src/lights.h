@@ -28,10 +28,12 @@ const float light_properties[][4] = {
     ,{ 0,  -10, 0, 1}, {0.5, 0.0, 0.5, 0}, {1, 0, 1, 0}
 };
 
-// TODO variadic number of arguments, template parameter int dim (llvm breaks with it)
-template<typename T>
-cv::Vec<T, 4> create_ambient_color(T r = 0.1, T g = 0.1, T b = 0.1, T a = 0.0) {
-  return cv::Vec<T, 4>(r, b, g, a);
+template<typename T, int dim>
+cv::Vec<T, dim> default_ambient_color(T val = 0.1) {
+  cv::Vec<T, dim> ret_val;
+  for (unsigned int i = 0; i < dim; i++)
+    ret_val[i] = val;
+  return ret_val;
 }
 
 template<typename T, int dim>
@@ -207,7 +209,7 @@ struct Lights {
   
   Lights(std::string bla, float radius = 10, unsigned int num_lights = 10,
       const decltype(plane_acceptor_tuple<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) &point_acceptor = std::make_tuple([](const cv::Vec<T, dim>& pos){return true;}, 1),
-      const cv::Vec<T, dim> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(num_lights) {
+      const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(num_lights) {
     cv::Vec<T, dim> default_light_property(cv::Scalar_<T>(0));
     decltype(plane_acceptor<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) func;
     double num_discarded_points;
@@ -223,14 +225,14 @@ struct Lights {
     }
   }
   
-  Lights(const T light_props[][dim], const unsigned int count, const cv::Vec<T, dim> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(count) {
+  Lights(const T light_props[][dim], const unsigned int count, const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(count) {
     for (unsigned int i = 0; i < NUM_PROPERTIES * count; i += NUM_PROPERTIES) {
       const unsigned int pos = i / NUM_PROPERTIES;
       lights.at(pos) = Light<T, dim>(light_props[i + 0], light_props[i + 1], light_props[i + 2]);
     }
   }
 
-  Lights(const cv::Mat_<cv::Vec<T, dim>>& positions, const cv::Vec<T, dim> &ambient = create_ambient_color<T>()) : ambient(ambient), lights(positions.rows) {
+  Lights(const cv::Mat_<cv::Vec<T, dim>>& positions, const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(positions.rows) {
     cv::Vec<T, dim> default_light_property(cv::Scalar_<T>(0));
     unsigned int i = 0;
     for (const auto& pos : positions) {
