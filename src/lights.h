@@ -36,8 +36,29 @@ cv::Vec<T, dim> default_ambient_color(T val = 0.1) {
   return ret_val;
 }
 
+enum Properties {POSITION, DIFFUSE, SPECULAR};
+
+struct enum_to_string {
+  std::map<int, std::string> binds;
+  enum_to_string() {
+    binds[POSITION] = "position";
+    binds[DIFFUSE] = "diffuse";
+    binds[SPECULAR] = "specular";
+  }
+
+  const std::string operator[](Properties property) const {
+    auto x = binds.find(property);
+    if (x == binds.end())
+      throw;
+    return x->second;
+  }
+};
+
+const enum_to_string binds;
+  
 template<typename T, int dim>
 struct Light {
+  
   static const std::string position_name;
   static const std::string diffuse_name;
   static const std::string specular_name;
@@ -60,23 +81,36 @@ struct Light {
   }
   
   const cv::Vec<T, dim>& get_position() const {
-    return props.find(position_name)->second;
+    return get<POSITION>();
   }
 
   cv::Vec<T, dim>& get_diffuse() {
-    return props[diffuse_name];
+    return get<DIFFUSE>();
   }
 
   const cv::Vec<T, dim>& get_diffuse() const {
-    return props.find(diffuse_name)->second;
+    return get<DIFFUSE>();
   }
 
   cv::Vec<T, dim>& get_specular() {
-    return props[specular_name];
+    return get<SPECULAR>();
   }
 
   const cv::Vec<T, dim>& get_specular() const {
-    return props.find(specular_name)->second;
+    return get<SPECULAR>();
+  }
+
+  template<Properties prop>
+  cv::Vec<T, dim>& get() {
+    return props[binds[prop]];
+  }
+
+  template<Properties prop>
+  const cv::Vec<T, dim>& get() const {
+    auto x = props.find(binds[prop]);
+    if (x == props.end())
+      throw;
+    return x->second;
   }
 
   static std::string get_shader_name(const unsigned int number, const std::string& property) {
@@ -129,11 +163,11 @@ struct uniform_on_sphere_point_distributor {
     const double r = sqrt(1 - y*y);
     const double phi = i * inc;
     cv::Vec<T, 4> position;
-    position[0] = std::cos(phi)*r * radius;
-    position[1] = y               * radius;
-    position[2] = std::sin(phi)*r * radius;
+    position[0] = std::cos(phi) * r * radius;
+    position[1] = y                 * radius;
+    position[2] = std::sin(phi) * r * radius;
     position[3] = 1;
-    assert(std::abs(cv::norm(cv::Vec<T, 3>(position[0], position[1], position[2])) - radius) < std::numeric_limits<T>::epsilon());
+    assert(std::fabs(cv::norm(cv::Vec<T, 3>(position[0], position[1], position[2])) - radius) <= 16*std::numeric_limits<T>::epsilon());
     i++;
     return position;
   }
