@@ -12,7 +12,6 @@
 #include <memory>
 #include "opengl.h"
 #include "Trackball.h"
-#include <type_traits>
 
 #ifdef OPENCV_OLD_INCLUDES
   #include <cv.h>
@@ -204,9 +203,14 @@ void updateGL() {
   
   // render //
   if (!image_displayed && _args.optimize) {
+    const float radius = 10;
+    const unsigned int huge_num_lights = 20;
+    float x, y, z;
+    std::tie(x, y, z) = _ball.getViewDirection();
+    lights = Lights<float, 4>("bla", radius, huge_num_lights, plane_acceptor_tuple<float, 4>(cv::Vec4f(-x, -y, -z, 0), cv::Vec4f(0, 0, 0, 0)));
 //    lights = calc_lights<ls, sample_point_random>(create_test_image(), _ball.getViewDirection(), _args);
 //    lights = calc_lights<multi_dim_fit, sample_point_random>(create_test_image(), _ball.getViewDirection(), _args);
-    lights = calc_lights<nnls_struct, sample_point_deterministic>(create_test_image(), _ball.getViewDirection(), _args);
+    lights = calc_lights<nnls_struct, sample_point_deterministic>(create_test_image(), lights, _args.single_pass);
     image_displayed = true;
   }
   renderScene();

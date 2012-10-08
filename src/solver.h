@@ -382,8 +382,8 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
   assert(x == (gsl::vector<colors_per_light, components_per_light>(lights)));
 }
 
-template<template <int, int> class optimizer, template <typename, int> class point_selector>
-Lights<float, 4> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<float>, cv::Mat_<float>>& image_data, const std::tuple<float, float, float>& view_direction, const arguments& args) {
+template<template <int, int> class optimizer, template <typename, int> class point_selector, typename T, int dim>
+Lights<T, dim> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<float>, cv::Mat_<float>>& image_data, Lights<T, dim>& a_lot_of_lights, const bool single_pass, const unsigned int small_num_lights = 10) {
 //  testkmeansall();
 
   const auto start_time = std::chrono::high_resolution_clock::now();
@@ -406,22 +406,13 @@ Lights<float, 4> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::
 //  test_normals(normals);
 //  get_min_max_and_print(normals);
 
-  const unsigned int huge_num_lights = 20;
-  const unsigned int small_num_lights = 10;
-  float x, y, z;
-  std::tie(x, y, z) = view_direction;
-  Lights<float, 4> a_lot_of_lights("bla", 10, huge_num_lights, plane_acceptor_tuple<float, 4>(cv::Vec4f(-x, -y, -z, 0), cv::Vec4f(0, 0, 0, 0)));
-  
-  const auto time_after_huge_lights_creation = std::chrono::high_resolution_clock::now();
-  std::cout << "a lot of lights created" << std::endl;
-
   optimize_lights<optimizer, point_selector>(image, normals, position, diffuse, specular, model_view_matrix.t(), a_lot_of_lights);
   const auto time_after_huge_lights_run = std::chrono::high_resolution_clock::now();
   std::cout << "a lot of lights optimized" << std::endl;
 
-  Lights<float, 4> lights;
+  Lights<T, dim> lights;
   
-  if (!args.single_pass) {
+  if (!single_pass) {
     lights = reduce_lights(a_lot_of_lights, small_num_lights);
     std::cout << "a lot of lights reduced" << std::endl;
 
@@ -435,8 +426,7 @@ Lights<float, 4> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::
   const auto finish_time = std::chrono::high_resolution_clock::now();
 
   std::cout << "complete run: " << finish_time - start_time << std::endl;
-  std::cout << "  huge light number creation: " << time_after_huge_lights_creation - start_time << std::endl;
-  std::cout << "  light estimation huge light number: " << time_after_huge_lights_run - time_after_huge_lights_creation << std::endl;
+  std::cout << "  light estimation huge light number: " << time_after_huge_lights_run - start_time << std::endl;
   std::cout << "  light estimation smaller light number: " << finish_time - time_after_huge_lights_run << std::endl;
 
   cv::waitKey(100);
