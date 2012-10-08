@@ -18,6 +18,7 @@
 #endif
 #include "utils.h"
 
+namespace Lights {
 // position, ambient, diffuse, specular in vec4
 // RGB format
 const unsigned int NUM_PROPERTIES = 3;
@@ -241,6 +242,8 @@ std::ostream& operator<<(std::ostream& out, const Lights<T, dim>& lights) {
   for (Light<T, dim> iter : lights.lights)
     out << "Light\n" << i++ << ": " << iter;
   return out;
+}
+
 }
 
 #endif /* LIGHTS_H_ */

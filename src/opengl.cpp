@@ -39,7 +39,7 @@ GLuint fboTexture[5];
 GLuint fboDepthTexture;
 GLuint fbo;
 
-Lights<float, 4> lights;
+Lights::Lights<float, 4> lights;
 
 bool image_displayed = false;
 
@@ -90,9 +90,9 @@ void reshape(int width, int height) {
 void visualize_lights() {
   for (const auto& light : lights.lights) {
     glPushMatrix();
-    const auto &pos = light.get<Properties::POSITION>();
-    const auto &diffuse = light.get<Properties::DIFFUSE>();
-    const auto &specular = light.get<Properties::SPECULAR>();
+    const auto &pos = light.get<Lights::Properties::POSITION>();
+    const auto &diffuse = light.get<Lights::Properties::DIFFUSE>();
+    const auto &specular = light.get<Lights::Properties::SPECULAR>();
     glTranslatef(pos[0], pos[1], pos[2]);
     glColor3f(diffuse[0]+specular[0], diffuse[1]+specular[1], diffuse[2]+specular[2]);
     glutSolidSphere(.10, 4, 4);
@@ -175,7 +175,7 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Ma
 
 decltype(renderSceneIntoFBO()) create_test_image() {
   std::cout << "creating test image..." << std::endl;
-  auto tmp_lights = Lights<float, 4>(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
+  auto tmp_lights = Lights::Lights<float, 4>(Lights::light_properties, sizeof(Lights::light_properties)/sizeof(Lights::light_properties[0])/Lights::NUM_PROPERTIES);
   _meshobj->setLight(tmp_lights);
 
   auto tuple = renderSceneIntoFBO();
@@ -207,7 +207,7 @@ void updateGL() {
     const unsigned int huge_num_lights = 20;
     float x, y, z;
     std::tie(x, y, z) = _ball.getViewDirection();
-    lights = Lights<float, 4>("bla", radius, huge_num_lights, plane_acceptor_tuple<float, 4>(cv::Vec4f(-x, -y, -z, 0), cv::Vec4f(0, 0, 0, 0)));
+    lights = Lights::Lights<float, 4>("bla", radius, huge_num_lights, Lights::plane_acceptor_tuple<float, 4>(cv::Vec4f(-x, -y, -z, 0), cv::Vec4f(0, 0, 0, 0)));
 //    lights = calc_lights<ls, sample_point_random>(create_test_image(), _ball.getViewDirection(), _args);
 //    lights = calc_lights<multi_dim_fit, sample_point_random>(create_test_image(), _ball.getViewDirection(), _args);
     lights = calc_lights<nnls_struct, sample_point_deterministic>(create_test_image(), lights, _args.single_pass);
@@ -309,7 +309,7 @@ void initFBO() {
 }
 
 void initLights() {
-  lights = Lights<float, 4>(light_properties, sizeof(light_properties)/sizeof(light_properties[0])/NUM_PROPERTIES);
+  lights = Lights::Lights<float, 4>(Lights::light_properties, sizeof(Lights::light_properties)/sizeof(Lights::light_properties[0])/Lights::NUM_PROPERTIES);
 }
 
 void setupOpenGL(int * argc, char ** argv, const arguments &args) {

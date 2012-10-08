@@ -11,7 +11,7 @@
 namespace gsl {
   // TODO overload operators
   // TODO iterators
-  enum {AMBIENT = 0, DIFFUSE, SPECULAR};
+  enum Properties {AMBIENT = 0, DIFFUSE, SPECULAR};
 
   template<int colors_per_light, int components_per_light>
   class matrix {
@@ -119,13 +119,13 @@ namespace gsl {
     }
 
     template<typename T, int dim>
-    vector(const Lights<T, dim>& lights) : v(gsl_vector_alloc(colors_per_light + lights.lights.size()*components_per_light*colors_per_light), gsl_vector_free) {
+    vector(const Lights::Lights<T, dim>& lights) : v(gsl_vector_alloc(colors_per_light + lights.lights.size()*components_per_light*colors_per_light), gsl_vector_free) {
       set<AMBIENT>(0, lights.ambient);
 
       for (unsigned int i = 0; i < lights.lights.size(); i++) {
-        const Light<T, dim>& light = lights.lights.at(i);
-        set<DIFFUSE>(i, light.template get<Properties::DIFFUSE>());
-        set<SPECULAR>(i, light.template get<Properties::SPECULAR>());
+        const Lights::Light<T, dim>& light = lights.lights.at(i);
+        set<DIFFUSE>(i, light.template get<Lights::Properties::DIFFUSE>());
+        set<SPECULAR>(i, light.template get<Lights::Properties::SPECULAR>());
       }
     }
 
@@ -175,7 +175,7 @@ namespace gsl {
       gsl_vector_set_all(v.get(), x);
     }
 
-    template<typename T, int offset>
+    template<typename T, Properties offset>
     cv::Vec<T, colors_per_light+1> get(const size_t i) const {
       cv::Vec<T, colors_per_light+1> tmp;
       for (unsigned j = 0; j < colors_per_light; j++)
@@ -196,7 +196,7 @@ namespace gsl {
     }
 
     /** set light properties for initial guess */
-    template<int offset, typename T, int dim>
+    template<Properties offset, typename T, int dim>
     void set(const size_t i, const cv::Vec<T, dim> &val) {
       static_assert(colors_per_light <= dim, "val contains less items than needed to set");
       for (size_t j = 0; j < colors_per_light; j++) {

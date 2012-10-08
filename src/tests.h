@@ -8,6 +8,8 @@
   #include <opencv2/core/core.hpp>
 #endif
 #include <limits>
+#include "lights.h"
+#include "solver.h"
 
 template<typename T>
 bool check_bounds_of_value(const T value, const std::string& valuename, const T min = 0, const T max = 1) {
@@ -87,7 +89,7 @@ bool is_scalar(const cv::Mat_<T>& mat) {
 }
 
 template<typename T, int dim>
-void test_modelview_matrix_and_light_positions(const cv::Mat_<GLfloat>& model_view_matrix, const Lights<T, dim>& lights) {
+void test_modelview_matrix_and_light_positions(const cv::Mat_<GLfloat>& model_view_matrix, const Lights::Lights<T, dim>& lights) {
   std::cout << "modelviewmatrix:\n" << model_view_matrix << std::endl;
 
   for (const auto& light : lights.lights) {
