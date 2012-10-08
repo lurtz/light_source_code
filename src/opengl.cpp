@@ -12,6 +12,7 @@
 #include <memory>
 #include "opengl.h"
 #include "Trackball.h"
+#include <type_traits>
 
 #ifdef OPENCV_OLD_INCLUDES
   #include <cv.h>
@@ -90,9 +91,9 @@ void reshape(int width, int height) {
 void visualize_lights() {
   for (const auto& light : lights.lights) {
     glPushMatrix();
-    const auto &pos = light.get_position();
-    const auto &diffuse = light.get_diffuse();
-    const auto &specular = light.get_specular();
+    const auto &pos = light.get<Properties::POSITION>();
+    const auto &diffuse = light.get<Properties::DIFFUSE>();
+    const auto &specular = light.get<Properties::SPECULAR>();
     glTranslatef(pos[0], pos[1], pos[2]);
     glColor3f(diffuse[0]+specular[0], diffuse[1]+specular[1], diffuse[2]+specular[2]);
     glutSolidSphere(.10, 4, 4);

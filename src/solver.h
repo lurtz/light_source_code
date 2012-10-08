@@ -134,7 +134,7 @@ struct sample_point_random {
 
 template<typename T, int dim>
 std::tuple<float, float> get_diffuse_specular(const cv::Mat_<float> &pos_vec, const cv::Mat_<float> &normal, const Light<T, dim> &light, const cv::Mat_<GLfloat>& model_view_matrix, const int alpha) {
-  const cv::Mat_<float> light_pos = transform(model_view_matrix, light.get_position());
+  const cv::Mat_<float> light_pos = transform(model_view_matrix, light.template get<Properties::POSITION>());
 
   const cv::Mat_<float> L_ = light_pos - pos_vec;
   cv::Mat_<float> L(L_.rows, L_.cols, L_.type());
@@ -229,8 +229,8 @@ void set_solution(const gsl::vector<colors_per_light, components_per_light>& c, 
   // diffuse and specular
   for (unsigned int i = 0; i < lights.lights.size(); i++) {
     Light<T, dim>& light = lights.lights.at(i);
-    cv::Vec<T, dim>& diff = light.get_diffuse();
-    cv::Vec<T, dim>& spec = light.get_specular();
+    cv::Vec<T, dim>& diff = light.template get<Properties::DIFFUSE>();
+    cv::Vec<T, dim>& spec = light.template get<Properties::SPECULAR>();
     diff = c.template get<T, gsl::DIFFUSE>(i);
     spec = c.template get<T, gsl::SPECULAR>(i);
   }
@@ -342,11 +342,11 @@ Lights<T, dim> reduce_lights(const Lights<T, dim>& lights, const unsigned int k)
     const Light<T, dim>& light = lights.lights.at(i);
     cv::Vec<T, dim> pos;
     for (unsigned int j = 0; j < dim; j++)
-      pos[j] = light.get_position()[j];
+      pos[j] = light.template get<Properties::POSITION>()[j];
     positions(i) = pos;
     // RGB for diffuse and specular -> 6 values from 0 to 1
     // let sum range from 0 to 2
-    weight.at(i) = std::pow(20, 2.0/6*(sum(light.get_diffuse()) + sum(light.get_specular())));
+    weight.at(i) = std::pow(20, 2.0/6*(sum(light.template get<Properties::DIFFUSE>()) + sum(light.template get<Properties::SPECULAR>())));
 
 //    std::cout << "light position: " << pos << ", weight: " << weight.at(i) << std::endl;
   }

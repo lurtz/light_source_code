@@ -124,8 +124,8 @@ namespace gsl {
 
       for (unsigned int i = 0; i < lights.lights.size(); i++) {
         const Light<T, dim>& light = lights.lights.at(i);
-        set<DIFFUSE>(i, light.get_diffuse());
-        set<SPECULAR>(i, light.get_specular());
+        set<DIFFUSE>(i, light.template get<Properties::DIFFUSE>());
+        set<SPECULAR>(i, light.template get<Properties::SPECULAR>());
       }
     }
 

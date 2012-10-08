@@ -38,76 +38,34 @@ cv::Vec<T, dim> default_ambient_color(T val = 0.1) {
 
 enum Properties {POSITION, DIFFUSE, SPECULAR};
 
-struct enum_to_string {
-  std::map<int, std::string> binds;
-  enum_to_string() {
-    binds[POSITION] = "position";
-    binds[DIFFUSE] = "diffuse";
-    binds[SPECULAR] = "specular";
-  }
-
-  const std::string operator[](Properties property) const {
-    auto x = binds.find(property);
-    if (x == binds.end())
-      throw;
-    return x->second;
-  }
-};
-
-const enum_to_string binds;
-  
 template<typename T, int dim>
 struct Light {
-  
-  static const std::string position_name;
-  static const std::string diffuse_name;
-  static const std::string specular_name;
-  
-  typedef std::map<std::string, cv::Vec<T, dim>> properties; // position, diffuse, specuar
-  properties props;
+  static const std::map<Properties, std::string> binds;
+  // position, diffuse, specuar
+  std::map<std::string, cv::Vec<T, dim>> props;
   
   Light() {}
 
   Light(const cv::Vec<T, dim>& position, const cv::Vec<T, dim>& diffuse, const cv::Vec<T, dim>& specular) {
-    props[position_name] = position;
-    props[diffuse_name] = diffuse;
-    props[specular_name] = specular;
+    get<POSITION>() = position;
+    get<DIFFUSE>() = diffuse;
+    get<SPECULAR>() = specular;
   }
   
   Light(const T (&position)[dim], const T (&diffuse)[dim], const T (&specular)[dim]) {
-    props[position_name] = create_vector_from_array(position);
-    props[diffuse_name] = create_vector_from_array(diffuse);
-    props[specular_name] = create_vector_from_array(specular);
-  }
-  
-  const cv::Vec<T, dim>& get_position() const {
-    return get<POSITION>();
-  }
-
-  cv::Vec<T, dim>& get_diffuse() {
-    return get<DIFFUSE>();
-  }
-
-  const cv::Vec<T, dim>& get_diffuse() const {
-    return get<DIFFUSE>();
-  }
-
-  cv::Vec<T, dim>& get_specular() {
-    return get<SPECULAR>();
-  }
-
-  const cv::Vec<T, dim>& get_specular() const {
-    return get<SPECULAR>();
+    get<POSITION>() = create_vector_from_array(position);
+    get<DIFFUSE>() = create_vector_from_array(diffuse);
+    get<SPECULAR>() = create_vector_from_array(specular);
   }
 
   template<Properties prop>
   cv::Vec<T, dim>& get() {
-    return props[binds[prop]];
+    return props[binds.find(prop)->second];
   }
 
   template<Properties prop>
   const cv::Vec<T, dim>& get() const {
-    auto x = props.find(binds[prop]);
+    auto x = props.find(binds.find(prop)->second);
     if (x == props.end())
       throw;
     return x->second;
@@ -132,11 +90,7 @@ struct Light {
 };
 
 template<typename T, int dim>
-const std::string Light<T, dim>::position_name = "position";
-template<typename T, int dim>
-const std::string Light<T, dim>::diffuse_name = "diffuse";
-template<typename T, int dim>
-const std::string Light<T, dim>::specular_name = "specular";
+const std::map<Properties, std::string> Light<T, dim>::binds = {{POSITION, "position"}, {DIFFUSE, "diffuse"}, {SPECULAR, "specular"}};
 
 template<typename T, int dim>
 std::ostream& operator<<(std::ostream& out, const Light<T, dim>& light) {
