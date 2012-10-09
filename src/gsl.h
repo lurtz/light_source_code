@@ -218,11 +218,13 @@ namespace gsl {
         return static_cast<T*>(this)->get().get(pos);
       }
       template<typename V, typename X>
-      bool operator==(const abstract_iterator<V, X>& rhs) {
-        return pos == rhs.pos;
+      bool operator==(const abstract_iterator<V, X>& rhs) const {
+        const vector<colors_per_light, components_per_light>& our_vector = static_cast<const T*>(this)->get();
+        const vector<colors_per_light, components_per_light>& their_vector = static_cast<const V*>(&rhs)->get();
+        return pos == rhs.pos && &our_vector == &their_vector;
       }
       template<typename V, typename X>
-      bool operator!=(const abstract_iterator<V, X>& rhs) {
+      bool operator!=(const abstract_iterator<V, X>& rhs) const {
         return !(*this == rhs);
       }
     };
@@ -231,6 +233,9 @@ namespace gsl {
       vector<colors_per_light, components_per_light> &v;
       iterator(vector<colors_per_light, components_per_light>& v, unsigned int pos = 0) : abstract_iterator<iterator, double&>(pos), v(v) {}
       vector<colors_per_light, components_per_light>& get() {
+        return v;
+      };
+      const vector<colors_per_light, components_per_light>& get() const {
         return v;
       };
     };
