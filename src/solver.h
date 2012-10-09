@@ -223,15 +223,15 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
 template<typename T, int colors_per_light, int components_per_light, int dim>
 void set_solution(const gsl::vector<colors_per_light, components_per_light>& c, Lights::Lights<T, dim>& lights) {
   // ambient
-  lights.ambient = c.template get<T, gsl::AMBIENT>(0);
+  lights.ambient = c.template get_cv_vec<T, gsl::AMBIENT>(0);
 
   // diffuse and specular
   for (unsigned int i = 0; i < lights.lights.size(); i++) {
     Lights::Light<T, dim>& light = lights.lights.at(i);
     cv::Vec<T, dim>& diff = light.template get<Lights::Properties::DIFFUSE>();
     cv::Vec<T, dim>& spec = light.template get<Lights::Properties::SPECULAR>();
-    diff = c.template get<T, gsl::DIFFUSE>(i);
-    spec = c.template get<T, gsl::SPECULAR>(i);
+    diff = c.template get_cv_vec<T, gsl::DIFFUSE>(i);
+    spec = c.template get_cv_vec<T, gsl::SPECULAR>(i);
   }
 }
 

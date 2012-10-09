@@ -163,6 +163,10 @@ namespace gsl {
       return v.get();
     }
 
+    double& get(const size_t i) {
+      return *gsl_vector_ptr(v.get(), i);
+    }
+
     double get(const size_t i) const {
       return gsl_vector_get(v.get(), i);
     }
@@ -176,7 +180,7 @@ namespace gsl {
     }
 
     template<typename T, Properties offset>
-    cv::Vec<T, colors_per_light+1> get(const size_t i) const {
+    cv::Vec<T, colors_per_light+1> get_cv_vec(const size_t i) const {
       cv::Vec<T, colors_per_light+1> tmp;
       for (unsigned j = 0; j < colors_per_light; j++)
         tmp[j] = get(offset*colors_per_light + i*colors_per_light*components_per_light + j);
@@ -184,15 +188,10 @@ namespace gsl {
       return tmp;
     }
 
-    // TODO replace by double& get(size_t)
-    void set(const size_t i, const double x) {
-      gsl_vector_set(v.get(), i, x);
-    }
-
     /** set target color */
     void set(const unsigned int row, const cv::Vec<float, colors_per_light>& pixel) {
       for (size_t i = 0; i < colors_per_light; i++) {
-        set(colors_per_light*row + i, pixel[i]);
+        get(colors_per_light*row + i) = pixel[i];
       }
     }
 
@@ -201,54 +200,47 @@ namespace gsl {
     void set(const size_t i, const cv::Vec<T, dim> &val) {
       static_assert(colors_per_light <= dim, "val contains less items than needed to set");
       for (size_t j = 0; j < colors_per_light; j++) {
-        set(offset*colors_per_light + i*colors_per_light*components_per_light + j, val[j]);
+        get(offset*colors_per_light + i*colors_per_light*components_per_light + j) = val[j];
       }
     }
     
-    struct iterator {
+    template<typename T, typename Y>
+    struct abstract_iterator {
       unsigned int pos;
-      vector<colors_per_light, components_per_light> &v;
-      iterator(vector<colors_per_light, components_per_light>& v, unsigned int pos = 0) : pos(pos), v(v) {}
-      iterator& operator++() {
+      abstract_iterator(unsigned int pos) : pos(pos) {}
+      T& operator++() {
         pos++;
-        if (pos > v.size())
+        if (pos > static_cast<T*>(this)->get().size())
           throw;
-        return *this;
+        return *static_cast<T*>(this);
       }
-      double& operator*() {
-        return *gsl_vector_ptr(v.get(), pos);
+      Y operator*() {
+        return static_cast<T*>(this)->get().get(pos);
       }
-      template<typename iter>
-      bool operator==(const iter& rhs) {
+      template<typename V, typename X>
+      bool operator==(const abstract_iterator<V, X>& rhs) {
         return pos == rhs.pos;
       }
-      template<typename iter>
-      bool operator!=(const iter& rhs) {
+      template<typename V, typename X>
+      bool operator!=(const abstract_iterator<V, X>& rhs) {
         return !(*this == rhs);
       }
     };
     
-    struct const_iterator {
-      unsigned int pos;
+    struct iterator : public abstract_iterator<iterator, double&> {
+      vector<colors_per_light, components_per_light> &v;
+      iterator(vector<colors_per_light, components_per_light>& v, unsigned int pos = 0) : abstract_iterator<iterator, double&>(pos), v(v) {}
+      vector<colors_per_light, components_per_light>& get() {
+        return v;
+      };
+    };
+    
+    struct const_iterator : public abstract_iterator<const_iterator, double> {
       const vector<colors_per_light, components_per_light> &v;
-      const_iterator(const vector<colors_per_light, components_per_light>& v, unsigned int pos = 0) : pos(pos), v(v) {}
-      const_iterator& operator++() {
-        pos++;
-        if (pos > v.size())
-          throw;
-        return *this;
-      }
-      double operator*() {
-        return v.get(pos);
-      }
-      template<typename iter>
-      bool operator==(const iter& rhs) {
-        return pos == rhs.pos;
-      }
-      template<typename iter>
-      bool operator!=(const iter& rhs) {
-        return !(*this == rhs);
-      }
+      const_iterator(const vector<colors_per_light, components_per_light>& v, unsigned int pos = 0) : abstract_iterator<iterator, double&>(pos), v(v) {}
+      const vector<colors_per_light, components_per_light>& get() const {
+        return v;
+      };
     };
     
     iterator begin() {
