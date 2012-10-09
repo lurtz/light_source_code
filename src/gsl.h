@@ -204,6 +204,16 @@ namespace gsl {
       }
     }
   };
+  
+  // TODO for using sum() from utils gsl::vector needs begin() and end()
+  template<int A, int B>
+  double sum(const gsl::vector<A, B> &v) {
+    double sum = 0;
+    for (unsigned int i = 0; i < v.size(); i++) {
+      sum += fabs(v.get(i));
+    }
+    return sum;
+  }
 
   template<int colors_per_light, int components_per_light>
   void matrix_vector_mult(double alpha, const matrix<colors_per_light, components_per_light>& A, const gsl_vector * X, double beta, vector<colors_per_light, components_per_light>& Y) {

@@ -265,12 +265,8 @@ double cost(const gsl_vector *v, void *params) {
 
   gsl::vector<colors_per_light, components_per_light> y_copy = y;
   gsl::matrix_vector_mult(1, x, v, -1, y_copy);
-  double cost = 0;
   // how good we got the picture
-  // TODO for using sum() gsl::vector needs begin() and end()
-  for (unsigned int i = 0; i < y_copy.size(); i++) {
-    cost += fabs(y_copy.get(i));
-  }
+  double cost = sum(y_copy);
   for (unsigned int i = 0; i < v->size; i++) {
     double val = gsl_vector_get(v, i);
     // lights we don't see should stay at zero, hopefully clustering works then
