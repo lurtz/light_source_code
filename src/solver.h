@@ -380,6 +380,7 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
 template<template <int, int> class optimizer, template <typename, int> class point_selector, typename T, int dim>
 Lights::Lights<T, dim> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<float>, cv::Mat_<float>>& image_data, Lights::Lights<T, dim>& a_lot_of_lights, const bool single_pass, const unsigned int small_num_lights = 10) {
 //  testkmeansall();
+  assert(gsl_vector_iterator());
 
   const auto start_time = std::chrono::high_resolution_clock::now();
 

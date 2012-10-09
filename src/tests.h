@@ -10,6 +10,7 @@
 #include <limits>
 #include "lights.h"
 #include "solver.h"
+#include "gsl.h"
 
 template<typename T>
 bool check_bounds_of_value(const T value, const std::string& valuename, const T min = 0, const T max = 1) {
@@ -112,6 +113,19 @@ bool check_solution(const gsl::vector<colors_per_light, components_per_light> &s
   for (unsigned int i = 0; i < sol.size(); i++) {
     ret_val &= check_bounds_of_value(sol.get(i), "light solution", min, max);
   }
+  return ret_val;
+}
+
+bool gsl_vector_iterator() {
+  const unsigned int size = 10;
+  gsl::vector<3,3> v(size);
+  for (size_t i = 0; i < size; i++)
+    v.set(i, static_cast<double>(i));
+  double x = sum(v);
+  bool ret_val = x == size*(size-1)/2;
+  double current_val = 0;
+  for (auto val : v)
+    ret_val &= current_val++ == val; 
   return ret_val;
 }
 

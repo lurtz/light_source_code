@@ -184,6 +184,7 @@ namespace gsl {
       return tmp;
     }
 
+    // TODO replace by double& get(size_t)
     void set(const size_t i, const double x) {
       gsl_vector_set(v.get(), i, x);
     }
@@ -203,8 +204,71 @@ namespace gsl {
         set(offset*colors_per_light + i*colors_per_light*components_per_light + j, val[j]);
       }
     }
+    
+    struct iterator {
+      unsigned int pos;
+      vector<colors_per_light, components_per_light> &v;
+      iterator(vector<colors_per_light, components_per_light>& v, unsigned int pos = 0) : pos(pos), v(v) {}
+      iterator& operator++() {
+        pos++;
+        if (pos > v.size())
+          throw;
+        return *this;
+      }
+      double& operator*() {
+        return *gsl_vector_ptr(v.get(), pos);
+      }
+      template<typename iter>
+      bool operator==(const iter& rhs) {
+        return pos == rhs.pos;
+      }
+      template<typename iter>
+      bool operator!=(const iter& rhs) {
+        return !(*this == rhs);
+      }
+    };
+    
+    struct const_iterator {
+      unsigned int pos;
+      const vector<colors_per_light, components_per_light> &v;
+      const_iterator(const vector<colors_per_light, components_per_light>& v, unsigned int pos = 0) : pos(pos), v(v) {}
+      const_iterator& operator++() {
+        pos++;
+        if (pos > v.size())
+          throw;
+        return *this;
+      }
+      double operator*() {
+        return v.get(pos);
+      }
+      template<typename iter>
+      bool operator==(const iter& rhs) {
+        return pos == rhs.pos;
+      }
+      template<typename iter>
+      bool operator!=(const iter& rhs) {
+        return !(*this == rhs);
+      }
+    };
+    
+    iterator begin() {
+      return iterator(*this);
+    }
+    
+    const_iterator begin() const {
+      return const_iterator(*this);
+    }
+    
+    iterator end() {
+      return iterator(*this, size());
+    }
+    
+    const_iterator end() const {
+      return const_iterator(*this, size());
+    }
   };
   
+#if true
   // TODO for using sum() from utils gsl::vector needs begin() and end()
   template<int A, int B>
   double sum(const gsl::vector<A, B> &v) {
@@ -214,6 +278,7 @@ namespace gsl {
     }
     return sum;
   }
+#endif
 
   template<int colors_per_light, int components_per_light>
   void matrix_vector_mult(double alpha, const matrix<colors_per_light, components_per_light>& A, const gsl_vector * X, double beta, vector<colors_per_light, components_per_light>& Y) {
