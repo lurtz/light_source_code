@@ -116,7 +116,7 @@ bool check_solution(const gsl::vector<colors_per_light, components_per_light> &s
   return ret_val;
 }
 
-bool gsl_vector_iterator() {
+bool test_gsl_vector_iterator() {
   const unsigned int size = 10;
   gsl::vector<3,3> v(size);
   for (size_t i = 0; i < size; i++)
@@ -130,6 +130,21 @@ bool gsl_vector_iterator() {
   for (auto& val : v)
     val = size;
   ret_val &= sum(v) == size*size;
+  
+  auto iteranfang = v.begin();
+  auto iterende = v.end();
+  
+  iterende--;
+  --iterende;
+  
+  auto iterende2 = v.end()-2;
+  auto iterende3 = std::end(v)-3;
+  
+  ret_val &= iteranfang.v == iterende.v;
+  ret_val &= iterende.v == iterende2.v;
+  ret_val &= iterende.v == iterende3.v;
+  
+  std::cout << v << std::endl;
   
   return ret_val;
 }

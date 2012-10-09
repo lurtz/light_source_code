@@ -6,6 +6,7 @@
 #include <gsl/gsl_blas.h>
 #include <memory>
 #include <limits>
+#include <iterator>
 #include "lights.h"
 
 namespace gsl {
@@ -207,22 +208,63 @@ namespace gsl {
     template<typename T, typename Y>
     struct abstract_iterator {
       unsigned int pos;
+      typedef double value_type;
+      typedef typename std::remove_reference<Y>::type* pointer;
+      typedef typename std::remove_reference<Y>::type& reference;
+      typedef std::bidirectional_iterator_tag iterator_category;
+      typedef std::ptrdiff_t difference_type;
+      
       abstract_iterator(unsigned int pos) : pos(pos) {}
-      T& operator++() {
-        pos++;
-        if (pos > static_cast<T*>(this)->get().size())
+      
+      void check_pos() {
+        if (pos > static_cast<T*>(this)->v.size())
           throw;
+      }
+      
+      T operator++() {
+        T copy = *static_cast<T*>(this);
+        pos++;
+        check_pos();
+        return copy;
+      }
+      
+      T& operator++(int) {
+        pos++;
+        check_pos();
         return *static_cast<T*>(this);
       }
-      Y operator*() {
-        return static_cast<T*>(this)->get().get(pos);
+      
+      T operator--() {
+        T copy = *static_cast<T*>(this);
+        pos--;
+        check_pos();
+        return copy;
       }
+      
+      T& operator--(int) {
+        pos--;
+        check_pos();
+        return *static_cast<T*>(this);
+      }
+      
+      T operator-(const int step) {
+        T copy = *static_cast<T*>(this);
+        copy.pos -= step;
+        check_pos();
+        return copy;
+      }
+      
+      Y operator*() {
+        return static_cast<T*>(this)->v.get(pos);
+      }
+      
       template<typename V, typename X>
       bool operator==(const abstract_iterator<V, X>& rhs) const {
-        const vector<colors_per_light, components_per_light>& our_vector = static_cast<const T*>(this)->get();
-        const vector<colors_per_light, components_per_light>& their_vector = static_cast<const V*>(&rhs)->get();
+        const vector<colors_per_light, components_per_light>& our_vector = static_cast<const T&>(*this).v;
+        const vector<colors_per_light, components_per_light>& their_vector = static_cast<const V&>(rhs).v;
         return pos == rhs.pos && &our_vector == &their_vector;
       }
+      
       template<typename V, typename X>
       bool operator!=(const abstract_iterator<V, X>& rhs) const {
         return !(*this == rhs);
@@ -230,22 +272,15 @@ namespace gsl {
     };
     
     struct iterator : public abstract_iterator<iterator, double&> {
-      vector<colors_per_light, components_per_light> &v;
+      vector<colors_per_light, components_per_light>& v;
+      
       iterator(vector<colors_per_light, components_per_light>& v, unsigned int pos = 0) : abstract_iterator<iterator, double&>(pos), v(v) {}
-      vector<colors_per_light, components_per_light>& get() {
-        return v;
-      };
-      const vector<colors_per_light, components_per_light>& get() const {
-        return v;
-      };
     };
     
     struct const_iterator : public abstract_iterator<const_iterator, double> {
-      const vector<colors_per_light, components_per_light> &v;
-      const_iterator(const vector<colors_per_light, components_per_light>& v, unsigned int pos = 0) : abstract_iterator<iterator, double&>(pos), v(v) {}
-      const vector<colors_per_light, components_per_light>& get() const {
-        return v;
-      };
+      const vector<colors_per_light, components_per_light>& v;
+      
+      const_iterator(const vector<colors_per_light, components_per_light>& v, unsigned int pos = 0) : abstract_iterator<const_iterator, double>(pos), v(v) {}
     };
     
     iterator begin() {
@@ -265,8 +300,17 @@ namespace gsl {
     }
   };
   
+  template<int A, int B>
+  std::ostream& operator<<(std::ostream& out, const vector<A, B>& v) {
+    out << "gsl::vector<" << A << ", " << B << "> = ";
+    std::copy(std::begin(v), std::end(v)-1, std::ostream_iterator<double>(out, ", "));
+    out << *(std::end(v)-1);
+    return out;
+  }
+  
 #if true
   // TODO for using sum() from utils gsl::vector needs begin() and end()
+  //      iterator tests work, but not the sum function inside the cost function
   template<int A, int B>
   double sum(const gsl::vector<A, B> &v) {
     double sum = 0;
