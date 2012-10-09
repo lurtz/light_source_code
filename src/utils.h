@@ -63,6 +63,15 @@ double sum(const T& v) {
   return sum;
 }
 
+// TODO how to tell std::accumulate to use fabs() ?
+template<typename T>
+double abssum(const T& v) {
+  double sum = 0;
+  for (auto val : v)
+    sum += fabs(val);
+  return sum;
+}
+
 template<typename T, int dim>
 double sum(const cv::Vec<T, dim>& v) {
   double sum = 0;

@@ -307,19 +307,6 @@ namespace gsl {
     out << *(std::end(v)-1);
     return out;
   }
-  
-#if true
-  // TODO for using sum() from utils gsl::vector needs begin() and end()
-  //      iterator tests work, but not the sum function inside the cost function
-  template<int A, int B>
-  double sum(const gsl::vector<A, B> &v) {
-    double sum = 0;
-    for (unsigned int i = 0; i < v.size(); i++) {
-      sum += fabs(v.get(i));
-    }
-    return sum;
-  }
-#endif
 
   template<int colors_per_light, int components_per_light>
   void matrix_vector_mult(double alpha, const matrix<colors_per_light, components_per_light>& A, const gsl_vector * X, double beta, vector<colors_per_light, components_per_light>& Y) {
