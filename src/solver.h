@@ -104,7 +104,7 @@ struct sample_point_random {
 
 template<typename T, int dim>
 std::tuple<float, float> get_diffuse_specular(const cv::Mat_<float> &pos_vec, const cv::Mat_<float> &normal, const Lights::Light<T, dim> &light, const cv::Mat_<GLfloat>& model_view_matrix, const int alpha) {
-  const cv::Mat_<float> light_pos = transform(model_view_matrix, light.template get<Lights::Properties::POSITION>());
+  const cv::Mat_<float> light_pos = model_view_matrix * light.template get<Lights::Properties::POSITION>();
 
   const cv::Mat_<float> L_ = light_pos - pos_vec;
   cv::Mat_<float> L(L_.rows, L_.cols, L_.type());

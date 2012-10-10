@@ -7,6 +7,7 @@
 #include <chrono>
 #ifdef OPENCV_OLD_INCLUDES
   #include <cv.h>
+  #include <highgui.h>
 #else
   #include <opencv2/core/core.hpp>
   #include<opencv2/highgui/highgui.hpp>
@@ -109,6 +110,7 @@ void flipImage(T& image, const unsigned int width) {
   flipImage(std::begin(image), std::end(image), width);
 }
 
+// TODO better tests is this behaves like standard c++11 PRNG
 typedef struct halton_sequence {
   const unsigned int m_base;
   float m_number;
@@ -138,12 +140,13 @@ void show_rgb_image(std::string name, cv::Mat_<cv::Vec<T, 3>> image) {
   cv::imshow(name, bla);
 }
 
-template<typename T, int dim>
-cv::Mat_<float> transform(const cv::Mat_<float>& model_view_matrix, const cv::Vec<T, dim>& light_pos_in_object_space_vector) {
-  const cv::Mat_<float> light_pos_in_object_space_mat(light_pos_in_object_space_vector, false);
+// TODO return type may be cv::Vec<T, dim>
+template<typename T, typename T1, int dim>
+cv::Mat_<T> operator*(const cv::Mat_<T>& model_view_matrix, const cv::Vec<T1, dim>& light_pos_in_object_space_vector) {
+  const cv::Mat_<T1> light_pos_in_object_space_mat(light_pos_in_object_space_vector, false);
   // durch vierte komponente teilen
-  const cv::Mat_<float> light_pos_vec4(model_view_matrix * light_pos_in_object_space_mat);
-  const cv::Mat_<float> light_pos(light_pos_vec4 / light_pos_vec4(3), cv::Range(0, 3));
+  const cv::Mat_<T> light_pos_vec4(model_view_matrix * light_pos_in_object_space_mat);
+  const cv::Mat_<T> light_pos(light_pos_vec4 / light_pos_vec4(3), cv::Range(0, 3));
   
   return light_pos;
 }

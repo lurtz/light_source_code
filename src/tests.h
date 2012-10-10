@@ -99,7 +99,7 @@ void test_modelview_matrix_and_light_positions(const cv::Mat_<GLfloat>& model_vi
       << light.number << ", "
       << position_object_space
       << std::endl;
-    auto position_world_space = transform(model_view_matrix, position_object_space);
+    auto position_world_space = model_view_matrix * position_object_space;
     std::cout << "light source: "
       << light.number << ", "
       << position_world_space
