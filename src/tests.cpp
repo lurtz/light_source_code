@@ -1,5 +1,6 @@
 #include "tests.h"
 #include "kmeansw.h"
+#include "utils.h"
 
 bool test_gsl_vector_iterator() {
   const unsigned int size = 10;
@@ -54,21 +55,6 @@ void testkmeansw() {
   std::cout << "got " << centers.rows << " centers" << std::endl;
   for (int i = 0; i < centers.rows; i++)
     std::cout << centers.at<cv::Vec3f>(i) << std::endl;
-}
-
-template<typename T, typename T1>
-void mark_if(cv::Mat_<T>& mat, const T1 row, const T1 col, const T val) {
-  if (row >= 0 && row < mat.rows && col >= 0 && col < mat.cols)
-    mat(row, col) = val;
-}
-
-template<typename T, typename T1>
-void mark(cv::Mat_<T>& mat, cv::Vec<T1, 2> pos) {
-  for (int i = -1; i < 2; i++)
-    for (int j = -1; j < 2; j++) {
-      mark_if(mat, pos[0]+i, pos[1]+j, 0.0);
-    }
-  mark_if(mat, pos[0], pos[1], 1.0);
 }
 
 void testkmeansw2() {
