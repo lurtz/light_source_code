@@ -16,7 +16,6 @@ extern "C" {
 #else
   #include <opencv2/core/core.hpp>
   #include<opencv2/highgui/highgui.hpp>
-  #include <opencv2/imgproc/imgproc.hpp>
 #endif
 
 #include <vector>
@@ -25,34 +24,6 @@ extern "C" {
 #include <tuple>
 #include <chrono>
 //#include <algorithm>
-
-template<typename T>
-cv::Mat_<T> reflect(const cv::Mat_<T>& normal, const cv::Mat_<T>& vector) {
-  assert(normal.cols == vector.cols);
-  assert(normal.rows == vector.rows);
-  assert(normal.rows == 1 || normal.cols == 1);
-  const cv::Mat_<T> L_m_N = vector.t() * normal;
-  const T cos = L_m_N(0,0);
-  const cv::Mat_<T> R_m = vector - 2 * cos * normal;
-  return R_m;
-}
-
-template<typename T>
-void show_rgb_image(std::string name, cv::Mat_<cv::Vec<T, 3>> image) {
-  decltype(image) bla;
-  cv::cvtColor(image, bla, CV_RGB2BGR);
-  cv::imshow(name, bla);
-}
-
-template<typename T, int dim>
-cv::Mat_<float> transform(const cv::Mat_<GLfloat>& model_view_matrix, const cv::Vec<T, dim>& light_pos_in_object_space_vector) {
-  const cv::Mat_<float> light_pos_in_object_space_mat(light_pos_in_object_space_vector, false);
-  // durch vierte komponente teilen
-  const cv::Mat_<float> light_pos_vec4(model_view_matrix * light_pos_in_object_space_mat);
-  const cv::Mat_<float> light_pos(light_pos_vec4 / light_pos_vec4(3), cv::Range(0, 3));
-  
-  return light_pos;
-}
 
 template<typename T, int dim>
 bool is_sample_point(const cv::Vec<T, dim>& normal) {
