@@ -125,3 +125,11 @@ void testkmeansall() {
 
   std::exit(0);
 }
+
+bool test_all() {
+  bool ret_val = true;
+  ret_val &= test_gsl_vector_iterator();
+  
+  //  testkmeansall();
+  return ret_val;
+}

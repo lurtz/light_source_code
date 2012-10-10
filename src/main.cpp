@@ -17,6 +17,7 @@
 #include <vector>
 #include "opengl.h"
 #include "args.h"
+#include "tests.h"
 
 // This is my plan:
 // I have to synthesize a new image using the mesh obj and the light source
@@ -182,6 +183,7 @@ arguments parse_options(const int& argc, char * const argv[]) {
 }
 
 int main(int argc, char * argv[]) {
+  assert(test_all());
   arguments args = parse_options(argc, argv);
   if (args.mesh_filename != "") {
     setupOpenGL(&argc, argv, args);
