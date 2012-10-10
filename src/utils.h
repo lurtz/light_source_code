@@ -57,6 +57,15 @@ std::ostream& operator<<(std::ostream& out, const std::chrono::duration<Rep, Per
   return out;
 }
 
+template<typename T, int dim>
+std::ostream& operator<<(std::ostream& out, cv::Vec<T, dim> vec) {
+  out << "cv::Vec<" << typeid(T).name() << ", " << dim << ">(";
+  for (unsigned int i = 0; i < dim-1; i++)
+    out << vec[i] << ", ";
+  out << vec[dim-1] << ")";
+  return out;
+}
+
 template<typename T>
 double sum(const T& v) {
   double sum = std::accumulate(std::begin(v), std::end(v), 0.0);

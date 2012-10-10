@@ -2,6 +2,7 @@
 // opencv is bsd licenced
 
 #include "kmeansw.h"
+#include "utils.h"
 #include <opencv2/core/operations.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>

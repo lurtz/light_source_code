@@ -23,13 +23,4 @@ double kmeansw( InputArray _data, int K,
 
 void testkmeansall();
 
-template<typename T, int dim>
-std::ostream& operator<<(std::ostream& out, cv::Vec<T, dim> vec) {
-  out << "cv::Vec<" << typeid(T).name() << ", " << dim << ">(";
-  for (unsigned int i = 0; i < dim-1; i++)
-    out << vec[i] << ", ";
-  out << vec[dim-1] << ")";
-  return out;
-}
-
 #endif /* __CV_KMEANS_W__ */
