@@ -21,6 +21,4 @@ double kmeansw( InputArray _data, int K,
                    const vector<double>& weights);
 }
 
-void testkmeansall();
-
 #endif /* __CV_KMEANS_W__ */

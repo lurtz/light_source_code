@@ -118,4 +118,6 @@ bool check_solution(const gsl::vector<colors_per_light, components_per_light> &s
 
 bool test_gsl_vector_iterator();
 
+void testkmeansall();
+
 #endif /* __TESTS_H__ */
