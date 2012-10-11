@@ -85,11 +85,7 @@ namespace gsl {
           size_t col_pos = colors_per_light * components_per_light * col + j;
           // add depending on the component we are times colors_per_light
           col_pos += colors_per_light * prop;
-          if (i == j) {
-            get(row_pos, col_pos) = values(i);
-          } else {
-            get(row_pos, col_pos) = 0;
-          }
+          get(row_pos, col_pos) = (i==j) * values(i);
         }
       }
     }
@@ -130,11 +126,13 @@ namespace gsl {
     vector(const Lights::Lights<T, dim>& lights) : v(gsl_vector_alloc(colors_per_light + lights.lights.size()*components_per_light*colors_per_light), gsl_vector_free) {
       set<AMBIENT>(0, lights.ambient);
 
-      for (unsigned int i = 0; i < lights.lights.size(); i++) {
-        const Lights::Light<T, dim>& light = lights.lights.at(i);
-        set<DIFFUSE>(i, light.template get<Lights::Properties::DIFFUSE>());
-        set<SPECULAR>(i, light.template get<Lights::Properties::SPECULAR>());
-      }
+      if (components_per_light > 0)
+        for (unsigned int i = 0; i < lights.lights.size(); i++) {
+          const Lights::Light<T, dim>& light = lights.lights.at(i);
+          set<DIFFUSE>(i, light.template get<Lights::Properties::DIFFUSE>());
+          if (components_per_light > 1)
+            set<SPECULAR>(i, light.template get<Lights::Properties::SPECULAR>());
+        }
     }
 
     vector& operator=(const vector& rhs) {
