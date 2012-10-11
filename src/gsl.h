@@ -34,9 +34,17 @@ namespace gsl {
     const gsl_matrix * get() const {
       return m.get();
     }
-
-    void set(const size_t i, const size_t j, const double x) {
-      gsl_matrix_set(m.get(), i, j, x);
+    
+    double get(const size_t i, const size_t j) const {
+      assert(i < get_rows());
+      assert(j < get_cols());
+      return gsl_matrix_get(m.get(), i, j);
+    }
+    
+    double& get(const size_t i, const size_t j) {
+      assert(i < get_rows());
+      assert(j < get_cols());
+      return *gsl_matrix_ptr(m.get(), i, j);
     }
 
     size_t get_rows() const {
@@ -68,32 +76,31 @@ namespace gsl {
     // r 1 0 0   1 0 0  1 0 0
     // g 0 1 0   0 1 0  0 1 0
     // b 0 0 1   0 0 1  0 0 1
-    void set_ambient(const unsigned int row) {
-      for (unsigned int i = 0; i < colors_per_light; i++)
-        for (unsigned int j = 0; j < colors_per_light; j++)
-          set(colors_per_light * row + i, j, i == j);
-    }
-
-    void set_diffuse_specular(const unsigned int row, const unsigned int col, const std::tuple<float, float>& vals, const cv::Mat_<float> diffuse_tex, const cv::Mat_<float> specular_tex) {
-      float diffuse, specular;
-      std::tie(diffuse, specular) = vals;
+    template<Properties prop, typename T>
+    void set(const unsigned int row, const unsigned int col, const cv::Mat_<T>& values) {
+      static_assert(prop <= components_per_light, "template parameter prop is bigger than number of components_per_light");
       for (unsigned int i = 0; i < colors_per_light; i++) {
         const size_t row_pos = colors_per_light * row + i;
         for (unsigned int j = 0; j < colors_per_light; j++) {
-          const size_t col_pos = colors_per_light * (DIFFUSE + components_per_light * col) + j;
+          size_t col_pos = colors_per_light * components_per_light * col + j;
+          // add depending on the component we are times colors_per_light
+          col_pos += colors_per_light * prop;
           if (i == j) {
-            // diffuse
-            set(row_pos, col_pos, diffuse*diffuse_tex(i));
-            // specular
-            set(row_pos, col_pos + (SPECULAR-DIFFUSE) * colors_per_light, specular*specular_tex(i));
+            get(row_pos, col_pos) = values(i);
           } else {
-            // diffuse
-            set(row_pos, col_pos, 0);
-            // specular
-            set(row_pos, col_pos + (SPECULAR-DIFFUSE) * colors_per_light, 0);
+            get(row_pos, col_pos) = 0;
           }
         }
       }
+    }
+    
+    bool operator==(const gsl::matrix<colors_per_light, components_per_light>& rhs) const {
+      for (unsigned int i = 0; i < get_rows(); i++)
+        for (unsigned int j = 0; j < get_cols(); j++)
+          if (std::fabs(get(i,j) - rhs.get(i,j)) > std::numeric_limits<double>::epsilon()) {
+            return false;
+          }
+      return true;
     }
   };
 

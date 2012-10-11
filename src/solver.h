@@ -36,6 +36,7 @@ unsigned int get_maximum_number_of_sample_points(const cv::Mat_<cv::Vec<T, dim>>
   return std::accumulate(std::begin(normals), std::end(normals), 0, [](unsigned int sum, const cv::Vec<T, dim>& normal) { return sum + is_sample_point(normal); });
 }
 
+// TODO seems to be broken
 template<typename T, int dim>
 struct sample_point_deterministic {
   typename cv::Mat_<cv::Vec<T, dim>>::const_iterator pos;
@@ -170,19 +171,23 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
     const cv::Vec<float, colors_per_light>& pixel = image(_y, _x);
     assert(check_pixel(pixel, "target", _x, _y));
     y.set(row, pixel);
+    
     // set shading parameter for a pixel in the matrix
+    const cv::Mat_<T> pos_vec(position(_y, _x));
+    const cv::Mat_<T> normal(normals(_y, _x), false);
+    const cv::Mat_<T> diffuse_tex(diffuse_texture(_y, _x));
+    const cv::Mat_<T> specular_tex(specular_texture(_y, _x));
+    
     // ambient term
-
-    x.set_ambient(row);
-
-    const cv::Mat_<float> pos_vec(position(_y, _x));
-    const cv::Mat_<float> normal(normals(_y, _x), false);
-    const cv::Mat_<float> diffuse_tex(diffuse_texture(_y, _x));
-    const cv::Mat_<float> specular_tex(specular_texture(_y, _x));
+    x.template set<gsl::AMBIENT>(row, 0, diffuse_tex);
 
     for (unsigned int col = 0; col < lights.lights.size(); col++) {
       const Lights::Light<T1, dim1>& light = lights.lights.at(col);
-      x.set_diffuse_specular(row, col, get_diffuse_specular(pos_vec, normal, light, model_view_matrix, alpha), diffuse_tex, specular_tex);
+      auto diffuse_specular = get_diffuse_specular(pos_vec, normal, light, model_view_matrix, alpha);
+      const cv::Mat_<T> diff = diffuse_tex * std::get<0>(diffuse_specular);
+      const cv::Mat_<T> spec = specular_tex * std::get<1>(diffuse_specular);
+      x.template set<gsl::DIFFUSE>(row, col, diff);
+      x.template set<gsl::SPECULAR>(row, col, spec);
     }
   }
   std::cout << std::endl;
