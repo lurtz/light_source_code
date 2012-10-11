@@ -186,8 +186,7 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
       auto diffuse_specular = get_diffuse_specular(pos_vec, normal, light, model_view_matrix, alpha);
       const cv::Mat_<T> diff = diffuse_tex * std::get<0>(diffuse_specular);
       const cv::Mat_<T> spec = specular_tex * std::get<1>(diffuse_specular);
-      x.template set<gsl::DIFFUSE>(row, col, diff);
-      x.template set<gsl::SPECULAR>(row, col, spec);
+      x.template set<gsl::DIFFUSE, T>(row, col, diff+spec);
     }
   }
   std::cout << std::endl;
@@ -205,9 +204,7 @@ void set_solution(const gsl::vector<colors_per_light, components_per_light>& c, 
   for (unsigned int i = 0; i < lights.lights.size(); i++) {
     Lights::Light<T, dim>& light = lights.lights.at(i);
     cv::Vec<T, dim>& diff = light.template get<Lights::Properties::DIFFUSE>();
-    cv::Vec<T, dim>& spec = light.template get<Lights::Properties::SPECULAR>();
     diff = c.template get_cv_vec<T, gsl::DIFFUSE>(i);
-    spec = c.template get_cv_vec<T, gsl::SPECULAR>(i);
   }
 }
 
@@ -338,7 +335,7 @@ template<template <int, int> class optimizer, template <typename, int> class poi
 void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<cv::Vec3f>& diffuse, const cv::Mat_<cv::Vec3f>& specular, const cv::Mat_<GLfloat>& model_view_matrix, Lights::Lights<T, dim>& lights, const int alpha = 50) {
   //  order of images is: xyz, RGB
   const unsigned int colors_per_light = 3;
-  const unsigned int components_per_light = 2;
+  const unsigned int components_per_light = 1;
 
   gsl::matrix<colors_per_light, components_per_light> a;
   gsl::vector<colors_per_light, components_per_light> b;

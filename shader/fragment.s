@@ -39,7 +39,7 @@ void main () {
       if (NdotL > 0.0) {
         vec3 R = reflect(-L, N);
         float RdotE = max(0.0, dot(R, E));
-        specular_light += lights[i].specular * pow(RdotE, alpha);
+        specular_light += lights[i].diffuse * pow(RdotE, alpha);
       }
     }
 
