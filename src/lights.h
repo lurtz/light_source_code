@@ -20,7 +20,6 @@
 
 namespace Lights {
 
-#if true
 template<typename T, int dim>
 std::ostream& operator<<(std::ostream& out, const cv::Vec<T, dim>& vec) {
   return ::operator<<(out, vec);
@@ -35,7 +34,6 @@ template<typename K, typename V>
 std::ostream& operator<<(std::ostream& out, const std::map<K,V>& map) {
   return ::operator<<(out, map);
 }
-#endif
   
 // position, ambient, diffuse, specular in vec4
 // RGB format
