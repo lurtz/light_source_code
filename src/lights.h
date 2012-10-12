@@ -45,12 +45,13 @@ enum Properties {POSITION, DIFFUSE, SPECULAR};
 template<typename T, int dim>
 struct Light {
   static const std::map<Properties, std::string> binds;
+  static const cv::Vec<T, dim> default_light_property;
   // position, diffuse, specuar
   std::map<std::string, cv::Vec<T, dim>> props;
   
   Light() {}
 
-  Light(const cv::Vec<T, dim>& position, const cv::Vec<T, dim>& diffuse, const cv::Vec<T, dim>& specular) {
+  Light(const cv::Vec<T, dim>& position, const cv::Vec<T, dim>& diffuse = default_light_property, const cv::Vec<T, dim>& specular = default_light_property) {
     get<POSITION>() = position;
     get<DIFFUSE>() = diffuse;
     get<SPECULAR>() = specular;
@@ -95,6 +96,9 @@ struct Light {
 
 template<typename T, int dim>
 const std::map<Properties, std::string> Light<T, dim>::binds = {{POSITION, "position"}, {DIFFUSE, "diffuse"}, {SPECULAR, "specular"}};
+
+template<typename T, int dim>
+const cv::Vec<T, dim> Light<T, dim>::default_light_property(cv::Scalar_<T>(0));
 
 template<typename T, int dim>
 std::ostream& operator<<(std::ostream& out, const Lights::Light<T, dim>& light) {
@@ -178,12 +182,11 @@ struct Lights {
   Lights(const T radius, const unsigned int num_lights = 10,
       const decltype(plane_acceptor<T, dim>) &point_acceptor = [](const cv::Vec<T, dim>& pos){return true;},
       const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(num_lights) {
-    const cv::Vec<T, dim> default_light_property(cv::Scalar_<T>(0));
     uniform_on_sphere_point_distributor_without_limit<T> dist(radius);
     for (unsigned int i = 0; i < num_lights;) {
       auto position = dist();
       if (point_acceptor(position)) {
-        lights.at(i) = Light<T, dim>(position, default_light_property, default_light_property);
+        lights.at(i) = Light<T, dim>(position);
         i++;
       }
     }
@@ -192,7 +195,6 @@ struct Lights {
   Lights(std::string bla, float radius = 10, unsigned int num_lights = 10,
       const decltype(plane_acceptor_tuple<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) &point_acceptor = std::make_tuple([](const cv::Vec<T, dim>& pos){return true;}, 1),
       const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(num_lights) {
-    const cv::Vec<T, dim> default_light_property(cv::Scalar_<T>(0));
     decltype(plane_acceptor<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) func;
     double num_discarded_points;
     std::tie(func, num_discarded_points) = point_acceptor;
@@ -201,7 +203,7 @@ struct Lights {
     for (unsigned int i = 0; i < num_lights;) {
       cv::Vec<T, 4> position = dist();
       if (func(position)) {
-        lights.at(i) = Light<T, dim>(position, default_light_property, default_light_property);
+        lights.at(i) = Light<T, dim>(position);
         i++;
       }
     }
