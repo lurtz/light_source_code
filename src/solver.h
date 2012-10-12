@@ -397,6 +397,8 @@ Lights::Lights<T, dim> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat
 
   cv::waitKey(100);
 
+  print(lights);
+
   return lights;
 }
 

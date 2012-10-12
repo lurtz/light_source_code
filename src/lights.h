@@ -19,6 +19,31 @@
 #include "utils.h"
 
 namespace Lights {
+
+#if true
+template<typename T, int dim>
+std::ostream& operator<<(std::ostream& out, const cv::Vec<T, dim>& vec) {
+  out << "cv::Vec<" << typeid(T).name() << ", " << dim << ">(";
+  for (unsigned int i = 0; i < dim-1; i++)
+    out << vec[i] << ", ";
+  out << vec[dim-1] << ")";
+  return out;
+}
+
+template<typename K, typename V>
+std::ostream& operator<<(std::ostream& out, const std::pair<K,V>& pair) {
+  out << pair.first << ", " << pair.second;
+  return out;
+}
+
+template<typename K, typename V>
+std::ostream& operator<<(std::ostream& out, const std::map<K,V>& map) {
+  for (const auto& iter : map)
+    out << iter << std::endl;
+  return out;
+}
+#endif
+  
 // position, ambient, diffuse, specular in vec4
 // RGB format
 const unsigned int NUM_PROPERTIES = 3;
@@ -94,7 +119,7 @@ template<typename T, int dim>
 const std::map<Properties, std::string> Light<T, dim>::binds = {{POSITION, "position"}, {DIFFUSE, "diffuse"}, {SPECULAR, "specular"}};
 
 template<typename T, int dim>
-std::ostream& operator<<(std::ostream& out, const Light<T, dim>& light) {
+std::ostream& operator<<(std::ostream& out, const Lights::Light<T, dim>& light) {
   out << light.props;
   return out;
 }
@@ -237,6 +262,7 @@ template<typename T, int dim>
 std::ostream& operator<<(std::ostream& out, const Lights<T, dim>& lights) {
   out << "ambient illumination: ";
   out << lights.ambient << std::endl;
+  //bla(out, lights.ambient) << std::endl;
   unsigned int i = 0;
   // std::copy + std::ostream_iterator ?
   for (Light<T, dim> iter : lights.lights)

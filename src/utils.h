@@ -15,25 +15,21 @@
 #endif
 
 template<typename T>
-void print(T t) {
-  std::cout << t << std::endl;
-}
-
-template<typename T, int dim>
-cv::Vec<T, dim> create_vector_from_array(const T (&array)[dim]) {
-  cv::Vec<T, dim> ret_val;
-  for (unsigned int i = 0; i < dim; i++)
-    ret_val[i] = array[i];
-  return ret_val;
-}
-
-template<typename T>
 std::ostream& operator<<(std::ostream& stream, const std::vector<T>& vec) {
   stream << "(";
   std::copy(std::begin(vec), std::end(vec)-1, std::ostream_iterator<T>(stream, ", "));
   stream << vec.back();
   stream << ")";
   return stream;
+}
+
+template<typename T, int dim>
+std::ostream& operator<<(std::ostream& out, const cv::Vec<T, dim>& vec) {
+  out << "cv::Vec<" << typeid(T).name() << ", " << dim << ">(";
+  for (unsigned int i = 0; i < dim-1; i++)
+    out << vec[i] << ", ";
+  out << vec[dim-1] << ")";
+  return out;
 }
 
 template<typename K, typename V>
@@ -49,24 +45,28 @@ std::ostream& operator<<(std::ostream& out, const std::map<K,V>& map) {
   return out;
 }
 
-template<typename T, int D>
-T distFromPlane(const cv::Vec<T, D>& x, const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
-  return normal.dot(x-point);
-}
-
 template<class Rep, class Period>
 std::ostream& operator<<(std::ostream& out, const std::chrono::duration<Rep, Period>& tp) {
   out << std::chrono::duration_cast<std::chrono::seconds>(tp).count() << "s";
   return out;
 }
 
+template<typename T>
+void print(T t) {
+  std::cout << t << std::endl;
+}
+
 template<typename T, int dim>
-std::ostream& operator<<(std::ostream& out, cv::Vec<T, dim> vec) {
-  out << "cv::Vec<" << typeid(T).name() << ", " << dim << ">(";
-  for (unsigned int i = 0; i < dim-1; i++)
-    out << vec[i] << ", ";
-  out << vec[dim-1] << ")";
-  return out;
+cv::Vec<T, dim> create_vector_from_array(const T (&array)[dim]) {
+  cv::Vec<T, dim> ret_val;
+  for (unsigned int i = 0; i < dim; i++)
+    ret_val[i] = array[i];
+  return ret_val;
+}
+
+template<typename T, int D>
+T distFromPlane(const cv::Vec<T, D>& x, const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
+  return normal.dot(x-point);
 }
 
 template<typename T>
