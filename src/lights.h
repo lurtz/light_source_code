@@ -23,24 +23,17 @@ namespace Lights {
 #if true
 template<typename T, int dim>
 std::ostream& operator<<(std::ostream& out, const cv::Vec<T, dim>& vec) {
-  out << "cv::Vec<" << typeid(T).name() << ", " << dim << ">(";
-  for (unsigned int i = 0; i < dim-1; i++)
-    out << vec[i] << ", ";
-  out << vec[dim-1] << ")";
-  return out;
+  return ::operator<<(out, vec);
 }
 
 template<typename K, typename V>
 std::ostream& operator<<(std::ostream& out, const std::pair<K,V>& pair) {
-  out << pair.first << ", " << pair.second;
-  return out;
+  return ::operator<<(out, pair);
 }
 
 template<typename K, typename V>
 std::ostream& operator<<(std::ostream& out, const std::map<K,V>& map) {
-  for (const auto& iter : map)
-    out << iter << std::endl;
-  return out;
+  return ::operator<<(out, map);
 }
 #endif
   
