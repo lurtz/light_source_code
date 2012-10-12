@@ -14,6 +14,8 @@
   #include <opencv2/imgproc/imgproc.hpp>
 #endif
 
+namespace output_operators {
+
 template<typename T>
 std::ostream& operator<<(std::ostream& stream, const std::vector<T>& vec) {
   stream << "(";
@@ -51,8 +53,11 @@ std::ostream& operator<<(std::ostream& out, const std::chrono::duration<Rep, Per
   return out;
 }
 
+}
+
 template<typename T>
 void print(T t) {
+  using namespace output_operators;
   std::cout << t << std::endl;
 }
 

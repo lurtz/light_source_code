@@ -2,6 +2,8 @@
 #include "kmeansw.h"
 #include "utils.h"
 
+using namespace output_operators;
+
 bool test_gsl_vector_iterator() {
   const unsigned int size = 10;
   gsl::vector<3,3> v(size);

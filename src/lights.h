@@ -20,21 +20,8 @@
 
 namespace Lights {
 
-template<typename T, int dim>
-std::ostream& operator<<(std::ostream& out, const cv::Vec<T, dim>& vec) {
-  return ::operator<<(out, vec);
-}
+using output_operators::operator<<;
 
-template<typename K, typename V>
-std::ostream& operator<<(std::ostream& out, const std::pair<K,V>& pair) {
-  return ::operator<<(out, pair);
-}
-
-template<typename K, typename V>
-std::ostream& operator<<(std::ostream& out, const std::map<K,V>& map) {
-  return ::operator<<(out, map);
-}
-  
 // position, ambient, diffuse, specular in vec4
 // RGB format
 const unsigned int NUM_PROPERTIES = 3;
