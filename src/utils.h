@@ -14,6 +14,9 @@
   #include <opencv2/imgproc/imgproc.hpp>
 #endif
 
+std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems);
+std::vector<std::string> split(const std::string &s, char delim);
+
 namespace output_operators {
 
 template<typename T>

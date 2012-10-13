@@ -15,29 +15,17 @@
 #include <sstream>
 #include <fstream>
 #include <vector>
+#include <functional>
 #include "opengl.h"
 #include "args.h"
 #include "tests.h"
+#include "utils.h"
 
 // This is my plan:
 // I have to synthesize a new image using the mesh obj and the light source
 // for better error accumulation I could crop everything except the mesh from the original image data
 // for image synthesis I could use a ray tracer
 // then for image synthesation it is better to build a kd-Tree around the mesh obj, which demands, that rotation, translation and scalation is done before kd-Tree construction
-
-std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
-  std::stringstream ss(s);
-  std::string item;
-  while(std::getline(ss, item, delim)) {
-    elems.push_back(item);
-  }
-  return elems;
-}
-
-std::vector<std::string> split(const std::string &s, char delim) {
-  std::vector<std::string> elems;
-  return split(s, delim, elems);
-}
 
 const char * opt_string = "m:x:i:s:r:t:hc:np";
 
@@ -55,12 +43,13 @@ const struct option long_opts[] = {
   { nullptr, no_argument, nullptr, 0}
 };
 
-template<class T, int N>
-std::string print_coords(const T (&coords)[N]) {
+template<typename T, std::size_t N>
+std::string print_coords(const std::array<T, N> &coords) {
   std::stringstream ret_val;
-  ret_val << coords[0];
-  for (unsigned int i = 1; i < N; i++)
-    ret_val << '/' << coords[i];
+  auto iter = std::begin(coords);
+  ret_val << *iter++;
+  for (; iter != std::end(coords); iter++)
+    ret_val << '/' << *iter;
   return ret_val.str();
 }
 
@@ -88,14 +77,12 @@ void print_help() {
     << std::endl;
 }
 
-template<class T, int N>
-void read_coords(const std::string raw, T (&coords)[N], const char split_arg = '/') {
+template<class T, std::size_t N>
+void read_coords(const std::string raw,  std::array<T, N> &coords, const char split_arg = '/') {
    std::vector<std::string> tokens = split(raw, split_arg);
-   for (unsigned int i = 0; i < N; i++) {
-     std::stringstream ss;
-     ss << tokens.at(i);
-     ss >> coords[i];
-   }
+   auto coords_iter = std::begin(coords);
+   std::function<void(const std::string&)> converter = [&](const std::string& s){std::stringstream ss; ss << s; ss >> *coords_iter; coords_iter++;};
+   std::for_each(std::begin(tokens), std::end(tokens), converter);
 }
 
 void read_config_file(const std::string filename, arguments &args) {
@@ -135,8 +122,8 @@ void read_config_file(const std::string filename, arguments &args) {
 }
 
 arguments parse_options(const int& argc, char * const argv[]) {
-  arguments args;
   // read default values
+  arguments args;
   read_config_file("../config", args);
   // read other options
   int opt = 0;
@@ -189,8 +176,8 @@ int main(int argc, char * argv[]) {
     setupOpenGL(&argc, argv, args);
     ObjLoader objl;
     MeshObj * mesh = objl.loadObjFile(args.mesh_filename, args.mesh_filename);
-    mesh->translate(args.translation);
-    mesh->rotate(args.rotation);
+    mesh->translate(args.translation.data());
+    mesh->rotate(args.rotation.data());
     mesh->scale(args.scale);
     Material mat;
     mesh->setMaterial(&mat);
