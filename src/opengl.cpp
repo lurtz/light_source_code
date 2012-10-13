@@ -26,12 +26,11 @@
 arguments args;
 
 MeshObj * meshobj = nullptr;
-cv::Mat_<cv::Vec3f> _original_image;
-Trackball _ball;
+Trackball ball;
 
 GLclampf clear_color = 0.3;
-GLfloat _zNear, _zFar;
-GLfloat _fov;
+GLfloat zNear, zFar;
+GLfloat fov;
 
 // FBO stuff //
 // image normal position diffuse_texture specular_texture
@@ -42,8 +41,6 @@ GLuint fbo;
 Lights::Lights<float, 4> lights;
 
 bool image_displayed = false;
-
-#define BUFFER_OFFSET(i) ((char *)nullptr + (i))
 
 // Define some globals
 int windowWidth, windowHeight;
@@ -69,12 +66,12 @@ void mouseEvent(int button, int state, int x, int y) {
   } else {
     mouseState = Trackball::NO_BTN;
   }
-  _ball.updateMouseBtn(mouseState, x, y);
+  ball.updateMouseBtn(mouseState, x, y);
 
 }
 
 void mouseMoveEvent(int x, int y) {
-  _ball.updateMousePos(x, y);
+  ball.updateMousePos(x, y);
 }
 
 void idle() {
@@ -194,19 +191,19 @@ void updateGL() {
   
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  gluPerspective(_fov, aspectRatio, _zNear, _zFar);
+  gluPerspective(fov, aspectRatio, zNear, zFar);
   
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
   
-  _ball.rotateView();
+  ball.rotateView();
   
   // render //
   if (!image_displayed && args.optimize) {
     const float radius = 10;
     const unsigned int huge_num_lights = 20;
     float x, y, z;
-    std::tie(x, y, z) = _ball.getViewDirection();
+    std::tie(x, y, z) = ball.getViewDirection();
     lights = Lights::Lights<float, 4>("bla", radius, huge_num_lights, Lights::plane_acceptor_tuple<float, 4>(cv::Vec4f(-x, -y, -z, 0), cv::Vec4f(0, 0, 0, 0)));
 //    lights = calc_lights<ls, sample_point_random>(create_test_image(), lights, _args.single_pass);
 //    lights = calc_lights<multi_dim_fit, sample_point_random>(create_test_image(), lights, _args.single_pass);
@@ -237,22 +234,22 @@ void keyboardEvent(unsigned char key, int x, int y) {
     }
     case 'w': {
       // move forward //
-      _ball.updateOffset(Trackball::MOVE_FORWARD);
+      ball.updateOffset(Trackball::MOVE_FORWARD);
       break;
     }
     case 's': {
       // move backward //
-      _ball.updateOffset(Trackball::MOVE_BACKWARD);
+      ball.updateOffset(Trackball::MOVE_BACKWARD);
       break;
     }
     case 'a': {
       // move left //
-      _ball.updateOffset(Trackball::MOVE_LEFT);
+      ball.updateOffset(Trackball::MOVE_LEFT);
       break;
     }
     case 'd': {
       // move right //
-      _ball.updateOffset(Trackball::MOVE_RIGHT);
+      ball.updateOffset(Trackball::MOVE_RIGHT);
       break;
     }
     default : {
@@ -268,7 +265,7 @@ void initGL() {
 
   // set projectionmatrix
   glMatrixMode(GL_PROJECTION);
-  gluPerspective(_fov, static_cast<GLdouble>(windowWidth)/windowHeight, _zNear, _zFar);
+  gluPerspective(fov, static_cast<GLdouble>(windowWidth)/windowHeight, zNear, zFar);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
 }
@@ -316,22 +313,12 @@ void initLights() {
 
 void setupOpenGL(int * argc, char ** argv, const arguments &outer_args) {
     args = outer_args;
-    _original_image = cv::imread(args.image_filename);
-    windowWidth = _original_image.cols;
-    windowHeight = _original_image.rows;
-    if (_original_image.rows == 0 || _original_image.cols == 0) {
-      std::cerr << "INPUT DATA HAS 0 SIZE!" << std::endl;
-      windowWidth = 640;
-      windowHeight = 480;
-      _original_image = cv::Mat_<cv::Vec3f>(windowHeight, windowWidth);
-      std::cerr << "setting size to " << windowWidth << "x" << windowHeight << std::endl;
-    }
   
     /* Initialize GLUT */
     glutInit(argc, argv);
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGB);
     glutInitWindowPosition(100, 100);
-    glutInitWindowSize(windowWidth, windowHeight);
+    glutInitWindowSize(windowWidth = 640, windowHeight = 480);
     glutCreateWindow("light sources");
 //    glutFullScreen();
     glutDisplayFunc(updateGL);
@@ -347,11 +334,11 @@ void setupOpenGL(int * argc, char ** argv, const arguments &outer_args) {
     }
     std::cout << "Status: Using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
 
-    _zNear = 0.1f;
-    _zFar= 1000.0f;
-    _fov = 45.0f;
+    zNear = 0.1f;
+    zFar= 1000.0f;
+    fov = 45.0f;
 
-    _ball.updateOffset(Trackball::MOVE_BACKWARD, 4);
+    ball.updateOffset(Trackball::MOVE_BACKWARD, 4);
 
     initGL();
     initFBO();
