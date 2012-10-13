@@ -36,6 +36,29 @@ unsigned int get_maximum_number_of_sample_points(const cv::Mat_<cv::Vec<T, dim>>
   return std::accumulate(std::begin(normals), std::end(normals), 0, [](unsigned int sum, const cv::Vec<T, dim>& normal) { return sum + is_sample_point(normal); });
 }
 
+template<template <typename, int> class point_selector>
+struct selected_points_visualizer {
+  template<typename T, int dim>
+  struct selected_points_visualizer_helper {
+    cv::Mat_<unsigned char> used_pixels;
+    point_selector<T, dim> ps;
+    selected_points_visualizer_helper(const cv::Mat_<cv::Vec<T, dim>>& normals, const unsigned int points_to_deliver) : ps(normals, points_to_deliver) {
+      used_pixels = cv::Mat_<unsigned char>(normals.rows, normals.cols, static_cast<unsigned char>(0));
+    }
+    ~selected_points_visualizer_helper() {
+      cv::imshow("used pixels", used_pixels);
+    }
+    std::tuple<unsigned int, unsigned int> operator()() {
+      auto tuple = ps();
+      used_pixels(std::get<1>(tuple), std::get<0>(tuple)) = std::numeric_limits<unsigned char>::max();
+      return tuple;
+    }
+  };
+  
+  template<typename T, int dim>
+  using type = selected_points_visualizer_helper<T, dim>;
+};
+
 // TODO seems to be broken
 template<typename T, int dim>
 struct sample_point_deterministic {
