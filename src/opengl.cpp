@@ -23,9 +23,9 @@
 
 #include "solver.h"
 
-arguments _args;
+arguments args;
 
-MeshObj * _meshobj = nullptr;
+MeshObj * meshobj = nullptr;
 cv::Mat_<cv::Vec3f> _original_image;
 Trackball _ball;
 
@@ -101,8 +101,8 @@ void visualize_lights() {
 }
 
 void renderScene() {
-    _meshobj->render();
-    if (image_displayed  || !_args.optimize)
+    meshobj->render();
+    if (image_displayed  || !args.optimize)
       visualize_lights();
 
     if (false)
@@ -153,7 +153,7 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Ma
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    if (_args.texture_filename.size() == 0)
+    if (args.texture_filename.size() == 0)
       diffuse = specular = cv::Mat_<cv::Vec3f>(windowHeight, windowWidth, cv::Vec3f(1,1,1));
     
     // opencv images are upside down
@@ -175,12 +175,12 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Ma
 
 decltype(renderSceneIntoFBO()) create_test_image() {
   std::cout << "creating test image..." << std::endl;
-  auto tmp_lights = Lights::Lights<float, 4>(Lights::light_properties, sizeof(Lights::light_properties)/sizeof(Lights::light_properties[0])/Lights::NUM_PROPERTIES);
-  _meshobj->setLight(tmp_lights);
+  auto tmp_lights = Lights::Lights<float, 4>(Lights::light_properties);
+  meshobj->setLight(tmp_lights);
 
   auto tuple = renderSceneIntoFBO();
 
-  _meshobj->setLight(lights);
+  meshobj->setLight(lights);
   return tuple;
 }
 
@@ -202,7 +202,7 @@ void updateGL() {
   _ball.rotateView();
   
   // render //
-  if (!image_displayed && _args.optimize) {
+  if (!image_displayed && args.optimize) {
     const float radius = 10;
     const unsigned int huge_num_lights = 20;
     float x, y, z;
@@ -212,7 +212,7 @@ void updateGL() {
 //    lights = calc_lights<multi_dim_fit, sample_point_random>(create_test_image(), lights, _args.single_pass);
 //    lights = calc_lights<nnls_struct, sample_point_deterministic>(create_test_image(), lights, _args.single_pass);
 //    lights = calc_lights<nnls_struct, sample_point_random>(create_test_image(), lights, _args.single_pass);
-    lights = calc_lights<nnls_struct, selected_points_visualizer<sample_point_deterministic>::type>(create_test_image(), lights, _args.single_pass);
+    lights = calc_lights<nnls_struct, selected_points_visualizer<sample_point_deterministic>::type>(create_test_image(), lights, args.single_pass);
     image_displayed = true;
   }
   renderScene();
@@ -221,9 +221,9 @@ void updateGL() {
   glutSwapBuffers();
 }
 
-void run(MeshObj * const meshobj) {
-  _meshobj = meshobj;
-  _meshobj->setLight(lights);
+void run(MeshObj * const their_meshobj) {
+  meshobj = their_meshobj;
+  meshobj->setLight(lights);
   glutMainLoop();
 //  glutMainLoopEvent();
 }
@@ -311,11 +311,11 @@ void initFBO() {
 }
 
 void initLights() {
-  lights = Lights::Lights<float, 4>(Lights::light_properties, sizeof(Lights::light_properties)/sizeof(Lights::light_properties[0])/Lights::NUM_PROPERTIES);
+  lights = Lights::Lights<float, 4>(Lights::light_properties);
 }
 
-void setupOpenGL(int * argc, char ** argv, const arguments &args) {
-    _args = args;
+void setupOpenGL(int * argc, char ** argv, const arguments &outer_args) {
+    args = outer_args;
     _original_image = cv::imread(args.image_filename);
     windowWidth = _original_image.cols;
     windowHeight = _original_image.rows;

@@ -5,6 +5,7 @@
 #include <iterator>
 #include <limits>
 #include <chrono>
+#include <array>
 #ifdef OPENCV_OLD_INCLUDES
   #include <cv.h>
   #include <highgui.h>
@@ -64,8 +65,8 @@ void print(T t) {
   std::cout << t << std::endl;
 }
 
-template<typename T, int dim>
-cv::Vec<T, dim> create_vector_from_array(const T (&array)[dim]) {
+template<typename T, std::size_t dim>
+cv::Vec<T, dim> create_vector_from_array(const std::array<T, dim> &array) {
   cv::Vec<T, dim> ret_val;
   for (unsigned int i = 0; i < dim; i++)
     ret_val[i] = array[i];

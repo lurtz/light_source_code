@@ -11,6 +11,7 @@
 #include <cassert>
 #include <functional>
 #include <utility>
+#include <array>
 #ifdef OPENCV_OLD_INCLUDES
   #include <cv.h>
 #else
@@ -24,13 +25,18 @@ using output_operators::operator<<;
 
 // position, ambient, diffuse, specular in vec4
 // RGB format
-const unsigned int NUM_PROPERTIES = 3;
-const float light_properties[][4] = {
-    { 4, 4, 2, 1}, {0.5, 0.0, 0.0, 0}, {1, 0, 0, 0}
-    ,{-60,  1, 0, 1}, {0.0, 0.5, 0.0, 0}, {0, 1, 0, 0}
-    ,{ 30,  0, 0, 1}, {0.0, 0.0, 0.5, 0}, {0, 0, 1, 0}
-    ,{ 0,  -10, 0, 1}, {0.5, 0.0, 0.5, 0}, {1, 0, 1, 0}
+template<typename T, std::size_t dim>
+struct Simple_Light {
+  std::array<T, dim> position;
+  std::array<T, dim> diffuse;
+  std::array<T, dim> specular;
 };
+const std::array<Simple_Light<float, 4>, 4> light_properties = {{
+  {{{ 4, 4, 2, 1}}, {{0.5, 0.0, 0.0, 0}}, {{1, 0, 0, 0}}}
+ ,{{{-60,  1, 0, 1}}, {{0.0, 0.5, 0.0, 0}}, {{0, 1, 0, 0}}}
+ ,{{{ 30,  0, 0, 1}}, {{0.0, 0.0, 0.5, 0}}, {{0, 0, 1, 0}}}
+ ,{{{ 0,  -10, 0, 1}}, {{0.5, 0.0, 0.5, 0}}, {{1, 0, 1, 0}}}
+}};
 
 template<typename T, int dim>
 cv::Vec<T, dim> default_ambient_color(T val = 0.1) {
@@ -57,10 +63,10 @@ struct Light {
     get<SPECULAR>() = specular;
   }
   
-  Light(const T (&position)[dim], const T (&diffuse)[dim], const T (&specular)[dim]) {
-    get<POSITION>() = create_vector_from_array(position);
-    get<DIFFUSE>() = create_vector_from_array(diffuse);
-    get<SPECULAR>() = create_vector_from_array(specular);
+  Light(const Simple_Light<T, dim>& light) {
+    get<POSITION>() = create_vector_from_array(light.position);
+    get<DIFFUSE>() = create_vector_from_array(light.diffuse);
+    get<SPECULAR>() = create_vector_from_array(light.specular);
   }
 
   template<Properties prop>
@@ -209,19 +215,17 @@ struct Lights {
     }
   }
   
-  Lights(const T light_props[][dim], const unsigned int count, const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(count) {
-    for (unsigned int i = 0; i < NUM_PROPERTIES * count; i += NUM_PROPERTIES) {
-      const unsigned int pos = i / NUM_PROPERTIES;
-      lights.at(pos) = Light<T, dim>(light_props[i + 0], light_props[i + 1], light_props[i + 2]);
-    }
+  template<std::size_t count>
+  Lights(const std::array<Simple_Light<T, dim>, count> light_props, const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(count) {
+    auto lights_iter = std::begin(lights);
+    for (const Simple_Light<T, dim> &light_prop : light_props)
+      *lights_iter++ = Light<T, dim>(light_prop);
   }
 
   Lights(const cv::Mat_<cv::Vec<T, dim>>& positions, const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(positions.rows) {
-    const cv::Vec<T, dim> default_light_property(cv::Scalar_<T>(0));
-    unsigned int i = 0;
+    auto lights_iter = std::begin(lights);
     for (const auto& pos : positions) {
-      lights.at(i) = Light<T, dim>(pos, default_light_property, default_light_property);
-      i++;
+      *lights_iter++ = Light<T, dim>(pos);
     }
   }
   
