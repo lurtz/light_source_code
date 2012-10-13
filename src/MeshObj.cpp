@@ -4,7 +4,9 @@
 #include <cmath>
 #include "lights.h"
 
-#define OFFSET(i) (static_cast<char*>(nullptr) + (i))
+char * OFFSET(size_t i) {
+  return static_cast<char*>(nullptr) + i;
+}
 
 MeshObj::MeshObj(Lights::Lights<float, 4> const * lights, float const * const rotation, float const * const translation, const float scale)
   : mMaterial(0), mVBO(0), mIBO(0), mIndexCount(0), mShadowVBO(0), mShadowIBO(0), mShadowIndexCount(0), _scale(scale), _lights(lights) {
