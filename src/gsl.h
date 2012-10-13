@@ -78,7 +78,7 @@ namespace gsl {
     // b 0 0 1   0 0 1  0 0 1
     template<Properties prop, typename T>
     void set(const unsigned int row, const unsigned int col, const cv::Mat_<T>& values) {
-      static_assert(prop <= components_per_light, "template parameter prop is bigger than number of components_per_light");
+      assert(prop <= components_per_light);
       for (unsigned int i = 0; i < colors_per_light; i++) {
         const size_t row_pos = colors_per_light * row + i;
         for (unsigned int j = 0; j < colors_per_light; j++) {
