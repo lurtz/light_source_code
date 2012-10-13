@@ -212,7 +212,7 @@ void updateGL() {
 //    lights = calc_lights<multi_dim_fit, sample_point_random>(create_test_image(), lights, _args.single_pass);
 //    lights = calc_lights<nnls_struct, sample_point_deterministic>(create_test_image(), lights, _args.single_pass);
 //    lights = calc_lights<nnls_struct, sample_point_random>(create_test_image(), lights, _args.single_pass);
-    lights = calc_lights<nnls_struct, selected_points_visualizer<sample_point_random>::type>(create_test_image(), lights, _args.single_pass);
+    lights = calc_lights<nnls_struct, selected_points_visualizer<sample_point_deterministic>::type>(create_test_image(), lights, _args.single_pass);
     image_displayed = true;
   }
   renderScene();

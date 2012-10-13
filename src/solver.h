@@ -83,7 +83,7 @@ struct sample_point_deterministic {
     assert(is_sample_point(*pos));
     points_to_skip += step_size;
     cv::Point p = pos.pos();
-    return std::make_tuple(p.y, p.x);
+    return std::make_tuple(p.x, p.y);
   }
 };
 
