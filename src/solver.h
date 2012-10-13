@@ -126,31 +126,31 @@ struct sample_point_random {
 };
 
 template<typename T, int dim>
-std::tuple<float, float> get_diffuse_specular(const cv::Mat_<float> &pos_vec, const cv::Mat_<float> &normal, const Lights::Light<T, dim> &light, const cv::Mat_<GLfloat>& model_view_matrix, const int alpha) {
-  const cv::Mat_<float> light_pos = model_view_matrix * light.template get<Lights::Properties::POSITION>();
+std::tuple<T, T> get_diffuse_specular(const cv::Mat_<T> &pos_vec, const cv::Mat_<T> &normal, const Lights::Light<T, dim> &light, const cv::Mat_<T>& model_view_matrix, const int alpha) {
+  const cv::Mat_<T> light_pos = model_view_matrix * light.template get<Lights::Properties::POSITION>();
 
-  const cv::Mat_<float> L_ = light_pos - pos_vec;
-  cv::Mat_<float> L(L_.rows, L_.cols, L_.type());
+  const cv::Mat_<T> L_ = light_pos - pos_vec;
+  cv::Mat_<T> L(L_.rows, L_.cols, L_.type());
   cv::normalize(L_, L);
   // should be a scalar
-  const cv::Mat_<float> LN = L.t() * normal;
+  const cv::Mat_<T> LN = L.t() * normal;
   assert(is_scalar(LN));
-  float diffuse = LN(0,0);
+  T diffuse = LN(0,0);
   if (diffuse < 0.0f)
     diffuse = 0.0f;
   assert(check_bounds_of_value(diffuse, "diffuse"));
 
-  float specular = 0.0f;
+  T specular = 0.0f;
   if (diffuse > 0.0f) {
     // R =  I - 2.0 * dot(N, I) * N
-    const cv::Mat_<float> R = reflect<float>(normal, -L);
-    cv::Mat_<float> E (pos_vec.rows, pos_vec.cols, pos_vec.type());
+    const cv::Mat_<T> R = reflect<T>(normal, -L);
+    cv::Mat_<T> E (pos_vec.rows, pos_vec.cols, pos_vec.type());
     cv::normalize(-pos_vec, E);
     // should be a scalar
-    const cv::Mat_<float> RE = R.t() * E;
+    const cv::Mat_<T> RE = R.t() * E;
     assert(is_scalar(RE));
-    assert(RE(0,0) <= 1.0f + std::numeric_limits< float >::epsilon());
-    const float base = RE(0,0) > 1.0f ? 1.0f : RE(0,0);
+    assert(RE(0,0) <= 1.0f + std::numeric_limits<T>::epsilon());
+    const T base = RE(0,0) > 1.0f ? 1.0f : RE(0,0);
     specular = std::pow(base, alpha);
     assert(check_bounds_of_value(specular, "specular"));
   }
@@ -158,9 +158,8 @@ std::tuple<float, float> get_diffuse_specular(const cv::Mat_<float> &pos_vec, co
   return std::make_tuple(diffuse, specular);
 }
 
-// TODO reduce template parameters T, dim
-template<unsigned int colors_per_light, unsigned int components_per_light, template <typename, int> class point_selector, typename T, typename T1, int dim, int dim1>
-std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const cv::Mat_<cv::Vec<T, dim>>& image, const cv::Mat_<cv::Vec<T, dim>>& normals, const cv::Mat_<cv::Vec<T, dim>>& position, const cv::Mat_<cv::Vec<T, dim>>& diffuse_texture, const cv::Mat_<cv::Vec<T, dim>>& specular_texture, const cv::Mat_<GLfloat>& model_view_matrix, const Lights::Lights<T1, dim1>& lights, const int alpha) {
+template<unsigned int colors_per_light, unsigned int components_per_light, template <typename, int> class point_selector, typename T>
+std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const cv::Mat_<cv::Vec<T, colors_per_light>>& image, const cv::Mat_<cv::Vec<T, colors_per_light>>& normals, const cv::Mat_<cv::Vec<T, colors_per_light>>& position, const cv::Mat_<cv::Vec<T, colors_per_light>>& diffuse_texture, const cv::Mat_<cv::Vec<T, colors_per_light>>& specular_texture, const cv::Mat_<GLfloat>& model_view_matrix, const Lights::Lights<T, colors_per_light+1>& lights, const int alpha) {
   std::cout << "creating linear system" << std::endl;
 
   const unsigned int sample_max = get_maximum_number_of_sample_points(normals);
@@ -179,7 +178,7 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
   // do not take all points of the image
   // calculate this value somehow, maybe specify the number of samples and
   // distribute them over the mesh in the image
-  point_selector<T, dim> ps(normals, rows/colors_per_light);
+  point_selector<T, colors_per_light> ps(normals, rows/colors_per_light);
 
   for (unsigned int row = 0; row < rows/colors_per_light; row++) {
     std::cout << "at row " << row*colors_per_light << "/" << rows << "\r";
@@ -204,7 +203,7 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
     x.template set<gsl::AMBIENT>(row, 0, diffuse_tex);
 
     for (unsigned int col = 0; col < lights.lights.size() && components_per_light > 0; col++) {
-      const Lights::Light<T1, dim1>& light = lights.lights.at(col);
+      const Lights::Light<T, colors_per_light+1>& light = lights.lights.at(col);
       auto diffuse_specular = get_diffuse_specular(pos_vec, normal, light, model_view_matrix, alpha);
       const cv::Mat_<T> diff = diffuse_tex * std::get<0>(diffuse_specular);
       const cv::Mat_<T> spec = specular_tex * std::get<1>(diffuse_specular);
@@ -222,18 +221,18 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
 }
 
 // TODO maybe method of object
-template<typename T, int colors_per_light, int components_per_light, int dim>
-void set_solution(const gsl::vector<colors_per_light, components_per_light>& c, Lights::Lights<T, dim>& lights) {
+template<typename T, int colors_per_light, int components_per_light>
+void set_solution(const gsl::vector<colors_per_light, components_per_light>& c, Lights::Lights<T, colors_per_light+1>& lights) {
   // ambient
   lights.ambient = c.template get_cv_vec<T, gsl::AMBIENT>(0);
 
   // diffuse and specular
   for (unsigned int i = 0; i < lights.lights.size() && components_per_light > 0; i++) {
-    Lights::Light<T, dim>& light = lights.lights.at(i);
-    cv::Vec<T, dim>& diff = light.template get<Lights::Properties::DIFFUSE>();
+    Lights::Light<T, colors_per_light+1>& light = lights.lights.at(i);
+    cv::Vec<T, colors_per_light+1>& diff = light.template get<Lights::Properties::DIFFUSE>();
     diff = c.template get_cv_vec<T, gsl::DIFFUSE>(i);
     if (components_per_light > 1) {
-      cv::Vec<T, dim>& spec = light.template get<Lights::Properties::SPECULAR>();
+      cv::Vec<T, colors_per_light+1>& spec = light.template get<Lights::Properties::SPECULAR>();
       spec = c.template get_cv_vec<T, gsl::SPECULAR>(i);
     }
   }
@@ -333,7 +332,7 @@ struct nnls_struct {
   }
 };
 
-template<int dim, typename T>
+template<typename T, int dim>
 Lights::Lights<T, dim> reduce_lights(const Lights::Lights<T, dim>& lights, const unsigned int k) {
   cv::Mat_<cv::Vec<T, dim>> positions(lights.lights.size(), 1);
   std::vector<double> weight(positions.rows);
@@ -365,8 +364,8 @@ Lights::Lights<T, dim> reduce_lights(const Lights::Lights<T, dim>& lights, const
 template<template <int, int> class optimizer, template <typename, int> class point_selector, typename T, int dim>
 void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<cv::Vec3f>& diffuse, const cv::Mat_<cv::Vec3f>& specular, const cv::Mat_<GLfloat>& model_view_matrix, Lights::Lights<T, dim>& lights, const int alpha = 50) {
   //  order of images is: xyz, RGB
-  const unsigned int colors_per_light = 3;
-  const unsigned int components_per_light = 2;
+  const unsigned int colors_per_light = dim-1;
+  const unsigned int components_per_light = 1;
 
   gsl::matrix<colors_per_light, components_per_light> a;
   gsl::vector<colors_per_light, components_per_light> b;
