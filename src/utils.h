@@ -60,7 +60,7 @@ std::ostream& operator<<(std::ostream& out, const std::chrono::duration<Rep, Per
 }
 
 template<typename T>
-void print(T t) {
+void print(const T& t) {
   using namespace output_operators;
   std::cout << t << std::endl;
 }
@@ -110,7 +110,7 @@ template<typename T, int dim, typename T1>
 bool has_length_homogen_coordinates(cv::Vec<T, dim> position, T1 length, T eps  = std::numeric_limits<T>::epsilon()) {
   cv::Vec<T, dim-1> tmp;
   for (unsigned int i = 0; i < dim-1; i++)
-    tmp[i] = position[i]/position[dim];
+    tmp[i] = position[i]/position[dim-1];
   return std::fabs(cv::norm(tmp) - length) <= eps;
 }
 

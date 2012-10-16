@@ -136,7 +136,7 @@ struct uniform_on_sphere_point_distributor {
     position[1] = y                 * radius;
     position[2] = std::sin(phi) * r * radius;
     position[3] = 1;
-    assert(has_length_homogen_coordinates(position, radius));
+    assert(has_length_homogen_coordinates(position, radius, 16*std::numeric_limits<T>::epsilon()));
     i++;
     return position;
   }
@@ -186,6 +186,17 @@ auto plane_acceptor_tuple(const cv::Vec<T, D>& normal, const cv::Vec<T, D>& poin
   return std::make_tuple(plane_acceptor(normal, point), 2.1);
 }
 
+template<typename T, int dim, typename T1>
+std::vector<cv::Vec<T, dim>> get_candidate_positions(T1 dist, const decltype(plane_acceptor<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) &point_acceptor) {
+  std::vector<cv::Vec<T, dim>> candidate_positions;
+  while (dist) {
+    auto position = dist();
+    if (point_acceptor(position))
+      candidate_positions.push_back(position);
+  }
+  return candidate_positions;
+}
+
 template<typename T, int dim>
 struct Lights {
   cv::Vec<T, dim> ambient;
@@ -195,45 +206,47 @@ struct Lights {
 
   Lights(const T radius, const unsigned int num_lights = 10,
       const decltype(plane_acceptor<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) &point_acceptor = [](const cv::Vec<T, dim>& pos){return true;},
-      const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(num_lights) {
-    uniform_on_sphere_point_distributor_without_limit<T> dist(radius);
-    for (unsigned int i = 0; i < num_lights;) {
-      auto position = dist();
-      if (point_acceptor(position)) {
-        lights.at(i) = Light<T, dim>(position);
-        i++;
+      const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient) {
+    std::vector<cv::Vec<T, dim>> candidate_positions;
+    unsigned int max = num_lights;
+
+    // 1. raise max as long as it not big enough to contain all lights
+    do {
+      candidate_positions = get_candidate_positions<T, dim>(uniform_on_sphere_point_distributor<T>(radius, max), point_acceptor);
+      if (candidate_positions.size() < num_lights) {
+        max *= 2;
       }
+    } while (candidate_positions.size() < num_lights);
+    // 2. take middle between max and min and raise one or lower the ower to the middle
+    unsigned int min = max/2;
+    while (max-min > 1) {
+      const unsigned int middle = (min+max)/2;
+      candidate_positions = get_candidate_positions<T, dim>(uniform_on_sphere_point_distributor<T>(radius, middle), point_acceptor);
+      if (candidate_positions.size() < num_lights)
+        min = middle;
+      else
+        max = middle;
     }
-  }
-  
-  Lights(std::string bla, float radius = 10, unsigned int num_lights = 10,
-      const decltype(plane_acceptor_tuple<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) &point_acceptor = std::make_tuple([](const cv::Vec<T, dim>& pos){return true;}, 1),
-      const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(num_lights) {
-    decltype(plane_acceptor<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) func;
-    double num_discarded_points;
-    std::tie(func, num_discarded_points) = point_acceptor;
-    // distribute light sources uniformly on the sphere
-    uniform_on_sphere_point_distributor<T> dist(radius, num_lights*num_discarded_points);
-    for (unsigned int i = 0; i < num_lights;) {
-      cv::Vec<T, 4> position = dist();
-      if (func(position)) {
-        lights.at(i) = Light<T, dim>(position);
-        i++;
-      }
-    }
+    if (candidate_positions.size() < num_lights)
+      candidate_positions = get_candidate_positions<T, dim>(uniform_on_sphere_point_distributor<T>(radius, max), point_acceptor);
+
+    assert(candidate_positions.size() == num_lights);
+
+    for (const auto& pos : candidate_positions)
+      lights.emplace_back(pos);
   }
   
   template<std::size_t count>
-  Lights(const std::array<Simple_Light<T, dim>, count> light_props, const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(count) {
+  Lights(const std::array<Simple_Light<T, dim>, count> &light_props, const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(count) {
     auto lights_iter = std::begin(lights);
     for (const Simple_Light<T, dim> &light_prop : light_props)
       *lights_iter++ = Light<T, dim>(light_prop);
   }
 
-  Lights(const cv::Mat_<cv::Vec<T, dim>>& positions, const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(positions.rows) {
-    auto lights_iter = std::begin(lights);
+  template<template <typename> class ForwardIterable>
+  Lights(const ForwardIterable<cv::Vec<T, dim>>& positions) : ambient(default_ambient_color<T, dim>()) {
     for (const auto& pos : positions) {
-      *lights_iter++ = Light<T, dim>(pos);
+      lights.emplace_back(pos);
     }
   }
   
@@ -260,45 +273,6 @@ std::ostream& operator<<(std::ostream& out, const Lights<T, dim>& lights) {
   for (Light<T, dim> iter : lights.lights)
     out << "Light\n" << i++ << ": " << iter;
   return out;
-}
-
-template<typename T, int dim, typename T1>
-std::vector<cv::Vec<T, dim>> get_candidate_positions(T1 dist, const decltype(plane_acceptor<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) &point_acceptor) {
-  std::vector<cv::Vec<T, dim>> candidate_positions;
-  while (dist) {
-    auto position = dist();
-    if (point_acceptor(position))
-      candidate_positions.push_back(position);
-  }
-  return candidate_positions;
-}
-
-template<typename T, int dim>
-Lights<T, dim> create_lights(const T radius, const unsigned int num_lights = 10,
-      const decltype(plane_acceptor<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) &point_acceptor = [](const cv::Vec<T, dim>& pos){return true;}) {
-  std::vector<cv::Vec<T, dim>> candidate_positions;
-  unsigned int max = num_lights;
-  
-  // 1. raise max as long as it not big enough to contain all lights
-  do {
-    candidate_positions = get_candidate_positions(uniform_on_sphere_point_distributor<T>(radius, max), point_acceptor);
-    if (candidate_positions.size() < num_lights) {
-      max *= 2;
-    }
-  } while (candidate_positions.size() < num_lights);
-  // 2. take middle between max and min and raise one or lower the ower to the middle
-  unsigned int min = max/2;
-  while (min != max) {
-    const unsigned int middle = (min+max)/2;
-    candidate_positions = get_candidate_positions(uniform_on_sphere_point_distributor<T>(radius, middle), point_acceptor);
-    if (candidate_positions.size() < num_lights)
-      min = middle;
-    else
-      max = middle;
-  }
-  assert(candidate_positions.size() == num_lights);
-  
-  return Lights<T,dim>(candidate_positions);
 }
 
 }
