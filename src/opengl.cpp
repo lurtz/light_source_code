@@ -205,10 +205,10 @@ void updateGL() {
     float x, y, z;
     std::tie(x, y, z) = ball.getViewDirection();
     lights = Lights::Lights<float, 4>(radius, huge_num_lights, Lights::plane_acceptor<float, 4>(cv::Vec4f(-x, -y, -z, 0), cv::Vec4f(0, 0, 0, 0)));
-//    lights = calc_lights<ls, sample_point_random>(create_test_image(), lights, _args.single_pass);
-//    lights = calc_lights<multi_dim_fit, sample_point_random>(create_test_image(), lights, _args.single_pass);
-//    lights = calc_lights<nnls_struct, sample_point_deterministic>(create_test_image(), lights, _args.single_pass);
-//    lights = calc_lights<nnls_struct, sample_point_random>(create_test_image(), lights, _args.single_pass);
+//    lights = calc_lights<ls, sample_point_random>(create_test_image(), lights, args.single_pass);
+//    lights = calc_lights<multi_dim_fit, sample_point_random>(create_test_image(), lights, args.single_pass);
+//    lights = calc_lights<nnls_struct, sample_point_deterministic>(create_test_image(), lights, args.single_pass);
+//    lights = calc_lights<nnls_struct, sample_point_random>(create_test_image(), lights, args.single_pass);
     lights = calc_lights<nnls_struct, selected_points_visualizer<sample_point_deterministic>::type>(create_test_image(), lights, args.single_pass);
     image_displayed = true;
   }

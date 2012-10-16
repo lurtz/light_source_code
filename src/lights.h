@@ -145,45 +145,9 @@ struct uniform_on_sphere_point_distributor {
   }
 };
 
-template<typename T>
-cv::Vec<T, 4> polar_to_cartesian(T theta, T phi, T radius) {
-  cv::Vec<T, 4> ret_val;
-  ret_val[0] = std::cos(theta) * std::cos(phi) * radius;
-  ret_val[1] = std::cos(theta) * std::sin(phi) * radius;
-  ret_val[2] = std::sin(theta)                 * radius;
-  ret_val[3] = 1;
-  assert(has_length_homogen_coordinates(ret_val, radius));
-  return ret_val;
-}
-
-template<typename T>
-struct uniform_on_sphere_point_distributor_without_limit {
-  const T radius;
-  halton_sequence seq1, seq2;
-  scaler z_dist, t_dist;
-  bool sign;
-  uniform_on_sphere_point_distributor_without_limit(const T radius) : radius(radius), seq1(3, 1), z_dist(0.0, 360.0), t_dist(0.0, M_PI/2), sign(false) {
-  }
-  cv::Vec<T, 4> operator()() {
-    T phi = z_dist(seq1);
-    T theta = t_dist(seq2);
-    cv::Vec<T, 4> tmp = polar_to_cartesian(theta, phi, radius);
-    if (sign)
-      tmp[2] = - tmp[2];
-    sign ^= true;
-    assert(has_length_homogen_coordinates(tmp, radius));
-    return tmp;
-  }
-};
-
 template<typename T, int D>
 std::function<bool(cv::Vec<T, D>)> plane_acceptor(const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
   return [&](const cv::Vec<T, D>& p){return distFromPlane(p, normal, point) > 0;};
-}
-
-template<typename T, int D>
-auto plane_acceptor_tuple(const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) -> std::tuple<decltype(plane_acceptor(normal, point)), double> {
-  return std::make_tuple(plane_acceptor(normal, point), 2.1);
 }
 
 template<typename T, int dim, typename T1>

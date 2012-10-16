@@ -126,23 +126,9 @@ void testkmeansall() {
   std::exit(0);
 }
 
-template <typename N, typename F>
-void do_n(N n, F&& f) {
-    while (n--) f();
-}
-
-bool test_halton_sequence() {
-  bool ret_val = true;
-  halton_sequence hs, hs1;
-  scaler scaler(0, 10);
-  do_n(10, [&](){ret_val &= scaler(hs) == 10*hs1();});
-  return ret_val;
-}
-
 bool test_all() {
   bool ret_val = true;
   ret_val &= test_gsl_vector_iterator();
-  ret_val &= test_halton_sequence();
   
   //  testkmeansall();
   return ret_val;

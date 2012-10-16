@@ -127,28 +127,6 @@ void flipImage(T& image, const unsigned int width) {
   flipImage(std::begin(image), std::end(image), width);
 }
 
-// TODO better tests is this behaves like standard c++11 PRNG
-struct halton_sequence {
-  const unsigned int m_base;
-  float m_number;
-  halton_sequence(const unsigned int base = 2, const unsigned int number = 1);
-  float operator()();
-  void discard(unsigned long long z);
-  void seed(const unsigned int i = 1);
-  static float min();
-  static float max();
-};
-
-struct scaler {
-  const float min;
-  const float max;
-  scaler(const float min = 0, const float max = 1) : min(min), max(max) {}
-  template<typename T>
-  float operator()(T& prng) const {
-    return prng() * (max - min) + min;
-  }
-};
-
 template<typename T>
 cv::Mat_<T> reflect(const cv::Mat_<T>& normal, const cv::Mat_<T>& vector) {
   assert(normal.cols == vector.cols);
