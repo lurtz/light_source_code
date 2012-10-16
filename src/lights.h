@@ -23,6 +23,18 @@ namespace Lights {
 
 using output_operators::operator<<;
 
+template<typename T, int dim>
+void set_uniforms(const GLuint programm_id, const std::string &uniform_name, cv::Vec<T, dim> value) {
+  static_assert(dim <= 4, "opengl shader supports only up to 4 elements per vector");
+  cv::Vec<T, 4> tmp = cv::Vec<T, 4>::all(0);
+  for (unsigned int i = 0; i < 4; i++)
+    tmp[i] = value[i];
+  GLint uniform_light_property = glGetUniformLocation(programm_id, uniform_name.c_str());
+  glUniform4f(uniform_light_property, tmp[0], tmp[1], tmp[2], tmp[3]);
+//  if (uniform_light_property == -1)
+//    std::cout << "uniform handle is -1 with uniform name " << iter_properties.first << std::endl;
+}
+
 // position, ambient, diffuse, specular in vec4
 // RGB format
 template<typename T, std::size_t dim>
@@ -31,6 +43,7 @@ struct Simple_Light {
   std::array<T, dim> diffuse;
   std::array<T, dim> specular;
 };
+
 const std::array<Simple_Light<float, 4>, 4> light_properties = {{
   {{{ 4, 4, 2, 1}}, {{0.5, 0.0, 0.0, 0}}, {{1, 0, 0, 0}}}
  ,{{{-60,  1, 0, 1}}, {{0.0, 0.5, 0.0, 0}}, {{0, 1, 0, 0}}}
@@ -91,11 +104,8 @@ struct Light {
   void setUniforms(const GLuint programm_id, const unsigned int i) const {
     for (auto iter_properties : props) {
       std::string property_name = iter_properties.first; // position, diffuse, specuar
-      GLint uniform_light_property = glGetUniformLocation(programm_id, get_shader_name(i, property_name).c_str());
       auto value = iter_properties.second;
-      glUniform4f(uniform_light_property, value[0], value[1], value[2], value[3]);
-//      if (uniform_light_property == -1)
-//        std::cout << "uniform handle is -1 with uniform name " << iter_properties.first << std::endl;
+      set_uniforms(programm_id, get_shader_name(i, property_name), value);
     }
   }
 };
@@ -150,17 +160,6 @@ std::function<bool(cv::Vec<T, D>)> plane_acceptor(const cv::Vec<T, D>& normal, c
   return [&](const cv::Vec<T, D>& p){return distFromPlane(p, normal, point) > 0;};
 }
 
-template<typename T, int dim, typename T1>
-std::vector<cv::Vec<T, dim>> get_candidate_positions(T1 dist, const decltype(plane_acceptor<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) &point_acceptor) {
-  std::vector<cv::Vec<T, dim>> candidate_positions;
-  while (dist) {
-    auto position = dist();
-    if (point_acceptor(position))
-      candidate_positions.push_back(position);
-  }
-  return candidate_positions;
-}
-
 template<typename T, int dim>
 struct Lights {
   cv::Vec<T, dim> ambient;
@@ -171,57 +170,28 @@ struct Lights {
   Lights(const T radius, const unsigned int num_lights = 10,
       const decltype(plane_acceptor<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) &point_acceptor = [](const cv::Vec<T, dim>& pos){return true;},
       const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient) {
-    std::vector<cv::Vec<T, dim>> candidate_positions;
-    unsigned int max = num_lights;
-
-    // 1. raise max as long as it not big enough to contain all lights
-    do {
-      candidate_positions = get_candidate_positions<T, dim>(uniform_on_sphere_point_distributor<T>(radius, max), point_acceptor);
-      if (candidate_positions.size() < num_lights) {
-        max *= 2;
-      }
-    } while (candidate_positions.size() < num_lights);
-    // 2. take middle between max and min and raise one or lower the ower to the middle
-    unsigned int min = max/2;
-    while (max-min > 1) {
-      const unsigned int middle = (min+max)/2;
-      candidate_positions = get_candidate_positions<T, dim>(uniform_on_sphere_point_distributor<T>(radius, middle), point_acceptor);
-      if (candidate_positions.size() < num_lights)
-        min = middle;
-      else
-        max = middle;
-    }
-    if (candidate_positions.size() < num_lights)
-      candidate_positions = get_candidate_positions<T, dim>(uniform_on_sphere_point_distributor<T>(radius, max), point_acceptor);
-
+    auto parameter_candidates = find_border_parameter(num_lights, [&](const unsigned int number){return uniform_on_sphere_point_distributor<T>(radius, number);}, point_acceptor);
+    std::vector<cv::Vec<T, dim>>& candidate_positions = std::get<1>(parameter_candidates);
     assert(candidate_positions.size() == num_lights);
-
-    for (const auto& pos : candidate_positions)
-      lights.emplace_back(pos);
+    lights = std::vector<Light<T, dim>>(std::begin(candidate_positions), std::end(candidate_positions));
   }
-  
+
+  // TODO merge with last constructor, structure is really the same
   template<std::size_t count>
-  Lights(const std::array<Simple_Light<T, dim>, count> &light_props, const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(count) {
-    auto lights_iter = std::begin(lights);
-    for (const Simple_Light<T, dim> &light_prop : light_props)
-      *lights_iter++ = Light<T, dim>(light_prop);
+  Lights(const std::array<Simple_Light<T, dim>, count> &light_props, const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient) {
+    lights = std::vector<Light<T, dim>>(std::begin(light_props), std::end(light_props));
   }
 
   template<template <typename> class ForwardIterable>
   Lights(const ForwardIterable<cv::Vec<T, dim>>& positions) : ambient(default_ambient_color<T, dim>()) {
-    for (const auto& pos : positions) {
-      lights.emplace_back(pos);
-    }
+    lights = std::vector<Light<T, dim>>(std::begin(positions), std::end(positions));
   }
   
   void setUniforms(const GLuint programm_id) const {
-    GLint uniform_light_property = glGetUniformLocation(programm_id, "ambient_light");
-    glUniform4f(uniform_light_property, ambient[0], ambient[1], ambient[2], ambient[3]);
-//    if (uniform_light_property == -1)
-//      std::cout << "uniform handle is -1 with uniform name " << "ambient_color" << std::endl;
+    set_uniforms(programm_id, "ambient_light", ambient);
 
     unsigned int i = 0;
-    for (auto iter : lights) {
+    for (auto &iter : lights) {
       iter.setUniforms(programm_id, i++);
     }
   }
@@ -231,10 +201,9 @@ template<typename T, int dim>
 std::ostream& operator<<(std::ostream& out, const Lights<T, dim>& lights) {
   out << "ambient illumination: ";
   out << lights.ambient << std::endl;
-  //bla(out, lights.ambient) << std::endl;
   unsigned int i = 0;
-  // std::copy + std::ostream_iterator ?
-  for (Light<T, dim> iter : lights.lights)
+  // TODO std::copy + std::ostream_iterator ?
+  for (const Light<T, dim> &iter : lights.lights)
     out << "Light\n" << i++ << ": " << iter;
   return out;
 }

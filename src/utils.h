@@ -171,4 +171,44 @@ void mark(cv::Mat_<T>& mat, cv::Vec<T1, 2> pos) {
   mark_if(mat, pos[0], pos[1], 1.0);
 }
 
+template<typename T, typename T1>
+auto get_candidates(T&& dist, const T1& point_acceptor) -> std::vector<decltype(dist())> {
+  std::vector<decltype(dist())> candidates;
+  while (dist) {
+    auto position = dist();
+    if (point_acceptor(position))
+      candidates.push_back(position);
+  }
+  return candidates;
+}
+
+template<typename Creator, typename Criteria>
+auto find_border_parameter(const unsigned int number_of_elements, Creator&& creator, const Criteria& acceptor) -> std::tuple<unsigned int, std::vector<decltype(creator(std::declval<unsigned int>())())>> {
+  unsigned int max = number_of_elements;
+  unsigned int min = number_of_elements;
+  std::vector<decltype(creator(std::declval<unsigned int>())())> candidates;
+
+  // 1. raise max as long as it not big enough to contain all lights
+  while ((candidates = get_candidates(creator(max), acceptor)).size() < number_of_elements) {
+    min = max;
+    max *= 2;
+  }
+
+  // 2. take middle between max and min and raise one or lower the ower to the middle
+  unsigned int middle = (min+max)/2;
+  while (max-min > 1) {
+    middle = (min+max)/2;
+    candidates = get_candidates(creator(middle), acceptor);
+    if (candidates.size() < number_of_elements)
+      min = middle;
+    else
+      max = middle;
+  }
+
+  if (candidates.size() < number_of_elements)
+    return std::make_tuple(std::move(max), get_candidates(creator(max), acceptor));
+  else
+    return std::make_tuple(std::move(middle), std::move(candidates));
+}
+
 #endif /* __UTILS_H__ */
