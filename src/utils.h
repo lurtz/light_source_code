@@ -106,6 +106,14 @@ bool has_length(const cv::Vec<T, dim>& vec, T1 length, T eps = std::numeric_limi
   return std::fabs(cv::norm(vec) - length) < eps;
 }
 
+template<typename T, int dim, typename T1>
+bool has_length_homogen_coordinates(cv::Vec<T, dim> position, T1 length, T eps  = std::numeric_limits<T>::epsilon()) {
+  cv::Vec<T, dim-1> tmp;
+  for (unsigned int i = 0; i < dim-1; i++)
+    tmp[i] = position[i]/position[dim];
+  return std::fabs(cv::norm(tmp) - length) <= eps;
+}
+
 template<class RandomAccessIterator>
 void flipImage(RandomAccessIterator first_row, RandomAccessIterator past_last_row, const unsigned int width) {
   for (; first_row < past_last_row; first_row+=width, past_last_row-=width) {
@@ -120,7 +128,7 @@ void flipImage(T& image, const unsigned int width) {
 }
 
 // TODO better tests is this behaves like standard c++11 PRNG
-typedef struct halton_sequence {
+struct halton_sequence {
   const unsigned int m_base;
   float m_number;
   halton_sequence(const unsigned int base = 2, const unsigned int number = 1);
@@ -129,7 +137,17 @@ typedef struct halton_sequence {
   void seed(const unsigned int i = 1);
   static float min();
   static float max();
-} halton_sequence;
+};
+
+struct scaler {
+  const float min;
+  const float max;
+  scaler(const float min = 0, const float max = 1) : min(min), max(max) {}
+  template<typename T>
+  float operator()(T& prng) const {
+    return prng() * (max - min) + min;
+  }
+};
 
 template<typename T>
 cv::Mat_<T> reflect(const cv::Mat_<T>& normal, const cv::Mat_<T>& vector) {

@@ -127,6 +127,7 @@ struct uniform_on_sphere_point_distributor {
     i = c;
   }
   cv::Vec<T, 4> operator()() {
+    i %= num_lights;
     const double y = i*off - 1 + off/2;
     const double r = sqrt(1 - y*y);
     const double phi = i * inc;
@@ -135,35 +136,42 @@ struct uniform_on_sphere_point_distributor {
     position[1] = y                 * radius;
     position[2] = std::sin(phi) * r * radius;
     position[3] = 1;
-    assert(std::fabs(cv::norm(cv::Vec<T, 3>(position[0], position[1], position[2])) - radius) <= 16*std::numeric_limits<T>::epsilon());
+    assert(has_length_homogen_coordinates(position, radius));
     i++;
     return position;
   }
+  operator bool() {
+    return i < num_lights;
+  }
 };
+
+template<typename T>
+cv::Vec<T, 4> polar_to_cartesian(T theta, T phi, T radius) {
+  cv::Vec<T, 4> ret_val;
+  ret_val[0] = std::cos(theta) * std::cos(phi) * radius;
+  ret_val[1] = std::cos(theta) * std::sin(phi) * radius;
+  ret_val[2] = std::sin(theta)                 * radius;
+  ret_val[3] = 1;
+  assert(has_length_homogen_coordinates(ret_val, radius));
+  return ret_val;
+}
 
 template<typename T>
 struct uniform_on_sphere_point_distributor_without_limit {
   const T radius;
   halton_sequence seq1, seq2;
-  std::default_random_engine engine;
-  std::uniform_real_distribution<T> z_dist, t_dist;
+  scaler z_dist, t_dist;
   bool sign;
   uniform_on_sphere_point_distributor_without_limit(const T radius) : radius(radius), seq1(3, 1), z_dist(0.0, 360.0), t_dist(0.0, M_PI/2), sign(false) {
   }
   cv::Vec<T, 4> operator()() {
-    T theta = z_dist(engine);
-    T phi = t_dist(engine);
-//    T theta = 360*seq1();
-//    T phi = M_PI/2*seq2();
-    cv::Vec<T, 4> tmp;
-    tmp[0] = cos(sqrt(phi)) * cos(theta) * radius;
-    tmp[1] = cos(sqrt(phi)) * sin(theta) * radius;
-    tmp[2] = sin(sqrt(phi))              * radius;
-    tmp[3] = 1;
+    T phi = z_dist(seq1);
+    T theta = t_dist(seq2);
+    cv::Vec<T, 4> tmp = polar_to_cartesian(theta, phi, radius);
     if (sign)
-      tmp.at(2) = - tmp.at(2);
+      tmp[2] = - tmp[2];
     sign ^= true;
-    assert(abs(cv::norm(cv::Vec<T, 3>(tmp[0], tmp[1], tmp[2])) - radius) < std::numeric_limits<T>::epsilon());
+    assert(has_length_homogen_coordinates(tmp, radius));
     return tmp;
   }
 };
@@ -186,7 +194,7 @@ struct Lights {
   Lights() {}
 
   Lights(const T radius, const unsigned int num_lights = 10,
-      const decltype(plane_acceptor<T, dim>) &point_acceptor = [](const cv::Vec<T, dim>& pos){return true;},
+      const decltype(plane_acceptor<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) &point_acceptor = [](const cv::Vec<T, dim>& pos){return true;},
       const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(num_lights) {
     uniform_on_sphere_point_distributor_without_limit<T> dist(radius);
     for (unsigned int i = 0; i < num_lights;) {
@@ -252,6 +260,45 @@ std::ostream& operator<<(std::ostream& out, const Lights<T, dim>& lights) {
   for (Light<T, dim> iter : lights.lights)
     out << "Light\n" << i++ << ": " << iter;
   return out;
+}
+
+template<typename T, int dim, typename T1>
+std::vector<cv::Vec<T, dim>> get_candidate_positions(T1 dist, const decltype(plane_acceptor<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) &point_acceptor) {
+  std::vector<cv::Vec<T, dim>> candidate_positions;
+  while (dist) {
+    auto position = dist();
+    if (point_acceptor(position))
+      candidate_positions.push_back(position);
+  }
+  return candidate_positions;
+}
+
+template<typename T, int dim>
+Lights<T, dim> create_lights(const T radius, const unsigned int num_lights = 10,
+      const decltype(plane_acceptor<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) &point_acceptor = [](const cv::Vec<T, dim>& pos){return true;}) {
+  std::vector<cv::Vec<T, dim>> candidate_positions;
+  unsigned int max = num_lights;
+  
+  // 1. raise max as long as it not big enough to contain all lights
+  do {
+    candidate_positions = get_candidate_positions(uniform_on_sphere_point_distributor<T>(radius, max), point_acceptor);
+    if (candidate_positions.size() < num_lights) {
+      max *= 2;
+    }
+  } while (candidate_positions.size() < num_lights);
+  // 2. take middle between max and min and raise one or lower the ower to the middle
+  unsigned int min = max/2;
+  while (min != max) {
+    const unsigned int middle = (min+max)/2;
+    candidate_positions = get_candidate_positions(uniform_on_sphere_point_distributor<T>(radius, middle), point_acceptor);
+    if (candidate_positions.size() < num_lights)
+      min = middle;
+    else
+      max = middle;
+  }
+  assert(candidate_positions.size() == num_lights);
+  
+  return Lights<T,dim>(candidate_positions);
 }
 
 }

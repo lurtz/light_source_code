@@ -308,7 +308,9 @@ void initFBO() {
 }
 
 void initLights() {
-  lights = Lights::Lights<float, 4>(Lights::light_properties);
+  //lights = Lights::Lights<float, 4>(Lights::light_properties);
+//  lights = Lights::Lights<float, 4>("bla", 10, 30);
+  lights = Lights::Lights<float, 4>(10, 30);
 }
 
 void setupOpenGL(int * argc, char ** argv, const arguments &outer_args) {

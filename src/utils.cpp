@@ -17,22 +17,6 @@ std::vector<std::string> split(const std::string &s, char delim) {
 halton_sequence::halton_sequence(const unsigned int base, const unsigned int number) : m_base(base), m_number(number) {
 }
 
-/*
- FUNCTION (index, base)
-   BEGIN
-       result = 0;
-       f = 1 / base;
-       i = index;
-       WHILE (i > 0)
-       BEGIN
-           result = result + f * (i % base);
-           i = FLOOR(i / base);
-           f = f / base;
-       END
-       RETURN result;
-   END
- */
-
 float halton_sequence::operator()() {
   // http://orion.math.iastate.edu/reu/2001/voronoi/halton_sequence.html
   unsigned int i = m_number;
