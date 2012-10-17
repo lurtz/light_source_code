@@ -157,8 +157,13 @@ struct uniform_on_sphere_point_distributor {
 };
 
 template<typename T, int D>
-std::function<bool(cv::Vec<T, D>)> plane_acceptor(const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
+std::function<bool(const cv::Vec<T, D>&)> plane_acceptor(const cv::Vec<T, D>& normal, const cv::Vec<T, D>& point) {
   return [&](const cv::Vec<T, D>& p){return distFromPlane(p, normal, point) > 0;};
+}
+
+template<typename T, int D>
+decltype(plane_acceptor<T, D>(std::declval<const cv::Vec<T, D>>(), std::declval<const cv::Vec<T, D>>())) default_acceptor() {
+  return [](const cv::Vec<T, D>& pos){return true;};
 }
 
 template<typename T, int dim>
@@ -169,7 +174,7 @@ struct Lights {
   Lights() {}
 
   Lights(const T radius, const unsigned int num_lights = 10,
-      const decltype(plane_acceptor<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) &point_acceptor = [](const cv::Vec<T, dim>& pos){return true;},
+      const decltype(plane_acceptor<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) &point_acceptor = (default_acceptor<T, dim>()),
       const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient) {
     auto parameter_candidates = find_border_parameter(num_lights, [&](const unsigned int number){return uniform_on_sphere_point_distributor<T>(radius, number);}, point_acceptor);
     std::vector<cv::Vec<T, dim>>& candidate_positions = std::get<1>(parameter_candidates);
