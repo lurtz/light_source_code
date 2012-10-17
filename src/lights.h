@@ -125,14 +125,17 @@ std::ostream& operator<<(std::ostream& out, const Lights::Light<T, dim>& light) 
 
 // taken from
 // http://www.xsi-blog.com/archives/115
+template<typename T, int dim>
+struct uniform_point_distributor {};
+
 template<typename T>
-struct uniform_on_sphere_point_distributor {
+struct uniform_point_distributor<T, 4> {
   const double inc = M_PI * (3 - std::sqrt(5));
   const double off;
   unsigned int i;
   const float radius;
   const unsigned int num_lights;
-  uniform_on_sphere_point_distributor(const float radius, const unsigned int num_lights) : off(2.0/num_lights), i(0), radius(radius), num_lights(num_lights) {
+  uniform_point_distributor(const float radius, const unsigned int num_lights) : off(2.0/num_lights), i(0), radius(radius), num_lights(num_lights) {
   }
   void seed(unsigned int c = 0) {
     i = c;
@@ -176,7 +179,7 @@ struct Lights {
   Lights(const T radius, const unsigned int num_lights = 10,
       const decltype(plane_acceptor<T, dim>(std::declval<const cv::Vec<T, dim>>(), std::declval<const cv::Vec<T, dim>>())) &point_acceptor = (default_acceptor<T, dim>()),
       const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient) {
-    auto parameter_candidates = find_border_parameter(num_lights, [&](const unsigned int number){return uniform_on_sphere_point_distributor<T>(radius, number);}, point_acceptor);
+    auto parameter_candidates = find_border_parameter(num_lights, [&](const unsigned int number){return uniform_point_distributor<T, dim>(radius, number);}, point_acceptor);
     std::vector<cv::Vec<T, dim>>& candidate_positions = std::get<1>(parameter_candidates);
     assert(candidate_positions.size() == num_lights);
     lights = std::vector<Light<T, dim>>(std::begin(candidate_positions), std::end(candidate_positions));
