@@ -2,7 +2,6 @@
 #define __OPENGL_H__
 
 #include "MeshObj.h"
-#include <opencv2/core/core.hpp>
 #include "args.h"
 
 void setupOpenGL(int * argc, char ** argv, const arguments &args);

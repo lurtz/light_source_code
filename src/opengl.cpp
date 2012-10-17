@@ -1,17 +1,15 @@
+#include "solver.h"
+#include "lights.h"
+#include "opengl.h"
+#include "Trackball.h"
+
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 #include <GL/glut.h>
 #include <GL/gl.h>
-#include <cmath>
 #include <iostream>
-#include <sstream>
-#include <cstdlib>
-#include <limits>
-#include <iterator>
 #include <tuple>
 #include <memory>
-#include "opengl.h"
-#include "Trackball.h"
 
 #ifdef OPENCV_OLD_INCLUDES
   #include <cv.h>
@@ -20,8 +18,6 @@
   #include <opencv2/core/core.hpp>
   #include <opencv2/highgui/highgui.hpp>
 #endif
-
-#include "solver.h"
 
 arguments args;
 

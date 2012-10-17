@@ -1,8 +1,12 @@
 #include "ObjLoader.h"
+#include "opengl.h"
+#include "args.h"
+#include "tests.h"
+#include "utils.h"
+
 #include <getopt.h>
 #include <string>
 #include <iostream>
-#include <stdlib.h>
 
 #ifdef OPENCV_OLD_INCLUDES
   #include <cv.h>
@@ -14,12 +18,7 @@
 
 #include <sstream>
 #include <fstream>
-#include <vector>
 #include <functional>
-#include "opengl.h"
-#include "args.h"
-#include "tests.h"
-#include "utils.h"
 
 // This is my plan:
 // I have to synthesize a new image using the mesh obj and the light source

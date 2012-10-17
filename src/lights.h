@@ -1,8 +1,9 @@
 #ifndef LIGHTS_H_
 #define LIGHTS_H_
 
+#include "utils.h"
+
 #include <GL/glew.h>
-#include <GL/glut.h>
 #include <string>
 #include <map>
 #include <vector>
@@ -17,7 +18,6 @@
 #else
   #include <opencv2/core/core.hpp>
 #endif
-#include "utils.h"
 
 namespace Lights {
 

@@ -1,13 +1,14 @@
 #ifndef __GSL_RAII_H__
 #define __GSL_RAII_H__
 
+#include "lights.h"
+
 #include <gsl/gsl_multifit.h>
 #include <gsl/gsl_multimin.h>
 #include <gsl/gsl_blas.h>
 #include <memory>
 #include <limits>
 #include <iterator>
-#include "lights.h"
 
 namespace gsl {
   // TODO overload operators

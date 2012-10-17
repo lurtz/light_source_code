@@ -1,6 +1,9 @@
 #ifndef __TESTS_H__
 #define __TESTS_H__
 
+#include "lights.h"
+#include "gsl.h"
+
 #ifdef OPENCV_OLD_INCLUDES
   #include <cv.h>
   #include <highgui.h>
@@ -9,8 +12,6 @@
   #include <opencv2/highgui/highgui.hpp>
 #endif
 #include <limits>
-#include "lights.h"
-#include "gsl.h"
 
 template<typename T>
 bool check_bounds_of_value(const T value, const std::string& valuename, const T min = 0, const T max = 1) {
