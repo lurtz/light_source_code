@@ -11,8 +11,6 @@
 #include <iterator>
 
 namespace gsl {
-  // TODO overload operators
-  // TODO iterators
   enum Properties {AMBIENT = 0, DIFFUSE, SPECULAR};
 
   template<int colors_per_light, int components_per_light>

@@ -145,13 +145,12 @@ void show_rgb_image(std::string name, cv::Mat_<cv::Vec<T, 3>> image) {
   cv::imshow(name, bla);
 }
 
-// TODO return type may be cv::Vec<T, dim>
 template<typename T, typename T1, int dim>
 cv::Mat_<T> operator*(const cv::Mat_<T>& model_view_matrix, const cv::Vec<T1, dim>& light_pos_in_object_space_vector) {
   const cv::Mat_<T1> light_pos_in_object_space_mat(light_pos_in_object_space_vector, false);
   // durch vierte komponente teilen
   const cv::Mat_<T> light_pos_vec4(model_view_matrix * light_pos_in_object_space_mat);
-  const cv::Mat_<T> light_pos(light_pos_vec4 / light_pos_vec4(3), cv::Range(0, 3));
+  const cv::Mat_<T> light_pos(light_pos_vec4 / light_pos_vec4(dim-1), cv::Range(0, dim-1));
   
   return light_pos;
 }

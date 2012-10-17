@@ -220,7 +220,6 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
   return std::make_tuple(std::move(x), std::move(y));
 }
 
-// TODO maybe method of object
 template<typename T, int colors_per_light, int components_per_light>
 void set_solution(const gsl::vector<colors_per_light, components_per_light>& c, Lights::Lights<T, colors_per_light+1>& lights) {
   // ambient
