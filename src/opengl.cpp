@@ -9,7 +9,6 @@
 #include <GL/gl.h>
 #include <iostream>
 #include <tuple>
-#include <memory>
 
 #ifdef OPENCV_OLD_INCLUDES
   #include <cv.h>
@@ -305,6 +304,7 @@ void initFBO() {
 
 void initLights() {
   lights = Lights::Lights<float, 4>(Lights::light_properties);
+//  Lights::Lights<float, 4>(10, 20);
 }
 
 void setupOpenGL(int * argc, char ** argv, const arguments &outer_args) {

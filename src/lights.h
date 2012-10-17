@@ -13,6 +13,7 @@
 #include <functional>
 #include <utility>
 #include <array>
+#include <type_traits>
 #ifdef OPENCV_OLD_INCLUDES
   #include <cv.h>
 #else
@@ -176,15 +177,8 @@ struct Lights {
     lights = std::vector<Light<T, dim>>(std::begin(candidate_positions), std::end(candidate_positions));
   }
 
-  // TODO merge with last constructor, structure is really the same
-  template<std::size_t count>
-  Lights(const std::array<Simple_Light<T, dim>, count> &light_props, const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient) {
-    lights = std::vector<Light<T, dim>>(std::begin(light_props), std::end(light_props));
-  }
-
-  template<template <typename> class ForwardIterable>
-  Lights(const ForwardIterable<cv::Vec<T, dim>>& positions) : ambient(default_ambient_color<T, dim>()) {
-    lights = std::vector<Light<T, dim>>(std::begin(positions), std::end(positions));
+  template<class ForwardIterable, class ignore = typename std::enable_if<!std::is_arithmetic<ForwardIterable>::value>::type>
+  Lights(const ForwardIterable& positions, const cv::Vec<T, dim> &ambient = (default_ambient_color<T, dim>())) : ambient(ambient), lights(std::begin(positions), std::end(positions)) {
   }
   
   void setUniforms(const GLuint programm_id) const {
@@ -202,7 +196,6 @@ std::ostream& operator<<(std::ostream& out, const Lights<T, dim>& lights) {
   out << "ambient illumination: ";
   out << lights.ambient << std::endl;
   unsigned int i = 0;
-  // TODO std::copy + std::ostream_iterator ?
   for (const Light<T, dim> &iter : lights.lights)
     out << "Light\n" << i++ << ": " << iter;
   return out;
