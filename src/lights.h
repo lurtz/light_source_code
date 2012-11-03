@@ -154,7 +154,7 @@ struct uniform_point_distributor<T, 4> {
     i++;
     return position;
   }
-  operator bool() {
+  explicit operator bool() {
     return i < num_lights;
   }
 };
