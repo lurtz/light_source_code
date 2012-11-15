@@ -93,20 +93,9 @@ void visualize_lights() {
 }
 
 void renderScene() {
-    meshobj->render();
-    if (image_displayed  || !args.optimize)
-      visualize_lights();
-
-    if (false)
-    for (int x = -1; x < 2; x+=2)
-        for (int y = -1; y < 2; y+=2)
-            for (int z = -1; z < 2; z+=2) {
-              glPushMatrix();
-              glTranslatef(x, y, z);
-              glColor3f((x+1.0)/3, (y+1.0)/3, (z+1.0)/3);
-              glutSolidSphere(.10, 4, 4);
-              glPopMatrix();
-            }
+  meshobj->render();
+  if (image_displayed  || !args.optimize)
+    visualize_lights();
 }
 
 std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<float>, cv::Mat_<GLfloat>> renderSceneIntoFBO() {
@@ -334,6 +323,7 @@ void setupOpenGL(int * argc, char ** argv, const arguments &outer_args) {
     fov = 45.0f;
 
     ball.updateOffset(Trackball::MOVE_BACKWARD, 4);
+    ball.updateOffset(Trackball::MOVE_RIGHT, 9);
 
     initGL();
     initFBO();

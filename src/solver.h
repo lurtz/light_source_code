@@ -370,6 +370,7 @@ template<template <int, int> class optimizer, template <typename, int> class poi
 void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<cv::Vec3f>& diffuse, const cv::Mat_<cv::Vec3f>& specular, const cv::Mat_<GLfloat>& model_view_matrix, Lights::Lights<T, dim>& lights, const int alpha = 50) {
   //  order of images is: xyz, RGB
   const unsigned int colors_per_light = dim-1;
+  // TODO will be a huge fail with 2 and no solution for some lights, which are not visible
   const unsigned int components_per_light = 1;
 
   gsl::matrix<colors_per_light, components_per_light> a;
@@ -389,7 +390,7 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
   
   set_solution<float>(x, lights);
 
-//  assert(x == (gsl::vector<colors_per_light, components_per_light>(lights)));
+  assert(x == (gsl::vector<colors_per_light, components_per_light>(lights)));
 }
 
 template<template <int, int> class optimizer, template <typename, int> class point_selector, typename T, int dim>
