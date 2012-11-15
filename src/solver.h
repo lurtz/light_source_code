@@ -162,19 +162,25 @@ template<unsigned int colors_per_light, unsigned int components_per_light, templ
 std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const cv::Mat_<cv::Vec<T, colors_per_light>>& image, const cv::Mat_<cv::Vec<T, colors_per_light>>& normals, const cv::Mat_<cv::Vec<T, colors_per_light>>& position, const cv::Mat_<cv::Vec<T, colors_per_light>>& diffuse_texture, const cv::Mat_<cv::Vec<T, colors_per_light>>& specular_texture, const cv::Mat_<GLfloat>& model_view_matrix, const Lights::Lights<T, colors_per_light+1>& lights, const int alpha) {
   std::cout << "creating linear system" << std::endl;
 
-  const unsigned int sample_max = get_maximum_number_of_sample_points(normals);
-  assert(sample_max >= lights.lights.size());
-  const double fraction_of_points_to_take = std::log2((static_cast<double>(lights.lights.size())*components_per_light / sample_max) + 1);
+  // ambient (1) + components_per_light*n points
+  unsigned long sample_max = get_maximum_number_of_sample_points(normals);
+  while (components_per_light > 1 && sample_max % components_per_light != 1)
+    sample_max--;
+  const unsigned int actual_number_of_sampling_points = std::min(sample_max, 1 + components_per_light * lights.lights.size());
+  const double fraction_of_points_to_take = std::log2((static_cast<double>(actual_number_of_sampling_points) / sample_max) + 1);
   const double min_fraction_of_points_to_take = 0.1;
   
   const unsigned int rows = sample_max * std::max(fraction_of_points_to_take, min_fraction_of_points_to_take) * colors_per_light;
-  const unsigned int cols = (1 + lights.lights.size() * components_per_light) * colors_per_light;
+  const unsigned int cols = actual_number_of_sampling_points * colors_per_light;
 
   std::cout << "linear_system will have " << rows << " rows and " << cols << " columns" << std::endl;
+  
+  if (rows == 0 || cols == 0)
+    throw 1;
 
   gsl::matrix<colors_per_light, components_per_light> x(rows, cols);
   gsl::vector<colors_per_light, components_per_light> y(rows);
-
+  
   // do not take all points of the image
   // calculate this value somehow, maybe specify the number of samples and
   // distribute them over the mesh in the image
@@ -226,7 +232,7 @@ void set_solution(const gsl::vector<colors_per_light, components_per_light>& c, 
   lights.ambient = c.template get_cv_vec<T, gsl::AMBIENT>(0);
 
   // diffuse and specular
-  for (unsigned int i = 0; i < lights.lights.size() && components_per_light > 0; i++) {
+  for (unsigned int i = 0; i < (c.size()-colors_per_light)/colors_per_light/components_per_light && components_per_light > 0; i++) {
     Lights::Light<T, colors_per_light+1>& light = lights.lights.at(i);
     cv::Vec<T, colors_per_light+1>& diff = light.template get<Lights::Properties::DIFFUSE>();
     diff = c.template get_cv_vec<T, gsl::DIFFUSE>(i);
@@ -368,7 +374,14 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
 
   gsl::matrix<colors_per_light, components_per_light> a;
   gsl::vector<colors_per_light, components_per_light> b;
-  std::tie(a, b) = create_linear_system<colors_per_light, components_per_light, point_selector>(image, normals, position, diffuse, specular, model_view_matrix, lights, alpha);
+  
+  try {
+    std::tie(a, b) = create_linear_system<colors_per_light, components_per_light, point_selector>(image, normals, position, diffuse, specular, model_view_matrix, lights, alpha);
+  }
+  catch (...) {
+    std::cout << "nothing to optimize" << std::endl;
+    return;
+  }
 
   gsl::vector<colors_per_light, components_per_light> x = optimizer<colors_per_light, components_per_light>()(a, b, lights);
   
@@ -376,7 +389,7 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
   
   set_solution<float>(x, lights);
 
-  assert(x == (gsl::vector<colors_per_light, components_per_light>(lights)));
+//  assert(x == (gsl::vector<colors_per_light, components_per_light>(lights)));
 }
 
 template<template <int, int> class optimizer, template <typename, int> class point_selector, typename T, int dim>
