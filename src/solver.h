@@ -26,12 +26,6 @@ extern "C" {
 #include <cmath>
 
 template<typename T, int dim>
-bool is_sample_point(const cv::Vec<T, dim>& normal) {
-  // skip if length is not 1
-  return has_length(normal, 1);
-}
-
-template<typename T, int dim>
 unsigned int get_maximum_number_of_sample_points(const cv::Mat_<cv::Vec<T, dim>>& normals) {
   return std::accumulate(std::begin(normals), std::end(normals), 0, [](unsigned int sum, const cv::Vec<T, dim>& normal) { return sum + is_sample_point(normal); });
 }
@@ -208,7 +202,7 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
     // ambient term
     x.template set<gsl::AMBIENT>(row, 0, diffuse_tex);
 
-    for (unsigned int col = 0; col < lights.lights.size() && components_per_light > 0; col++) {
+    for (unsigned int col = 0; col < actual_number_of_sampling_points-1 && components_per_light > 0; col++) {
       const Lights::Light<T, colors_per_light+1>& light = lights.lights.at(col);
       auto diffuse_specular = get_diffuse_specular(pos_vec, normal, light, model_view_matrix, alpha);
       const cv::Mat_<T> diff = diffuse_tex * std::get<0>(diffuse_specular);
@@ -408,6 +402,8 @@ Lights::Lights<T, dim> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat
   std::tie(image, normals, position, diffuse, specular, std::ignore, model_view_matrix) = image_data;
 
   show_rgb_image("target image", image);
+  show_sky(position, normals, a_lot_of_lights, model_view_matrix);
+  
 //  cv::imshow("normals", normals);
 //  cv::imshow("position", position);
 

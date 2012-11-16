@@ -119,4 +119,55 @@ bool check_solution(const gsl::vector<colors_per_light, components_per_light> &s
 
 bool test_all();
 
+template<typename T>
+std::tuple<unsigned int, unsigned int> vector_to_pixel_coordinate(const cv::Vec3f& pos, const cv::Vec<T, 2>& min, const cv::Vec<T, 2>& max, const unsigned int width, const unsigned int height) {
+  auto pos_in_center = cv::Vec<T, 2>(pos[0], pos[1]) - min;
+  auto max_in_center = max - min;
+  return std::make_tuple(width * (pos_in_center[0] / max_in_center[0]), height * (pos_in_center[1] / max_in_center[1]));
+}
+
+template<typename T, int dim>
+void show_sky(const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<cv::Vec3f>& normals, const Lights::Lights<T, dim> &outer_lights, const cv::Mat_<T>& model_view_matrix) {
+  using namespace output_operators;
+  auto lights = outer_lights.lights;
+  cv::Vec<T, 2> min_lights{std::numeric_limits< int >::max(), std::numeric_limits< int >::max()};
+  cv::Vec<T, 2> max_lights{std::numeric_limits< int >::min(), std::numeric_limits< int >::min()};
+  for (const auto& light : lights) {
+    const cv::Mat_<T> pos = model_view_matrix * light.template get<Lights::Properties::POSITION>();
+    for (unsigned int i = 0; i < 2; i++) {
+      if (min_lights[i] > pos(i))
+        min_lights[i] = pos(i);
+      if (max_lights[i] < pos(i))
+        max_lights[i] = pos(i);
+    }
+  }
+  std::cout << "Minimum: " << min_lights << ", maximum: " << max_lights << std::endl;
+  
+  float aspect_ratio = (max_lights[0] - min_lights[0]) / (max_lights[1] - min_lights[1]);
+  const unsigned int width = 640;
+  const unsigned int height = width/aspect_ratio;
+  cv::Mat_<cv::Vec3b> sky(width, height, cv::Vec3b(0, 0, 0));
+  
+  for (auto iter_pos = std::begin(position), iter_normal = std::begin(normals); iter_pos != std::end(position) && iter_normal != std::end(normals); iter_pos++, iter_normal++) {
+    if (is_sample_point(*iter_normal)) {
+      cv::Vec3f pos = *iter_pos;
+      // TODO make some color
+      unsigned int x;
+      unsigned int y;
+      std::tie(x, y) = vector_to_pixel_coordinate(pos, min_lights, max_lights, width, height);
+      sky(x, y) = cv::Vec3b(std::numeric_limits< char >::max(), 0, 0);
+    }
+  }
+  
+  for (const auto& light : lights) {
+    const cv::Mat_<T> pos = model_view_matrix * light.template get<Lights::Properties::POSITION>();
+    unsigned int x;
+    unsigned int y;
+    std::tie(x, y) = vector_to_pixel_coordinate(cv::Vec3f(pos(0), pos(1), pos(2)), min_lights, max_lights, width, height);
+    sky(x, y) = cv::Vec3b(0, std::numeric_limits< char >::max(), 0);
+  }
+  
+  cv::imshow("bla", sky);
+}
+
 #endif /* __TESTS_H__ */

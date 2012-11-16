@@ -146,10 +146,10 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Ma
     flipImage(specular, windowWidth);
 
     // do not need to be flipped
-    GLfloat model_view_matrix_stack[16];
-    glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix_stack);
-    cv::Mat_<GLfloat> model_view_matrix;
-    cv::Mat_<GLfloat>(4,4, model_view_matrix_stack).copyTo(model_view_matrix);
+//    GLfloat model_view_matrix_stack[16];
+//    glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix_stack);
+    cv::Mat_<GLfloat> model_view_matrix = cv::Mat_<GLfloat>::eye(4, 4);
+//    cv::Mat_<GLfloat>(4,4, model_view_matrix_stack).copyTo(model_view_matrix);
 
     return std::make_tuple(image, normals, position, diffuse, specular, depth, model_view_matrix);
 }

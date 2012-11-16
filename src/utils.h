@@ -114,6 +114,12 @@ bool has_length_homogen_coordinates(cv::Vec<T, dim> position, T1 length, T eps  
   return std::fabs(cv::norm(tmp) - length) <= eps;
 }
 
+template<typename T, int dim>
+bool is_sample_point(const cv::Vec<T, dim>& normal) {
+  // skip if length is not 1
+  return has_length(normal, 1);
+}
+
 template<class RandomAccessIterator>
 void flipImage(RandomAccessIterator first_row, RandomAccessIterator past_last_row, const unsigned int width) {
   for (; first_row < past_last_row; first_row+=width, past_last_row-=width) {
