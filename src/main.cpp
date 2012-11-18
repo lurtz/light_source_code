@@ -116,6 +116,10 @@ void read_config_file(const std::string filename, arguments &args) {
       std::string coords;
       myfile >> coords;
       read_coords(coords, args.translation);
+    } else if (token == "camera-position") {
+      std::string coords;
+      myfile >> coords;
+      read_coords(coords, args.camera_position);
     }
   }
 }

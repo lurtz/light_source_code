@@ -57,19 +57,29 @@ void Trackball::updateOffset(Motion motion, float dist) {
       // rotate unit vector (0,0,1) *looking up the z-axis* using theta and phi //
       // proceed in look direction by STEP_DISTANCE -> scale look vector and add to current view offset //
       // dir allows to reverse look vector //
-      mViewOffset[0] += dir * sin(mTheta) * cos(mPhi) * dist;
-      mViewOffset[1] += dir * sin(mPhi) * dist;
-      mViewOffset[2] += dir * cos(mTheta) * cos(mPhi) * dist;
+      mViewOffset[0] += dir * dist * sin(mTheta) * cos(mPhi);
+      mViewOffset[1] += dir * dist               * sin(mPhi);
+      mViewOffset[2] += dir * dist * cos(mTheta) * cos(mPhi);
       break;
     }
     case MOVE_LEFT : {
       dir = -1;
     }
     case MOVE_RIGHT : {
+      // drehmatrix um y
       // rotate unit vector (1,0,0) *looking up the x-axis* by theta only -> stay in x-z-plane //
       // add x and z components to current view offset //
-      mViewOffset[0] += dir * cos(mTheta) * dist;
-      mViewOffset[2] += dir * -sin(mTheta) * dist;
+      mViewOffset[0] += dir * dist * cos(mTheta);
+      mViewOffset[2] += dir * dist * -sin(mTheta);
+      break;
+    }
+    case MOVE_DOWN : {
+      dir = -1;
+    }
+    case MOVE_UP : {
+      if (mTheta != 0 || mPhi != 0)
+        std::cout << "going up and down not correctly implemented!" << std::endl;
+      mViewOffset[1] += dir * dist;
       break;
     }
     default : break;

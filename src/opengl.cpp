@@ -236,6 +236,14 @@ void keyboardEvent(unsigned char key, int x, int y) {
       ball.updateOffset(Trackball::MOVE_RIGHT);
       break;
     }
+    case 'c' : {
+      ball.updateOffset(Trackball::MOVE_DOWN);
+      break;
+    }
+    case 32 : {
+      ball.updateOffset(Trackball::MOVE_UP);
+      break;
+    }
     default : {
       break;
     }
@@ -322,8 +330,9 @@ void setupOpenGL(int * argc, char ** argv, const arguments &outer_args) {
     zFar= 1000.0f;
     fov = 45.0f;
 
-    ball.updateOffset(Trackball::MOVE_BACKWARD, 4);
-    ball.updateOffset(Trackball::MOVE_RIGHT, 9);
+    ball.updateOffset(Trackball::MOVE_RIGHT, args.camera_position.at(0));
+    ball.updateOffset(Trackball::MOVE_UP, args.camera_position.at(1));
+    ball.updateOffset(Trackball::MOVE_FORWARD, args.camera_position.at(2));
 
     initGL();
     initFBO();

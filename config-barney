@@ -2,3 +2,4 @@ mesh-name testscenes/barney.obj
 texture-name testscenes/barney.ppm
 scale 0.15
 translation 0/-1.5/0
+camera-position 0/0/-4

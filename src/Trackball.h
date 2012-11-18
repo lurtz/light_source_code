@@ -11,7 +11,7 @@ class Trackball {
     ~Trackball();
     
     enum MouseState {NO_BTN = 0, LEFT_BTN, RIGHT_BTN, MIDDLE_BTN};
-    enum Motion {MOVE_FORWARD = 0, MOVE_BACKWARD, MOVE_LEFT, MOVE_RIGHT};
+    enum Motion {MOVE_FORWARD = 0, MOVE_BACKWARD, MOVE_LEFT, MOVE_RIGHT, MOVE_UP, MOVE_DOWN};
     
     void updateMousePos(int x, int y);
     void updateMouseBtn(MouseState state, int x, int y);

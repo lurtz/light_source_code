@@ -12,7 +12,8 @@ typedef struct arguments {
   std::array<float, 3> translation;
   bool optimize;
   bool single_pass;
-  arguments() : mesh_filename(""), texture_filename(""), image_filename(""), scale(1), rotation{{0}}, translation{{0}}, optimize(true), single_pass(false) {}
+  std::array<float, 3> camera_position;
+  arguments() : mesh_filename{""}, texture_filename{""}, image_filename{""}, scale{1}, rotation{{0}}, translation{{0}}, optimize{true}, single_pass{false}, camera_position{{0}} {}
 } arguments;
 
 #endif /* __arguments_h__ */
