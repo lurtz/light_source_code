@@ -92,7 +92,7 @@ void Trackball::reset(float theta, float phi, float dist) {
   mTheta = theta;
   mLastTheta = mTheta;
   mViewOffset[0] = sin(mTheta) * cos(mPhi) * dist;
-  mViewOffset[1] = sin(mPhi) * dist;
+  mViewOffset[1] =               sin(mPhi) * dist;
   mViewOffset[2] = cos(mTheta) * cos(mPhi) * dist;
   mX = 0;
   mY = 0;
@@ -107,16 +107,14 @@ void Trackball::rotateView(void) {
             0, 1, 0); // up
 }
 
-void Trackball::getCameraPosition(float &x, float &y, float &z) {
-  x = mViewOffset[0];
-  y = mViewOffset[1];
-  z = mViewOffset[2];
+std::tuple<float, float, float> Trackball::getCameraPosition() {
+  return std::make_tuple(mViewOffset[0], mViewOffset[1], mViewOffset[2]);
 }
 
 std::tuple<float, float, float> Trackball::getViewDirection() {
   // rotate view vector (0,0,1) *looking up the z-axis* according to theta and phi //
   float x = sin(mTheta) * cos(mPhi);
-  float y = sin(mPhi);
+  float y =               sin(mPhi);
   float z = cos(mTheta) * cos(mPhi);
   return std::make_tuple(-x, -y, -z);
 }

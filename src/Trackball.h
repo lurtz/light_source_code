@@ -20,7 +20,7 @@ class Trackball {
     void reset(float theta = 0, float phi = 0, float dist = 1);
     void rotateView(void);
     
-    void getCameraPosition(float &x, float &y, float &z);
+    std::tuple<float, float, float> getCameraPosition();
     std::tuple<float, float, float> getViewDirection();
     
   private:
