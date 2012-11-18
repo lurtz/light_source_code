@@ -189,8 +189,10 @@ void updateGL() {
     float x, y, z;
     std::tie(x, y, z) = ball.getViewDirection();
     float cx, cy, cz;
-    std::tie(cx, cy, cz) = ball.getCameraPosition();
-    lights = Lights::Lights<float, 4>(radius, huge_num_lights, Lights::plane_acceptor<float, 4>(cv::Vec4f(-x, -y, -z, 0), cv::Vec4f(cx, cy, cz, 0)));
+    // TODO renable
+    cx = cy = cz = 0;
+//    std::tie(cx, cy, cz) = ball.getCameraPosition();
+    lights = Lights::Lights<float, 4>(radius, huge_num_lights, Lights::plane_acceptor(cv::Vec4f(-x, -y, -z, 0), cv::Vec4f(cx, cy, cz, 0)));
 //    lights = calc_lights<ls, sample_point_random>(create_test_image(), lights, args.single_pass);
 //    lights = calc_lights<multi_dim_fit, sample_point_random>(create_test_image(), lights, args.single_pass);
 //    lights = calc_lights<nnls_struct, sample_point_deterministic>(create_test_image(), lights, args.single_pass);

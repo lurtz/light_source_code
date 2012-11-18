@@ -18,10 +18,10 @@ class Trackball {
     void updateOffset(Motion motion, float dist = 0.1);
     
     void reset(float theta = 0, float phi = 0, float dist = 1);
-    void rotateView(void);
+    void rotateView(void) const;
     
-    std::tuple<float, float, float> getCameraPosition();
-    std::tuple<float, float, float> getViewDirection();
+    std::tuple<float, float, float> getCameraPosition() const;
+    std::tuple<float, float, float> getViewDirection() const;
     
   private:
     float mViewOffset[3];

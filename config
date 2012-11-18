@@ -1,4 +1,4 @@
 mesh-name testscenes/unitsphere.obj
 image-name testscenes/unitsphere_1_color.png
-translation 9/0/0
-camera-position 9/0/-4
+translation 90/0/0
+camera-position 90/0/-4

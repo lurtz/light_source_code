@@ -99,7 +99,7 @@ void Trackball::reset(float theta, float phi, float dist) {
   mState = NO_BTN;
 }
 
-void Trackball::rotateView(void) {
+void Trackball::rotateView(void) const {
   float x, y, z;
   std::tie(x, y, z) = getViewDirection();
   gluLookAt(mViewOffset[0], mViewOffset[1], mViewOffset[2], // from
@@ -107,11 +107,11 @@ void Trackball::rotateView(void) {
             0, 1, 0); // up
 }
 
-std::tuple<float, float, float> Trackball::getCameraPosition() {
+std::tuple<float, float, float> Trackball::getCameraPosition() const {
   return std::make_tuple(mViewOffset[0], mViewOffset[1], mViewOffset[2]);
 }
 
-std::tuple<float, float, float> Trackball::getViewDirection() {
+std::tuple<float, float, float> Trackball::getViewDirection() const {
   // rotate view vector (0,0,1) *looking up the z-axis* according to theta and phi //
   float x = sin(mTheta) * cos(mPhi);
   float y =               sin(mPhi);
