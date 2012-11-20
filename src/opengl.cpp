@@ -145,13 +145,10 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Ma
     flipImage(diffuse, windowWidth);
     flipImage(specular, windowWidth);
 
-    // do not need to be flipped
-//    GLfloat model_view_matrix_stack[16];
-//    glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix_stack);
-    cv::Mat_<GLfloat> model_view_matrix = cv::Mat_<GLfloat>::eye(4, 4);
-//    cv::Mat_<GLfloat>(4,4, model_view_matrix_stack).copyTo(model_view_matrix);
-
-    return std::make_tuple(image, normals, position, diffuse, specular, depth, model_view_matrix);
+    // modelviewmatrix does not need to be flipped
+    // modelviewmatrix needs to be transposed to be used in opencv properly
+    return std::make_tuple(image, normals, position, diffuse, specular, depth, cv::Mat_<GLfloat>::eye(4, 4));
+//    return std::make_tuple(image, normals, position, diffuse, specular, depth, getModelViewMatrix().t());
 }
 
 decltype(renderSceneIntoFBO()) create_test_image() {
@@ -341,4 +338,21 @@ void setupOpenGL(int * argc, char ** argv, const arguments &outer_args) {
     initGL();
     initFBO();
     initLights();
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    std::cout << "model_view_matrix = " << getModelViewMatrix() << std::endl;
+    glTranslatef(90, 0, 0);
+    std::cout << "model_view_matrix = " << getModelViewMatrix() << std::endl;
+    
+    cv::Mat_<float> modelviewmatrix = getModelViewMatrix().t();
+    for (const Lights::Light<float, 4> & light : lights.lights) {
+      using namespace output_operators;
+      const cv::Vec<float, 4>& pos = light.get<Lights::POSITION>();
+      cv::Mat_<float> new_pos = modelviewmatrix * pos;
+      std::cout << "pos = "  << pos << std::endl;
+      std::cout << "new_pos = " << new_pos << std::endl;
+    }
+    
+    glLoadIdentity();
 }

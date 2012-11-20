@@ -32,6 +32,8 @@ struct Vertex {
   float bitangent[3];
 };
 
+cv::Mat_<GLfloat> getModelViewMatrix();
+
 class MeshObj {
   public:
     MeshObj(Lights::Lights<float, 4> const * const lights = nullptr, float const * const rotation = nullptr, float const * const translation = nullptr, const float scale = 1);

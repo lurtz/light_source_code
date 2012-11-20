@@ -4,6 +4,14 @@
 #include <cmath>
 #include "lights.h"
 
+cv::Mat_<GLfloat> getModelViewMatrix() {
+  GLfloat model_view_matrix_stack[16];
+  glGetFloatv(GL_MODELVIEW_MATRIX, model_view_matrix_stack);
+  cv::Mat_<GLfloat> model_view_matrix;
+  cv::Mat_<GLfloat>(4,4, model_view_matrix_stack).copyTo(model_view_matrix);
+  return model_view_matrix;
+}
+
 char * OFFSET(size_t i) {
   return static_cast<char*>(nullptr) + i;
 }
@@ -75,6 +83,9 @@ void MeshObj::setMaterial(Material *material) {
 }
 
 void MeshObj::render(void) {
+  cv::Mat_<GLfloat> view_matrix = getModelViewMatrix();
+//  std::cout << "inverted_model_view_matrix\n" << inv_model_view_matrix.t() << std::endl;
+
   glPushMatrix();
   glTranslatef(_translation[0], _translation[1], _translation[2]);
   glRotatef(_rotation[0], 1, 0, 0);
@@ -91,6 +102,8 @@ void MeshObj::render(void) {
     glBindBuffer(GL_ARRAY_BUFFER, mVBO);
 
     GLuint programm_id = mMaterial->getShaderProgram()->getProgramID();
+
+    Lights::set_uniforms(programm_id, "view_matrix", view_matrix);
 
     if (_lights != nullptr)
       _lights->setUniforms(programm_id);

@@ -151,6 +151,7 @@ void show_sky(const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<cv::Vec3f>& no
   for (auto iter_pos = std::begin(position), iter_normal = std::begin(normals); iter_pos != std::end(position) && iter_normal != std::end(normals); iter_pos++, iter_normal++) {
     if (is_sample_point(*iter_normal)) {
       cv::Vec3f pos = *iter_pos;
+      cv::Point pixel_pos = iter_pos.pos();
       unsigned int x;
       unsigned int y;
       std::tie(x, y) = vector_to_pixel_coordinate(pos, min_lights, max_lights, width, height);

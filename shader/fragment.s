@@ -22,6 +22,8 @@ uniform sampler2D diffuseTex;
 uniform bool specularTexEnabled;
 uniform sampler2D specularTex;
 
+uniform mat4 view_matrix;
+
 void main () {
     // normalize everything necessary //
     vec3 N = normalize(vert_norm_dir);
@@ -32,7 +34,8 @@ void main () {
     for (int i = 0; i < MAX_LIGHTS; i++) {
       // diffuse component
 //      vec3 L = normalize((gl_ModelViewMatrix * lights[i].position).xyz + eyeVec);
-      vec3 L = normalize(lights[i].position.xyz + eyeVec);
+      vec3 L = normalize((view_matrix * lights[i].position).xyz + eyeVec);
+//      vec3 L = normalize(lights[i].position.xyz + eyeVec);
       float NdotL = max(0.0, dot(N, L));
       diffuse_light += lights[i].diffuse * NdotL;
 

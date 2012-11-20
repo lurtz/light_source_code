@@ -25,15 +25,27 @@ namespace Lights {
 using output_operators::operator<<;
 
 template<typename T, int dim>
-void set_uniforms(const GLuint programm_id, const std::string &uniform_name, cv::Vec<T, dim> value) {
+void set_uniforms(const GLuint programm_id, const std::string &uniform_name, const cv::Vec<T, dim>& value) {
   static_assert(dim <= 4, "opengl shader supports only up to 4 elements per vector");
-  cv::Vec<T, 4> tmp = cv::Vec<T, 4>::all(0);
+  cv::Vec<float, 4> tmp = cv::Vec<float, 4>::all(0);
   for (unsigned int i = 0; i < 4; i++)
     tmp[i] = value[i];
   GLint uniform_light_property = glGetUniformLocation(programm_id, uniform_name.c_str());
   glUniform4f(uniform_light_property, tmp[0], tmp[1], tmp[2], tmp[3]);
 //  if (uniform_light_property == -1)
 //    std::cout << "uniform handle is -1 with uniform name " << iter_properties.first << std::endl;
+}
+
+template<typename T>
+void set_uniforms(const GLuint programm_id, const std::string &uniform_name, const cv::Mat_<T>& value) {
+  cv::Mat_<float> tmp(4, 4, static_cast<float>(0));
+  for (unsigned int i = 0; i < value.rows && i < 4; i++)
+    for (unsigned int j = 0; j < value.cols && j < 4; j++)
+      tmp(i, j) = value(i, j);
+  GLint uniform_property = glGetUniformLocation(programm_id, uniform_name.c_str());
+  glUniformMatrix4fv(uniform_property, 16, false, reinterpret_cast<GLfloat *>(tmp.data));
+  if (uniform_property == -1)
+    std::cout << "uniform handle is -1 with uniform name " << uniform_name << std::endl;
 }
 
 // position, ambient, diffuse, specular in vec4
