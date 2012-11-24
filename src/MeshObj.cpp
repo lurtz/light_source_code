@@ -83,7 +83,7 @@ void MeshObj::setMaterial(Material *material) {
 }
 
 void MeshObj::render(void) {
-  cv::Mat_<GLfloat> view_matrix = getModelViewMatrix();
+//  cv::Mat_<GLfloat> view_matrix = getModelViewMatrix();
 //  std::cout << "inverted_model_view_matrix\n" << inv_model_view_matrix.t() << std::endl;
 
   glPushMatrix();
@@ -103,7 +103,7 @@ void MeshObj::render(void) {
 
     GLuint programm_id = mMaterial->getShaderProgram()->getProgramID();
 
-    Lights::set_uniforms(programm_id, "view_matrix", view_matrix);
+//    Lights::set_uniforms(programm_id, "view_matrix", view_matrix);
 
     if (_lights != nullptr)
       _lights->setUniforms(programm_id);
