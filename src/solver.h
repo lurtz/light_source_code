@@ -252,6 +252,7 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
   cv::Mat_<cv::Vec<T, colors_per_light>> specular_texture;
   cv::Mat_<T> model_view_matrix;
   std::tie(image, normals, position, diffuse_texture, specular_texture, std::ignore, model_view_matrix) = image_data;
+  model_view_matrix = cv::Mat_<T>(model_view_matrix.t());
   
   std::cout << "creating linear system" << std::endl;
   unsigned int rows;
