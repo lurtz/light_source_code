@@ -227,20 +227,27 @@ struct area_argument_getter {
   using type = area_argument_getter_helper<T, dim>;
 };
 
-template<unsigned int colors_per_light, unsigned int components_per_light, template <typename, int> class argument_getter, typename T>
-std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const cv::Mat_<cv::Vec<T, colors_per_light>>& image, const cv::Mat_<cv::Vec<T, colors_per_light>>& normals, const cv::Mat_<cv::Vec<T, colors_per_light>>& position, const cv::Mat_<cv::Vec<T, colors_per_light>>& diffuse_texture, const cv::Mat_<cv::Vec<T, colors_per_light>>& specular_texture, const cv::Mat_<GLfloat>& model_view_matrix, const Lights::Lights<T, colors_per_light+1>& lights, const int alpha) {
-  std::cout << "creating linear system" << std::endl;
-
+template<unsigned int colors_per_light, unsigned int components_per_light, typename T>
+std::tuple<unsigned int, unsigned int> get_rows_cols(const cv::Mat_<cv::Vec<T, colors_per_light>>& normals, const unsigned long num_lights) {
   // ambient (1) + components_per_light*n points
   unsigned long sample_max = get_maximum_number_of_sample_points(normals);
   while (components_per_light > 1 && sample_max % components_per_light != 1)
     sample_max--;
-  const unsigned int actual_number_of_sampling_points = std::min(sample_max, 1 + components_per_light * lights.lights.size());
+  const unsigned int actual_number_of_sampling_points = std::min(sample_max, 1 + components_per_light * num_lights);
   const double fraction_of_points_to_take = std::log2((static_cast<double>(actual_number_of_sampling_points) / sample_max) + 1);
   const double min_fraction_of_points_to_take = 0.1;
   
   const unsigned int rows = sample_max * std::max(fraction_of_points_to_take, min_fraction_of_points_to_take) * colors_per_light;
   const unsigned int cols = actual_number_of_sampling_points * colors_per_light;
+  return std::make_tuple(rows, cols);
+}
+
+template<unsigned int colors_per_light, unsigned int components_per_light, template <typename, int> class argument_getter, typename T>
+std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const cv::Mat_<cv::Vec<T, colors_per_light>>& image, const cv::Mat_<cv::Vec<T, colors_per_light>>& normals, const cv::Mat_<cv::Vec<T, colors_per_light>>& position, const cv::Mat_<cv::Vec<T, colors_per_light>>& diffuse_texture, const cv::Mat_<cv::Vec<T, colors_per_light>>& specular_texture, const cv::Mat_<GLfloat>& model_view_matrix, const Lights::Lights<T, colors_per_light+1>& lights, const int alpha) {
+  std::cout << "creating linear system" << std::endl;
+  unsigned int rows;
+  unsigned int cols;
+  std::tie(rows, cols) = get_rows_cols<colors_per_light, components_per_light>(normals, lights.lights.size());
 
   std::cout << "linear_system will have " << rows << " rows and " << cols << " columns" << std::endl;
   
@@ -253,13 +260,7 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
   // do not take all points of the image
   // calculate this value somehow, maybe specify the number of samples and
   // distribute them over the mesh in the image
-//  point_selector<T, colors_per_light> ps(normals, rows/colors_per_light);
-  
-  // TODO get point_selector back
   // TODO calc points to deliver in own function
-//  using test0 = default_argument_getter<sample_point_deterministic>;
-//  using test0 = area_argument_getter<sample_point_deterministic, 3>;
-//  using test1 = test0::type<T, colors_per_light>;
   argument_getter<T, colors_per_light> dag(image, normals, position, diffuse_texture, specular_texture, rows/colors_per_light);
 
   for (unsigned int row = 0; row < rows/colors_per_light; row++) {
@@ -283,7 +284,7 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
     // ambient term
     x.template set<gsl::AMBIENT>(row, 0, diffuse_tex);
 
-    for (unsigned int col = 0; col < actual_number_of_sampling_points-1 && components_per_light > 0; col++) {
+    for (unsigned int col = 0; col < (cols/colors_per_light)-1 && components_per_light > 0; col++) {
       const Lights::Light<T, colors_per_light+1>& light = lights.lights.at(col);
       auto diffuse_specular = get_diffuse_specular(pos_vec, normal, light, model_view_matrix, alpha);
       const cv::Mat_<T> diff = diffuse_tex * std::get<0>(diffuse_specular);
