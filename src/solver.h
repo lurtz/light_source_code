@@ -243,7 +243,16 @@ std::tuple<unsigned int, unsigned int> get_rows_cols(const cv::Mat_<cv::Vec<T, c
 }
 
 template<unsigned int colors_per_light, unsigned int components_per_light, template <typename, int> class argument_getter, typename T>
-std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const cv::Mat_<cv::Vec<T, colors_per_light>>& image, const cv::Mat_<cv::Vec<T, colors_per_light>>& normals, const cv::Mat_<cv::Vec<T, colors_per_light>>& position, const cv::Mat_<cv::Vec<T, colors_per_light>>& diffuse_texture, const cv::Mat_<cv::Vec<T, colors_per_light>>& specular_texture, const cv::Mat_<GLfloat>& model_view_matrix, const Lights::Lights<T, colors_per_light+1>& lights, const int alpha) {
+std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const std::tuple<cv::Mat_<cv::Vec<T, colors_per_light>>, cv::Mat_<cv::Vec<T, colors_per_light>>, cv::Mat_<cv::Vec<T, colors_per_light>>, cv::Mat_<cv::Vec<T, colors_per_light>>, cv::Mat_<cv::Vec<T, colors_per_light>>, cv::Mat_<T>, cv::Mat_<T>>& image_data, const Lights::Lights<T, colors_per_light+1>& lights, const int alpha) {
+  
+  cv::Mat_<cv::Vec<T, colors_per_light>> image;
+  cv::Mat_<cv::Vec<T, colors_per_light>> normals;
+  cv::Mat_<cv::Vec<T, colors_per_light>> position;
+  cv::Mat_<cv::Vec<T, colors_per_light>> diffuse_texture;
+  cv::Mat_<cv::Vec<T, colors_per_light>> specular_texture;
+  cv::Mat_<T> model_view_matrix;
+  std::tie(image, normals, position, diffuse_texture, specular_texture, std::ignore, model_view_matrix) = image_data;
+  
   std::cout << "creating linear system" << std::endl;
   unsigned int rows;
   unsigned int cols;
@@ -442,10 +451,9 @@ Lights::Lights<T, dim> reduce_lights(const Lights::Lights<T, dim>& lights, const
   return Lights::Lights<T, dim>(centers_templ);
 }
 
-template<template <int, int> class optimizer, template <typename, int> class point_selector, typename T, int dim>
-void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f>& normals, const cv::Mat_<cv::Vec3f>& position, const cv::Mat_<cv::Vec3f>& diffuse, const cv::Mat_<cv::Vec3f>& specular, const cv::Mat_<GLfloat>& model_view_matrix, Lights::Lights<T, dim>& lights, const int alpha = 50) {
+template<template <int, int> class optimizer, template <typename, int> class point_selector, typename T, int dim, int colors_per_light>
+void optimize_lights(const std::tuple<cv::Mat_<cv::Vec<T, colors_per_light>>, cv::Mat_<cv::Vec<T, colors_per_light>>, cv::Mat_<cv::Vec<T, colors_per_light>>, cv::Mat_<cv::Vec<T, colors_per_light>>, cv::Mat_<cv::Vec<T, colors_per_light>>, cv::Mat_<T>, cv::Mat_<T>>& image_data, Lights::Lights<T, dim>& lights, const int alpha = 50) {
   //  order of images is: xyz, RGB
-  const unsigned int colors_per_light = dim-1;
   // TODO will be a huge fail with 2 and no solution for some lights, which are not visible
   const unsigned int components_per_light = 1;
 
@@ -453,7 +461,7 @@ void optimize_lights(const cv::Mat_<cv::Vec3f >& image, const cv::Mat_<cv::Vec3f
   gsl::vector<colors_per_light, components_per_light> b;
   
   try {
-    std::tie(a, b) = create_linear_system<colors_per_light, components_per_light, point_selector>(image, normals, position, diffuse, specular, model_view_matrix, lights, alpha);
+    std::tie(a, b) = create_linear_system<colors_per_light, components_per_light, point_selector>(image_data, lights, alpha);
   }
   catch (...) {
     std::cout << "nothing to optimize" << std::endl;
@@ -474,16 +482,7 @@ Lights::Lights<T, dim> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat
   using namespace output_operators;
   const auto start_time = std::chrono::high_resolution_clock::now();
 
-  cv::Mat_<cv::Vec3f> image;
-  cv::Mat_<cv::Vec3f> normals;
-  cv::Mat_<cv::Vec3f> position;
-  cv::Mat_<cv::Vec3f> diffuse;
-  cv::Mat_<cv::Vec3f> specular;
-  cv::Mat_<float> model_view_matrix;
-
-  std::tie(image, normals, position, diffuse, specular, std::ignore, model_view_matrix) = image_data;
-
-  show_rgb_image("target image", image);
+  show_rgb_image("target image", std::get<0>(image_data));
 //  show_sky(position, normals, a_lot_of_lights, model_view_matrix);
   
 //  cv::imshow("normals", normals);
@@ -494,7 +493,7 @@ Lights::Lights<T, dim> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat
 //  test_normals(normals);
 //  get_min_max_and_print(normals);
 
-  optimize_lights<optimizer, point_selector>(image, normals, position, diffuse, specular, model_view_matrix.t(), a_lot_of_lights);
+  optimize_lights<optimizer, point_selector>(image_data, a_lot_of_lights);
   const auto time_after_huge_lights_run = std::chrono::high_resolution_clock::now();
   std::cout << "a lot of lights optimized" << std::endl;
 
@@ -504,7 +503,7 @@ Lights::Lights<T, dim> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat
     lights = reduce_lights(a_lot_of_lights, small_num_lights);
     std::cout << "a lot of lights reduced" << std::endl;
 
-    optimize_lights<optimizer, point_selector>(image, normals, position, diffuse, specular, model_view_matrix.t(), lights);
+    optimize_lights<optimizer, point_selector>(image_data, lights);
 
     std::cout << "small number of lights reduced" << std::endl;
   } else {

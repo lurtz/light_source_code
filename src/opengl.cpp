@@ -149,7 +149,7 @@ std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Mat_<cv::Vec3f>, cv::Ma
     // modelviewmatrix needs to be transposed to be used in opencv properly
 //    return std::make_tuple(image, normals, position, diffuse, specular, depth, cv::Mat_<GLfloat>::eye(4, 4));
     // TODO why no transpose?
-    return std::make_tuple(image, normals, position, diffuse, specular, depth, getModelViewMatrix());
+    return std::make_tuple(image, normals, position, diffuse, specular, depth, getModelViewMatrix().t());
 }
 
 decltype(renderSceneIntoFBO()) create_test_image() {
