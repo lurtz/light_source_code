@@ -152,7 +152,82 @@ std::tuple<T, T> get_diffuse_specular(const cv::Mat_<T> &pos_vec, const cv::Mat_
   return std::make_tuple(diffuse, specular);
 }
 
-template<unsigned int colors_per_light, unsigned int components_per_light, template <typename, int> class point_selector, typename T>
+template<template <typename, int> class point_selector>
+struct default_argument_getter {
+  template<typename T, int dim>
+  struct default_argument_getter_helper {
+    point_selector<T, dim> ps;
+    const cv::Mat_<cv::Vec<T, dim>>& image;
+    const cv::Mat_<cv::Vec<T, dim>>& normals;
+    const cv::Mat_<cv::Vec<T, dim>>& position;
+    const cv::Mat_<cv::Vec<T, dim>>& diffuse_texture;
+    const cv::Mat_<cv::Vec<T, dim>>& specular_texture;
+    
+    default_argument_getter_helper(const cv::Mat_<cv::Vec<T, dim>>& image, const cv::Mat_<cv::Vec<T, dim>>& normals, const cv::Mat_<cv::Vec<T, dim>>& position, const cv::Mat_<cv::Vec<T, dim>>& diffuse_texture, const cv::Mat_<cv::Vec<T, dim>>& specular_texture, const unsigned int points_to_deliver)
+     : ps(normals, points_to_deliver), image(image), normals(normals), position(position), diffuse_texture(diffuse_texture), specular_texture(specular_texture) {}
+    
+    std::tuple<cv::Vec<float, dim>, cv::Mat_<T>, cv::Mat_<T>, cv::Mat_<T>, cv::Mat_<T>> get_values() {
+      int x;
+      int y;
+      std::tie(x, y) = ps();
+      assert(check_pixel(image(y, x), "target", x, y));
+      return std::make_tuple(image(y, x), cv::Mat_<T>(position(y, x)), cv::Mat_<T>(normals(y, x)), cv::Mat_<T>(diffuse_texture(y, x)), cv::Mat_<T>(specular_texture(y, x)));
+    }
+    
+  };
+  
+  template<typename T, int dim>
+  using type = default_argument_getter_helper<T, dim>;
+};
+
+template<template <typename, int> class point_selector, int area_width, int tolerance = 10000>
+struct area_argument_getter {
+  template<typename T, int dim>
+  struct area_argument_getter_helper {
+    point_selector<T, dim> ps;
+    const cv::Mat_<cv::Vec<T, dim>>& image;
+    const cv::Mat_<cv::Vec<T, dim>>& normals;
+    const cv::Mat_<cv::Vec<T, dim>>& position;
+    const cv::Mat_<cv::Vec<T, dim>>& diffuse_texture;
+    const cv::Mat_<cv::Vec<T, dim>>& specular_texture;
+    
+    area_argument_getter_helper(const cv::Mat_<cv::Vec<T, dim>>& image, const cv::Mat_<cv::Vec<T, dim>>& normals, const cv::Mat_<cv::Vec<T, dim>>& position, const cv::Mat_<cv::Vec<T, dim>>& diffuse_texture, const cv::Mat_<cv::Vec<T, dim>>& specular_texture, const unsigned int points_to_deliver)
+     : ps(normals, points_to_deliver), image(image), normals(normals), position(position), diffuse_texture(diffuse_texture), specular_texture(specular_texture) {}
+    
+    std::tuple<cv::Vec<float, dim>, cv::Mat_<T>, cv::Mat_<T>, cv::Mat_<T>, cv::Mat_<T>> get_values() {
+      int x;
+      int y;
+      std::tie(x, y) = ps();
+      assert(check_pixel(image(y,x), "target", x, y));
+      const auto& normal = normals(y, x);
+      unsigned int points = 0;
+      
+      cv::Vec<T, dim> image_val = cv::Vec<T, dim>::all(0);
+      cv::Vec<T, dim> normals_val = cv::Vec<T, dim>::all(0);
+      cv::Vec<T, dim> position_val = cv::Vec<T, dim>::all(0);
+      for (int dx = -area_width/2; dx <= area_width/2; dx++)
+        for (int dy = -area_width/2; dy <= area_width/2; dy++) {
+          auto px = x + dx;
+          auto py = y + dy;
+          if (std::fabs(normal.dot(normals(py, px)) - 1) < tolerance*std::numeric_limits<T>::epsilon()) {
+            image_val += image(py, px);
+            normals_val += normals(py, px);
+            position_val += position(py, px);
+            points++;
+          }
+        }
+      
+      assert(points > 0);
+      double inv_points = 1.0 / points;
+      return std::make_tuple(image_val * inv_points, cv::Mat_<T>(position_val * inv_points), cv::Mat_<T>(normals_val * inv_points), cv::Mat_<T>(diffuse_texture(y, x)), cv::Mat_<T>(specular_texture(y, x)));
+    }
+  };
+  
+  template<typename T, int dim>
+  using type = area_argument_getter_helper<T, dim>;
+};
+
+template<unsigned int colors_per_light, unsigned int components_per_light, template <typename, int> class argument_getter, typename T>
 std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colors_per_light, components_per_light>> create_linear_system(const cv::Mat_<cv::Vec<T, colors_per_light>>& image, const cv::Mat_<cv::Vec<T, colors_per_light>>& normals, const cv::Mat_<cv::Vec<T, colors_per_light>>& position, const cv::Mat_<cv::Vec<T, colors_per_light>>& diffuse_texture, const cv::Mat_<cv::Vec<T, colors_per_light>>& specular_texture, const cv::Mat_<GLfloat>& model_view_matrix, const Lights::Lights<T, colors_per_light+1>& lights, const int alpha) {
   std::cout << "creating linear system" << std::endl;
 
@@ -178,26 +253,32 @@ std::tuple<gsl::matrix<colors_per_light, components_per_light>, gsl::vector<colo
   // do not take all points of the image
   // calculate this value somehow, maybe specify the number of samples and
   // distribute them over the mesh in the image
-  point_selector<T, colors_per_light> ps(normals, rows/colors_per_light);
+//  point_selector<T, colors_per_light> ps(normals, rows/colors_per_light);
+  
+  // TODO get point_selector back
+  // TODO calc points to deliver in own function
+//  using test0 = default_argument_getter<sample_point_deterministic>;
+//  using test0 = area_argument_getter<sample_point_deterministic, 3>;
+//  using test1 = test0::type<T, colors_per_light>;
+  argument_getter<T, colors_per_light> dag(image, normals, position, diffuse_texture, specular_texture, rows/colors_per_light);
 
   for (unsigned int row = 0; row < rows/colors_per_light; row++) {
     std::cout << "at row " << row*colors_per_light << "/" << rows << "\r";
     // 1. find a good pixel
-    int _x = 0;
-    int _y = 0;
-    std::tie(_x, _y) = ps();
 
     // 2. set matrix parameter for pixel
     // set value of pixel in the image to the vector
-    const cv::Vec<float, colors_per_light>& pixel = image(_y, _x);
-    assert(check_pixel(pixel, "target", _x, _y));
-    y.set(row, pixel);
+    cv::Vec<float, colors_per_light> pixel;
     
     // set shading parameter for a pixel in the matrix
-    const cv::Mat_<T> pos_vec(position(_y, _x));
-    const cv::Mat_<T> normal(normals(_y, _x), false);
-    const cv::Mat_<T> diffuse_tex(diffuse_texture(_y, _x));
-    const cv::Mat_<T> specular_tex(specular_texture(_y, _x));
+    cv::Mat_<T> pos_vec;
+    cv::Mat_<T> normal;
+    cv::Mat_<T> diffuse_tex;
+    cv::Mat_<T> specular_tex;
+    
+    std::tie(pixel, pos_vec, normal, diffuse_tex, specular_tex) = dag.get_values();
+    
+    y.set(row, pixel);
     
     // ambient term
     x.template set<gsl::AMBIENT>(row, 0, diffuse_tex);
@@ -402,7 +483,7 @@ Lights::Lights<T, dim> calc_lights(const std::tuple<cv::Mat_<cv::Vec3f>, cv::Mat
   std::tie(image, normals, position, diffuse, specular, std::ignore, model_view_matrix) = image_data;
 
   show_rgb_image("target image", image);
-  show_sky(position, normals, a_lot_of_lights, model_view_matrix);
+//  show_sky(position, normals, a_lot_of_lights, model_view_matrix);
   
 //  cv::imshow("normals", normals);
 //  cv::imshow("position", position);
